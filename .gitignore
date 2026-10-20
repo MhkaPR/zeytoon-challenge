@@ -6,7 +6,7 @@ db.sqlite3
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -19,7 +19,7 @@ db.sqlite3
 /coverage
 
 # next.js
-/.next/
+.next
 /out/
 
 # production
@@ -29,6 +29,7 @@ db.sqlite3
 .DS_Store
 *.pem
 
+# debug
 # debug
 npm-debug.log*
 yarn-debug.log*
