@@ -90,15 +90,18 @@ An unauthenticated visitor can browse, search, filter, and compare. The system c
 - **FR-027**: The system MUST record authentication-related security events (OTP requested, verification succeeded/failed, lockout triggered, block refusal) with masked identifiers.
 - **FR-028**: There MUST be no account deletion flow and no account merging flow.
 - **FR-029**: The system MUST log the user out and invalidate their tokens on request.
+- **FR-030**: Every tunable value in this feature (SMS/OTP timeout and TTL, OTP length, failed-attempt limit, lockout duration, request and verification rate limits, JWT access expiry, refresh validity and rotation, return-URL allowlist, contact channels, and similar) MUST be configurable through Django settings or Django models — not hard-coded in application code. Values that administrators change at runtime (for example the contact channels) MUST live in Django models; environment-specific values MAY live in `settings.py`.
+- **FR-031**: The implementation MUST prefer established, popular libraries and framework-provided generators over hand-written code for any capability that already has a well-supported library or a scaffolding command; custom code is permitted only when no suitable library exists or when it is justified in writing.
 
 ### Key Entities *(include if feature involves data)*
 
-- **User**: A person identified by phone number; holds a role (regular user or admin) and a status (active or blocked). Created implicitly on first successful login. No profile attributes are collected at login.
+- **User**: A person identified by phone number; holds a role (regular user or admin) and a status (active or blocked). Created implicitly on first successful login. No profile attributes are collected at login. The admin role is enforced by the separate admin panel, not by this feature.
 - **One-Time Code (OTP challenge)**: A short-lived credential bound to a phone number; stores a hashed code, an expiry, a failed-attempt counter, and issuance metadata. Stored server-side with a TTL.
 - **Session / Token**: The authenticated credential issued after successful verification; has an access component with an expiration, a refresh component, and a revocable state.
 - **Login Attempt / Lockout state**: Records failed verification attempts and temporary lockouts per phone and per source, used to enforce thresholds.
 - **Return Target**: The page the user was on before login, validated against an allowlist before use; falls back to a default page.
-- **Contact Channels**: The admin-configurable list of communication channels shown to a blocked user.
+- **Contact Channels**: The operator-configurable list of communication channels shown to a blocked user.
+- **Feature Settings**: The set of tunable values for this feature (timeouts, limits, expiry, allowlist), stored in Django settings or Django models rather than hard-coded.
 
 ## Success Criteria *(mandatory)*
 
@@ -107,7 +110,7 @@ An unauthenticated visitor can browse, search, filter, and compare. The system c
 - **SC-001**: A first-time user can go from entering a phone number to being logged in within 90 seconds, assuming the SMS arrives promptly.
 - **SC-002**: 95% of users who receive a code and enter it correctly are logged in on the first attempt.
 - **SC-003**: 100% of login attempts from a blocked user display the block message with at least one contact channel.
-- **SC-004**: 100% of attempts to enter the admin panel by a non-admin account are denied, with no admin session issued.
+- **SC-004**: 100% of the tunable values in this feature can be changed through Django settings or Django models without editing application code.
 - **SC-005**: After login, 100% of users with a valid return target land on the page they started from; 100% of invalid targets fall back to the default page.
 - **SC-006**: No log entry contains a full phone number, a full one-time code, or a token, verified across the authentication flows.
 - **SC-007**: An expired code never produces any message other than "The code is incorrect".
@@ -116,9 +119,9 @@ An unauthenticated visitor can browse, search, filter, and compare. The system c
 
 ## Assumptions
 
-- Defaults chosen where the description did not fix a value: OTP length 6 digits; OTP TTL 2 minutes; max failed attempts per code 5; temporary lockout 15 minutes after 5 failed attempts; OTP request limit 1 per 60 seconds and 5 per hour per phone; verification limit 10 per 10 minutes per phone; JWT access expiry 15 minutes; refresh validity 7 days with rotation; token revocation via server-side denylist.
+- Defaults chosen where the description did not fix a value: OTP length 6 digits; OTP TTL 2 minutes; max failed attempts per code 5; temporary lockout 15 minutes after 5 failed attempts; OTP request limit 1 per 60 seconds and 5 per hour per phone; verification limit 10 per 10 minutes per phone; JWT access expiry 15 minutes; refresh validity 7 days with rotation; token revocation via server-side denylist. These defaults MUST be applied as configurable settings, not hard-coded.
 - SMS delivery is provided by an external SMS gateway; choosing and configuring the gateway is an implementation concern, not part of this specification's user-visible behavior. Local environment variable handling of credentials follows the project constitution.
-- Roles are assigned outside the login flow (there is no in-product role management in this feature); admin accounts are provisioned by operators.
+- Roles are assigned outside the login flow (there is no in-product role management in this feature); admin accounts and the admin panel are handled by a separate, restricted-domain panel that this feature does not implement or integrate with.
 - "Blocked" is an account state set by an operator; enforcement applies both to requesting a code and to verifying it.
 - The set of valid return targets is limited to the known frontend origins/paths; anything else is treated as invalid and replaced with the default page.
 - Contact channels shown to blocked users are configurable by operators.

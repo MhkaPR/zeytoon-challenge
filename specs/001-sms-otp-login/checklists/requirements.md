@@ -1,4 +1,4 @@
-# Specification Quality Checklist: SMS OTP Login (User, Admin, Backend)
+# Specification Quality Checklist: SMS OTP Login (User Frontend & Backend)
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-21
@@ -33,4 +33,5 @@
 
 - Items marked incomplete require spec updates before `$speckit-clarify` or `$speckit-plan`
 - The feature description named several concrete mechanisms (Redis TTL, JWT, CORS, CSRF, Pydantic). These are expressed as behavior and policy (TTL storage, token expiry/refresh/revocation, exact-origin allowlist, double-submit CSRF, boundary validation) to keep the spec technology-agnostic while preserving intent.
-- All unspecified numeric thresholds were resolved as documented defaults in FR-014 through FR-020 and repeated in Assumptions; revisit them during `$speckit-clarify` if the product wants different values.
+- All unspecified numeric thresholds were resolved as documented defaults in FR-014 through FR-020 and repeated in Assumptions; per FR-030 they MUST be implemented as Django settings or Django models, not hard-coded. Revisit the default values during `$speckit-clarify` if the product wants different ones.
+- The admin panel is intentionally excluded: it is a separate, restricted-domain panel (FR-012/FR-013), and this spec covers only the user frontend and the backend that serves it.

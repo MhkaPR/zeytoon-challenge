@@ -3,10 +3,10 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (unratified scaffold) → 1.0.0
-Bump rationale: Initial ratification. The file previously contained only the blank
-  Spec Kit scaffold with placeholder tokens; this amendment supplies the first set of
-  concrete principles, constraints, workflow, and governance rules.
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR. Adds two principles (XII. Prefer Established Libraries and
+  Generators, XIII. Configurable Values) that materially expand the project's engineering
+  guidance. No existing principle is removed or redefined.
 
 Modified principles:
   - [PRINCIPLE_1_NAME]  → I. Product Domain
@@ -20,6 +20,8 @@ Modified principles:
   - (new)               → IX. Data Retention
   - (new)               → X. Crawling Ethics
   - (new)               → XI. Authentication
+  - (new)               → XII. Prefer Established Libraries and Generators
+  - (new)               → XIII. Configurable Values
 
 Added sections:
   - Technology Stack and Constraints (was [SECTION_2_NAME])
@@ -145,6 +147,35 @@ Rationale: Sustainable provider relationships depend on courteous, identifiable 
 
 Rationale: A single, stateless auth mechanism simplifies the API and the Next.js client.
 
+### XII. Prefer Established Libraries and Generators
+
+- Before writing code, agents and developers MUST check whether a popular, well-maintained
+  library or a framework-provided generator already covers the need.
+- When a generator command exists (for example `python manage.py startapp`,
+  `django-admin`, `npm create ...`, or an equivalent scaffold), it MUST be used instead
+  of hand-writing the files.
+- Hand-written implementations of capabilities that a mature library already provides are
+  FORBIDDEN unless the choice is justified in writing (for example a documented
+  incompatibility, licensing conflict, or material performance or security concern).
+- The selected library MUST be actively maintained and widely adopted in the ecosystem.
+
+Rationale: Reusing battle-tested libraries and generators reduces bugs, shortens delivery
+time, and keeps the codebase consistent with framework conventions.
+
+### XIII. Configurable Values
+
+- Every tunable value MUST be configurable through Django settings or Django models; it
+  MUST NOT be hard-coded in application code.
+- Values that operators or administrators change at runtime (thresholds, ceilings, contact
+  channels, allowlists) MUST live in Django models, consistent with the LLM cost-ceiling
+  rule.
+- Environment-specific values (timeouts, expirations, external endpoints) MUST live in
+  `settings.py` and be overridable per environment.
+- Hard-coded magic numbers in business logic are FORBIDDEN.
+
+Rationale: Runtime-adjustable configuration avoids redeploys for tuning, enables operator
+control, and keeps behavior auditable.
+
 ## Technology Stack and Constraints
 
 - Backend: Django 6 + Django REST Framework.
@@ -156,6 +187,10 @@ Rationale: A single, stateless auth mechanism simplifies the API and the Next.js
 - Secrets: injected via environment variables only.
 - Validation: Pydantic at every external data boundary.
 - Cost control: LLM ceiling configurable in Django models, enforced at runtime.
+- Configuration: all tunable values live in Django settings or Django models; no
+  hard-coded thresholds or limits in business logic.
+- Dependencies: prefer maintained, widely adopted libraries and framework generators over
+  custom implementations.
 
 ## Development Workflow and Quality Gates
 
@@ -169,6 +204,8 @@ Rationale: A single, stateless auth mechanism simplifies the API and the Next.js
   rotated.
 - Performance-sensitive changes MUST state their impact against the 100 RPS and 5-minute
   staleness targets.
+- Reviewers MUST reject hand-written reimplementations of capabilities already covered by
+  a maintained library or a framework generator, and MUST reject hard-coded tunable values.
 
 ## Governance
 
@@ -185,4 +222,4 @@ Rationale: A single, stateless auth mechanism simplifies the API and the Next.js
 - The Sync Impact Report at the top of this file is temporary review material and MUST be
   removed before the amended constitution is committed.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
+**Version**: 1.1.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
