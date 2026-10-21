@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LoginForm } from "@/src/features/auth/LoginForm";
+import { strings } from "@/src/lib/i18n/strings";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -28,15 +29,15 @@ describe("LoginForm", () => {
     ]);
     render(<LoginForm />);
 
-    await userEvent.type(screen.getByLabelText(/phone number/i), "+989123456789");
-    await userEvent.click(screen.getByRole("button", { name: /send code/i }));
+    await userEvent.type(screen.getByLabelText(strings.phoneNumber), "+989123456789");
+    await userEvent.click(screen.getByRole("button", { name: strings.sendCode }));
 
     await waitFor(() =>
       expect(screen.getByLabelText("countdown")).toHaveTextContent(/2:00/),
     );
   });
 
-  it('shows the "The code is incorrect" message for a wrong or expired code', async () => {
+  it("shows the localized incorrect-code message for a wrong or expired code", async () => {
     mockFetchSequence([
       { ok: true, body: { status: "sent", expires_in_seconds: 120 } },
       {
@@ -48,16 +49,17 @@ describe("LoginForm", () => {
     ]);
     render(<LoginForm />);
 
-    await userEvent.type(screen.getByLabelText(/phone number/i), "+989123456789");
-    await userEvent.click(screen.getByRole("button", { name: /send code/i }));
+    await userEvent.type(screen.getByLabelText(strings.phoneNumber), "+989123456789");
+    await userEvent.click(screen.getByRole("button", { name: strings.sendCode }));
     await waitFor(() => expect(screen.getByLabelText("countdown")).toBeInTheDocument());
 
-    await userEvent.type(screen.getByLabelText(/enter the code/i), "000000");
-    await userEvent.click(screen.getByRole("button", { name: /log in/i }));
+    await userEvent.type(screen.getByLabelText(strings.enterCode), "000000");
+    await userEvent.click(screen.getByRole("button", { name: strings.loginButton }));
 
     await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent("The code is incorrect"),
+      expect(screen.getByRole("alert")).toHaveTextContent(strings.codeIncorrect),
     );
-    expect(screen.getByRole("alert")).not.toHaveTextContent(/expire/i);
+    // The message must never reveal that the code expired.
+    expect(screen.getByRole("alert")).not.toHaveTextContent("منقضی");
   });
 });

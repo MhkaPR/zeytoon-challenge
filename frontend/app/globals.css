@@ -1,26 +1,128 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens from DESIGN.md — Vercel (Normal Blue Accent, RTL Persian).
+ *
+ * Text is BLACK; the blue scale is an accent only (CTA, links, focus, badges, workflow
+ * markers). The layout is fully RTL with Persian copy and logical CSS properties.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Accent palette (never used for body/heading text) */
+  --ds-blue-900: #1e3a8a;
+  --ds-blue-700: #1d4ed8;
+  --ds-blue-500: #3b82f6;
+  --ds-blue-400: #60a5fa;
+  --ds-blue-100: #dbeafe;
+  --ds-blue-50: #eff6ff;
+
+  /* Text */
+  --ds-ink: #000000;
+  --ds-ink-muted: #4b5563;
+  --ds-white: #ffffff;
+
+  /* Workflow accents */
+  --ship-text: #1d4ed8;
+  --preview-text: #3b82f6;
+  --develop-text: #60a5fa;
+
+  /* Interactive */
+  --ds-link: #2563eb;
+  --ds-focus-color: hsla(217, 91%, 60%, 1);
+  --ds-focus-ring: rgba(96, 165, 250, 0.5);
+
+  /* Surface & overlay */
+  --ds-overlay-backdrop-color: hsla(214, 100%, 98%, 1);
+  --geist-selection-text-color: hsla(214, 100%, 96%, 1);
+  --ds-badge-bg: #dbeafe;
+  --ds-badge-text: #1d4ed8;
+
+  /* Shadow-as-border system */
+  --ds-shadow-ring: rgba(37, 99, 235, 0.08) 0px 0px 0px 1px;
+  --ds-shadow-light-ring: rgb(191, 219, 254) 0px 0px 0px 1px;
+  --ds-shadow-subtle: rgba(37, 99, 235, 0.08) 0px 0px 0px 1px,
+    rgba(37, 99, 235, 0.04) 0px 2px 2px;
+  --ds-shadow-card: rgba(37, 99, 235, 0.08) 0px 0px 0px 1px,
+    rgba(37, 99, 235, 0.04) 0px 2px 2px,
+    rgba(37, 99, 235, 0.04) 0px 8px 8px -8px,
+    #eff6ff 0px 0px 0px 1px;
+
+  /* Semantic */
+  --background: var(--ds-white);
+  --foreground: var(--ds-ink);
 }
 
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ds-ink);
+  --color-ink-muted: var(--ds-ink-muted);
+  --color-accent: var(--ds-blue-700);
+  --color-line: var(--ds-blue-100);
+  --color-surface-tint: var(--ds-blue-50);
+  --color-link: var(--ds-link);
+  --color-focus: var(--ds-focus-color);
+  --color-badge-bg: var(--ds-badge-bg);
+  --color-badge-text: var(--ds-badge-text);
+  --color-ship: var(--ship-text);
+  --color-preview: var(--preview-text);
+  --color-develop: var(--develop-text);
+
+  /* Fonts: Persian UI font first, then Geist for Latin/numerals/code */
+  --font-sans: var(--font-vazirmatn), var(--font-geist-sans), Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radius scale */
+  --radius-micro: 2px;
+  --radius-subtle: 4px;
+  --radius-standard: 6px;
+  --radius-comfortable: 8px;
+  --radius-image: 12px;
+  --radius-nav: 64px;
+  --radius-nav-lg: 100px;
+
+  /* Spacing scale (base unit 8px; 16px jumps straight to 32px) */
+  --spacing-1: 1px;
+  --spacing-2: 2px;
+  --spacing-3: 3px;
+  --spacing-4: 4px;
+  --spacing-5: 5px;
+  --spacing-6: 6px;
+  --spacing-8: 8px;
+  --spacing-10: 10px;
+  --spacing-12: 12px;
+  --spacing-14: 14px;
+  --spacing-16: 16px;
+  --spacing-32: 32px;
+  --spacing-36: 36px;
+  --spacing-40: 40px;
+
+  /* Shadows */
+  --shadow-ring: var(--ds-shadow-ring);
+  --shadow-light-ring: var(--ds-shadow-light-ring);
+  --shadow-subtle: var(--ds-shadow-subtle);
+  --shadow-card: var(--ds-shadow-card);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Ligatures are structural for Latin Geist text; Persian copy uses normal tracking. */
+html {
+  font-feature-settings: "liga" 1;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--geist-selection-text-color);
+}
+
+/* Consistent blue focus ring for accessibility. */
+:focus-visible {
+  outline: 2px solid var(--ds-focus-color);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--ds-focus-ring);
 }

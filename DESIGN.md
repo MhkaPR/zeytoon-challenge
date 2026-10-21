@@ -1,8 +1,10 @@
-# Design System: Vercel (Normal Blue Variant)
+# Design System: Vercel (Normal Blue Accent, RTL Persian)
 
 ## 1. Visual Theme & Atmosphere
 
-Vercel's website is the visual thesis of developer infrastructure made invisible — a design system so restrained it borders on philosophical. The page is overwhelmingly white (`#ffffff`) with standard blue (`#1d4ed8`) text, creating a gallery-like emptiness where every element earns its pixel. This isn't minimalism as decoration; it's minimalism as engineering principle. The Geist design system treats the interface like a compiler treats code — every unnecessary token is stripped away until only structure remains.
+Vercel's website is the visual thesis of developer infrastructure made invisible — a design system so restrained it borders on philosophical. The page is overwhelmingly white (`#ffffff`) with black (`#000000`) text, creating a gallery-like emptiness where every element earns its pixel. This isn't minimalism as decoration; it's minimalism as engineering principle. The Geist design system treats the interface like a compiler treats code — every unnecessary token is stripped away until only structure remains.
+
+**This project's variant is Persian and fully RTL.** All text is black; the blue scale is reserved for accents (primary CTA, links, focus rings, badges, workflow markers) and never for body or heading copy.
 
 The custom Geist font family is the crown jewel. Geist Sans uses aggressive negative letter-spacing (-2.4px to -2.88px at display sizes), creating headlines that feel compressed, urgent, and engineered — like code that's been minified for production. At body sizes, the tracking relaxes but the geometric precision persists. Geist Mono completes the system as the monospace companion for code, terminal output, and technical labels. Both fonts enable OpenType `"liga"` (ligatures) globally, adding a layer of typographic sophistication that rewards close reading.
 
@@ -13,17 +15,19 @@ What distinguishes Vercel from other monochrome design systems is its shadow-as-
 - Geist Mono for code and technical labels with OpenType `"liga"` globally
 - Shadow-as-border technique: `box-shadow 0px 0px 0px 1px` replaces traditional borders throughout
 - Multi-layer shadow stacks for nuanced depth (border + elevation + ambient in single declarations)
-- Pure white canvas with `#1d4ed8` text — standard blue, readable and familiar
+- Pure white canvas with `#000000` text — black, maximally readable
 - Workflow-specific blue accents: Ship Blue (`#1d4ed8`), Preview Blue (`#3b82f6`), Develop Blue (`#60a5fa`)
+- Fully RTL layout with Persian (Farsi) copy; logical CSS properties throughout
 - Focus ring system using `hsla(217, 91%, 60%, 1)` — a standard saturated blue for accessibility
 - Pill badges (9999px) with tinted blue backgrounds for status indicators
 
 ## 2. Color Palette & Roles
 
 ### Primary
-- **Vercel Blue** (`#1d4ed8`): Primary text, headings, dark surface backgrounds. Standard readable blue.
+- **Vercel Blue** (`#1d4ed8`): Accent only — primary CTA background, links, active states, dark surface backgrounds. NEVER used for body or heading text.
 - **Pure White** (`#ffffff`): Page background, card surfaces, button text on dark.
 - **Deep Blue** (`#1e3a8a`): Secondary use, `--geist-console-text-color-default`, used in specific console/code contexts.
+- **Ink Black** (`#000000`): ALL text — headings, body, labels, navigation. The default text color.
 
 ### Workflow Accent Colors
 - **Ship Blue** (`#1d4ed8`): `--ship-text`, the "ship to production" workflow step — deep, urgent blue.
@@ -41,12 +45,14 @@ What distinguishes Vercel from other monochrome design systems is its shadow-as-
 - **Ring Blue** (`rgba(96, 165, 250, 0.5)`): `--tw-ring-color`, Tailwind ring utility.
 
 ### Neutral Scale
-- **Blue 900** (`#1e3a8a`): Primary text, headings, nav text.
-- **Blue 700** (`#1d4ed8`): Secondary text, description copy.
+- **Blue 900** (`#1e3a8a`): Accent — hover states, dark accent surfaces. Not for text.
+- **Blue 700** (`#1d4ed8`): Accent — primary CTA, links, active markers. Not for body text.
 - **Blue 500** (`#3b82f6`): Tertiary text, muted links.
-- **Blue 400** (`#60a5fa`): Placeholder text, disabled states.
+- **Blue 400** (`#60a5fa`): Placeholder text, disabled states (the only text-ish blue, for placeholders only).
 - **Blue 100** (`#dbeafe`): Borders, card outlines, dividers.
 - **Blue 50** (`#eff6ff`): Subtle surface tint, inner shadow highlight.
+- **Text Black** (`#000000`): Headings, body copy, labels, navigation, captions.
+- **Text Muted** (`#4b5563`): Secondary/muted copy where a softer tone is needed.
 
 ### Surface & Overlay
 - **Overlay Backdrop** (`hsla(214, 100%, 98%, 1)`): `--ds-overlay-backdrop-color`, modal/dialog backdrop.
@@ -102,7 +108,7 @@ What distinguishes Vercel from other monochrome design systems is its shadow-as-
 
 **Primary White (Shadow-bordered)**
 - Background: `#ffffff`
-- Text: `#1d4ed8`
+- Text: `#000000`
 - Padding: 0px 6px (minimal — content-driven width)
 - Radius: 6px (subtly rounded)
 - Shadow: `rgb(191, 219, 254) 0px 0px 0px 1px` (ring-border)
@@ -147,7 +153,7 @@ What distinguishes Vercel from other monochrome design systems is its shadow-as-
 ### Navigation
 - Clean horizontal nav on white, sticky
 - Vercel logotype left-aligned, 262x52px
-- Links: Geist 14px weight 500, `#1d4ed8` text
+- Links: Geist 14px weight 500, `#000000` text (accent blue on hover/active)
 - Active: weight 600 or underline
 - CTA: dark blue pill buttons ("Start Deploying", "Contact Sales")
 - Mobile: hamburger menu collapse
@@ -235,21 +241,52 @@ What distinguishes Vercel from other monochrome design systems is its shadow-as-
 - Use the three-weight system: 400 (body), 500 (UI), 600 (headings)
 - Apply workflow accent blues (Ship/Preview/Develop) only in their workflow context
 - Use multi-layer shadow stacks for cards (border + elevation + ambient + inner highlight)
-- Keep the color palette blue-monochrome — blues from `#1e3a8a` to `#ffffff` are the system
-- Use `#1d4ed8` instead of `#000000` for primary text — the standard blue matters
+- Keep the palette white + black + blue accents — blue marks actions and emphasis, never copy
+- Use `#000000` for ALL text (headings, body, labels, nav); blue is an accent only
+- Lay out everything RTL with Persian copy and logical CSS properties
 
 ### Don't
 - Don't use positive letter-spacing on Geist Sans — it's always negative or zero
 - Don't use weight 700 (bold) on body text — 600 is the maximum, used only for headings
 - Don't use traditional CSS `border` on cards — use the shadow-border technique
 - Don't introduce non-blue hues (reds, oranges, yellows, greens, pinks, purples) into the UI chrome
+- Don't color body or heading text blue — text is black; blue is reserved for accents
+- Don't lay out LTR — the site is fully RTL (use `dir="rtl"` and logical properties like `ms-`/`me-`)
 - Don't apply the workflow accent blues (Ship Blue, Preview Blue, Develop Blue) decoratively
 - Don't use heavy shadows (> 0.1 opacity) — the shadow system is whisper-level
 - Don't increase body text letter-spacing — Geist is designed to run tight
 - Don't use pill radius (9999px) on primary action buttons — pills are for badges/tags only
 - Don't skip the inner `#eff6ff` ring in card shadows — it's the glow that makes the system work
 
-## 8. Responsive Behavior
+## 8. RTL & Persian (Farsi) Localization
+
+The product is Persian-first and the entire interface is **RTL**. This is not an optional
+theme — it is the default layout direction.
+
+### Direction
+- The root document uses `dir="rtl"` and `lang="fa"`; set both on `<html>`.
+- Use **logical CSS properties** everywhere: `margin-inline-start/end` (`ms-*`/`me-*`),
+  `padding-inline` (`ps-*`/`pe-*`), `inset-inline-start/end` (`start-*`/`end-*`),
+  `text-align: start/end`. Never use `left`/`right` for layout.
+- Icons that imply direction (arrows, chevrons, back/forward) MUST be mirrored.
+- Flex/grid order follows the RTL flow automatically with logical properties; avoid
+  hard-coded `order` values that assume LTR.
+
+### Typography for Persian
+- Body copy uses a Persian-capable font stack; Geist Sans is retained for Latin text,
+  numerals, and code. Font stack order: Persian UI font first, then Geist, then system
+  fallbacks.
+- Persian text does NOT use the aggressive Latin negative letter-spacing. Tracking rules
+  (see §3) apply to **Latin** Geist text only; Persian copy uses normal tracking.
+- Numerals: use Persian digits (`۰۱۲۳۴۵۶۷۸۹`) in user-facing copy where the design calls for
+  it, and keep Latin digits inside code/technical labels rendered with Geist Mono.
+
+### Copy
+- All user-facing strings are in Persian. Keep a single source of strings (a dictionary or
+  i18n catalog) rather than inline literals, so the language can be extended later.
+- Do not machine-translate technical identifiers (JWT, OTP, API) — keep them as-is.
+
+## 9. Responsive Behavior
 
 ### Breakpoints
 | Name | Width | Key Changes |
@@ -283,23 +320,23 @@ What distinguishes Vercel from other monochrome design systems is its shadow-as-
 - Product screenshots use responsive images with consistent border radius
 - Full-width sections maintain edge-to-edge treatment
 
-## 9. Agent Prompt Guide
+## 10. Agent Prompt Guide
 
 ### Quick Color Reference
 - Primary CTA: Vercel Blue (`#1d4ed8`)
 - Background: Pure White (`#ffffff`)
-- Heading text: Vercel Blue (`#1d4ed8`)
-- Body text: Blue 700 (`#1d4ed8`)
+- Heading text: Ink Black (`#000000`)
+- Body text: Ink Black (`#000000`); muted copy `#4b5563`
 - Border (shadow): `rgba(37, 99, 235, 0.08) 0px 0px 0px 1px`
 - Link: Link Blue (`#2563eb`)
 - Focus ring: Focus Blue (`hsla(217, 91%, 60%, 1)`)
 
 ### Example Component Prompts
-- "Create a hero section on white background. Headline at 48px Geist weight 600, line-height 1.00, letter-spacing -2.4px, color #1d4ed8. Subtitle at 20px Geist weight 400, line-height 1.80, color #1d4ed8. Blue CTA button (#1d4ed8, 6px radius, 8px 16px padding) and ghost button (white, shadow-border rgba(37,99,235,0.08) 0px 0px 0px 1px, 6px radius)."
-- "Design a card: white background, no CSS border. Use shadow stack: rgba(37,99,235,0.08) 0px 0px 0px 1px, rgba(37,99,235,0.04) 0px 2px 2px, #eff6ff 0px 0px 0px 1px. Radius 8px. Title at 24px Geist weight 600, letter-spacing -0.96px. Body at 16px weight 400, #1d4ed8."
+- "Create an RTL hero section on white background. Headline at 48px Geist weight 600, line-height 1.00, letter-spacing -2.4px, color #000000. Subtitle at 20px Geist weight 400, line-height 1.80, color #000000. Blue CTA button (#1d4ed8, 6px radius, 8px 16px padding) and ghost button (white, shadow-border rgba(37,99,235,0.08) 0px 0px 0px 1px, 6px radius)."
+- "Design a card: white background, no CSS border. Use shadow stack: rgba(37,99,235,0.08) 0px 0px 0px 1px, rgba(37,99,235,0.04) 0px 2px 2px, #eff6ff 0px 0px 0px 1px. Radius 8px. Title at 24px Geist weight 600, letter-spacing -0.96px, #000000. Body at 16px weight 400, #000000."
 - "Build a pill badge: #dbeafe background, #1d4ed8 text, 9999px radius, 0px 10px padding, 12px Geist weight 500."
-- "Create navigation: white sticky header. Geist 14px weight 500 for links, #1d4ed8 text. Blue pill CTA 'Start Deploying' right-aligned. Shadow-border on bottom: rgba(37,99,235,0.08) 0px 0px 0px 1px."
-- "Design a workflow section showing three steps: Develop (text color #60a5fa), Preview (#3b82f6), Ship (#1d4ed8). Each step: 14px Geist Mono uppercase label + 24px Geist weight 600 title + 16px weight 400 description in #1d4ed8."
+- "Create an RTL navigation: white sticky header, `dir=\"rtl\"`. Geist 14px weight 500 for links, #000000 text. Blue pill CTA on the left. Shadow-border on bottom: rgba(37,99,235,0.08) 0px 0px 0px 1px."
+- "Design an RTL workflow section showing three steps: Develop (label color #60a5fa), Preview (#3b82f6), Ship (#1d4ed8). Each step: 14px Geist Mono uppercase label + 24px Geist weight 600 title (#000000) + 16px weight 400 description (#000000)."
 
 ### Iteration Guide
 1. Always use shadow-as-border instead of CSS border — `0px 0px 0px 1px rgba(37,99,235,0.08)` is the foundation

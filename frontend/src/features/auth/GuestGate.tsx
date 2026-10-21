@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Body } from "@/src/components/ui";
+import { strings } from "@/src/lib/i18n/strings";
 import { loadIdentity, isGuest } from "@/src/lib/session";
 import type { SessionIdentity } from "@/src/lib/api/auth";
 
@@ -25,8 +27,8 @@ export function GuestGate({ children }: GuestGateProps) {
   if (identity === null) return null;
   if (isGuest(identity)) {
     return (
-      <div>
-        <p>Please log in to continue.</p>
+      <div className="flex flex-col gap-[16px]">
+        <Body>{strings.pleaseLogin}</Body>
         <LoginForm onSuccess={(redirectTo) => window.location.assign(redirectTo || "/")} />
       </div>
     );

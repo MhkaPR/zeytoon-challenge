@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GuestGate } from "@/src/features/auth/GuestGate";
+import { strings } from "@/src/lib/i18n/strings";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -23,7 +24,7 @@ describe("GuestGate", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByText(/please log in to continue/i)).toBeInTheDocument(),
+      expect(screen.getByText(strings.pleaseLogin)).toBeInTheDocument(),
     );
     expect(screen.queryByText("protected content")).not.toBeInTheDocument();
   });
