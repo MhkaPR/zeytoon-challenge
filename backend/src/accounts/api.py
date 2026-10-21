@@ -2,13 +2,26 @@
 
 from django.conf import settings
 from django.middleware.csrf import get_token
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts import selectors, services
 from accounts.exceptions import ApiError
-from accounts.serializers import OtpRequestInput, OtpVerifyInput, parse_input
+from accounts.serializers import (
+    ErrorSerializer,
+    OtpRequestInput,
+    OtpRequestResponseSerializer,
+    OtpRequestSerializer,
+    OtpVerifyInput,
+    OtpVerifyResponseSerializer,
+    OtpVerifySerializer,
+    SessionResponseSerializer,
+    StatusSerializer,
+    TokenRefreshResponseSerializer,
+    parse_input,
+)
 from accounts.throttles import (
     OtpRequestPhoneThrottle,
     OtpSourceThrottle,
@@ -37,6 +50,10 @@ class OtpRequestView(APIView):
     authentication_classes = []
     throttle_classes = [OtpRequestPhoneThrottle, OtpSourceThrottle]
 
+    @extend_schema(
+        request=OtpRequestSerializer,
+        responses={200: OtpRequestResponseSerializer, 400: ErrorSerializer},
+    )
     def post(self, request):
         payload = parse_input(OtpRequestInput, request.data)
         result = services.request_otp(payload.phone_number)
@@ -49,6 +66,10 @@ class OtpVerifyView(APIView):
     authentication_classes = []
     throttle_classes = [OtpVerifyPhoneThrottle, OtpSourceThrottle]
 
+    @extend_schema(
+        request=OtpVerifySerializer,
+        responses={200: OtpVerifyResponseSerializer, 400: ErrorSerializer},
+    )
     def post(self, request):
         payload = parse_input(OtpVerifyInput, request.data)
         result = services.verify_otp(
@@ -70,6 +91,7 @@ class TokenRefreshView(APIView):
     authentication_classes = []
     throttle_classes = [OtpSourceThrottle]
 
+    @extend_schema(request=None, responses={200: TokenRefreshResponseSerializer})
     def post(self, request):
         from rest_framework_simplejwt.exceptions import TokenError
         from rest_framework_simplejwt.tokens import RefreshToken
@@ -106,6 +128,7 @@ class TokenRefreshView(APIView):
 class LogoutView(APIView):
     authentication_classes = []
 
+    @extend_schema(request=None, responses={200: StatusSerializer})
     def post(self, request):
         raw = request.COOKIES.get(REFRESH_COOKIE_NAME)
         if raw:
@@ -118,5 +141,6 @@ class LogoutView(APIView):
 class SessionView(APIView):
     authentication_classes = []
 
+    @extend_schema(responses={200: SessionResponseSerializer})
     def get(self, request):
         return Response(selectors.resolve_current_user(request))

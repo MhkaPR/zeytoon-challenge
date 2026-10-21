@@ -1,6 +1,7 @@
 """Input validation (Pydantic boundary schemas) and DRF output serializers."""
 
 from pydantic import BaseModel, Field, field_validator
+from rest_framework import serializers
 
 from accounts.validation import normalize_phone
 
@@ -41,3 +42,54 @@ def parse_input(schema_cls, data):
         return schema_cls.model_validate(data)
     except Exception as exc:  # pydantic ValidationError
         raise ApiError("invalid_phone", "The phone number is not valid.") from exc
+
+
+# --- DRF serializers (also used to document the OpenAPI schema) -------------
+
+
+class OtpRequestSerializer(serializers.Serializer):
+    phone_number = serializers.CharField()
+
+
+class OtpRequestResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    expires_in_seconds = serializers.IntegerField()
+
+
+class OtpVerifySerializer(serializers.Serializer):
+    phone_number = serializers.CharField()
+    code = serializers.CharField()
+    return_url = serializers.CharField(required=False, allow_blank=True)
+
+
+class UserIdentitySerializer(serializers.Serializer):
+    phone_masked = serializers.CharField()
+    role = serializers.CharField()
+
+
+class OtpVerifyResponseSerializer(serializers.Serializer):
+    access_token = serializers.CharField()
+    token_type = serializers.CharField()
+    expires_in = serializers.IntegerField()
+    redirect_to = serializers.CharField()
+    user = UserIdentitySerializer()
+
+
+class TokenRefreshResponseSerializer(serializers.Serializer):
+    access_token = serializers.CharField()
+    token_type = serializers.CharField()
+    expires_in = serializers.IntegerField()
+
+
+class StatusSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class SessionResponseSerializer(serializers.Serializer):
+    authenticated = serializers.BooleanField()
+    role = serializers.CharField(required=False)
+    user = UserIdentitySerializer(required=False)
+
+
+class ErrorSerializer(serializers.Serializer):
+    error = serializers.DictField()
