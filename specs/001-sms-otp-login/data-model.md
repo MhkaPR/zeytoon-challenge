@@ -73,6 +73,8 @@ django-guardian permissions integrate cleanly; extends it rather than replacing 
 
 The short-lived challenge bound to a phone number.
 
+> Stored in Redis with a TTL (not a database model), so it does not inherit `TimestampedModel`.
+
 | Field | Notes |
 |-------|-------|
 | key | Redis key derived from the normalized phone number (e.g. `otp:{phone}`). |

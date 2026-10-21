@@ -21,7 +21,7 @@ throttling, django-redis, phonenumbers) over hand-written equivalents.
 
 **Language/Version**: Python 3.14 (backend), TypeScript 5 / Node 20+ (frontend)
 
-**Primary Dependencies**: Django 6.1.2, Django REST Framework 3.18, djangorestframework-simplejwt (JWT), django-cors-headers (CORS allowlist), django-redis / redis-py (OTP TTL + cache + queues), DRF throttling (rate limits), pydantic (boundary validation), phonenumbers (phone validation), drf-spectacular (OpenAPI contract), pytest + pytest-django (tests). Frontend: Next.js 16.4.2, React 19.3, Tailwind 4.
+**Primary Dependencies**: Django 6.1.2, Django REST Framework 3.18, djangorestframework-simplejwt (JWT), django-guardian (role + object-level permissions), django-constance (database-backed runtime constants), django-cors-headers (CORS allowlist), django-redis / redis-py (OTP TTL + cache + queues), DRF throttling (rate limits), pydantic (boundary validation), phonenumbers (phone validation), drf-spectacular (OpenAPI contract), pytest + pytest-django (tests). Frontend: Next.js 16.4.2, React 19.3, Tailwind 4.
 
 **Storage**: PostgreSQL (source of truth for users, roles, blocks, lockout state); Redis (OTP codes with TTL, throttle counters, JWT denylist cache). Meilisearch is not involved in this feature.
 
@@ -47,15 +47,15 @@ throttling, django-redis, phonenumbers) over hand-written equivalents.
 | II. Cost and External Resources | No LLM calls in this feature; no ceiling interaction. | PASS (N/A) |
 | III. Security and Secrets | Secrets via env only; strong hashing for stored codes; Pydantic boundary validation; token rotation/revocation. | PASS |
 | IV. Data Governance | Postgres + Redis hosted in Iran; no external data egress; SMS gateway configured in-country. | PASS |
-| V. Architecture | Modular monolith; new `accounts` module accessed via interfaces; Postgres source of truth; Redis for cache/TTL; Docker packaging. | PASS |
+| V. Architecture | Modular monolith; new `accounts` module accessed via interfaces and a leaf `utils` app for `TimestampedModel`; Postgres source of truth; Redis for cache/TTL; Docker packaging. | PASS |
 | VI. Performance and Scalability | 100 req/s target; throttling protects the hot path. | PASS |
 | VII. Observability | Metrics for login outcomes, structured JSON logs, sampled logging, phone masking. | PASS |
 | VIII. Quality and Testing | Automated tests for every domain behavior; regression tests for bugs; no trivial tests. | PASS |
 | IX. Data Retention | Login/lockout records retained per policy; no price history involved. | PASS |
 | X. Crawling Ethics | Not applicable (no crawling in this feature). | PASS (N/A) |
 | XI. Authentication | JWT with expiry, refresh, and revocation. | PASS |
-| XII. Prefer Established Libraries | SimpleJWT, django-cors-headers, django-redis, DRF throttling, phonenumbers, drf-spectacular used instead of custom code; `python manage.py startapp` for the module. | PASS |
-| XIII. Configurable Values | All thresholds/TTLs/allowlists in settings or models; no hard-coded magic numbers. | PASS |
+| XII. Prefer Established Libraries | SimpleJWT, django-guardian, django-constance, django-cors-headers, django-redis, DRF throttling, phonenumbers, drf-spectacular used instead of custom code; `python manage.py startapp` for new apps. | PASS |
+| XIII. Configurable Values | All thresholds/TTLs/allowlists are django-constance database constants or `settings.py` values; no hard-coded magic numbers, no custom settings model. | PASS |
 
 **Post-Phase 1 re-check**: No new violations introduced by the design. Complexity Tracking
 is empty (no justified deviations).
@@ -82,8 +82,10 @@ backend/
     ├── config/
     │   ├── settings.py            # auth/cors/throttle/JWT/OTP settings (env-driven)
     │   └── urls.py                # mounts accounts API + admin
+    ├── utils/                     # NEW shared app (python manage.py startapp utils)
+    │   └── models.py              # TimestampedModel (abstract created_at/updated_at base)
     ├── accounts/                  # NEW module (python manage.py startapp accounts)
-    │   ├── models.py              # User, OneTimeCode, LoginAttempt, AuthSettings, BlockedContact
+    │   ├── models.py              # User (inherits TimestampedModel); role via Django groups
     │   ├── interfaces.py          # public interface other modules may import
     │   ├── services.py            # OTP issue/verify, lockout, session issuing
     │   ├── selectors.py           # read helpers (guest/role resolution)
@@ -91,6 +93,7 @@ backend/
     │   ├── api.py                 # DRF views (otp request/verify, refresh, logout, session)
     │   ├── urls.py                # /api/v1/auth/*
     │   ├── throttles.py           # per-phone / per-source throttle classes
+    │   ├── constants.py           # constance CONSTANCE_CONFIG declarations (runtime constants)
     │   ├── sms.py                 # SMS gateway adapter interface + env-configured client
     │   ├── admin.py               # operator management of users, blocks, contact channels
     │   └── tests/
@@ -116,11 +119,14 @@ frontend/
 └── tests/                         # component tests for login states
 ```
 
-**Structure Decision**: Web application. The backend gains one new module, `backend/src/accounts`,
-created with `python manage.py startapp accounts` and registered in `INSTALLED_APPS`. Other
-modules reach it only through `accounts/interfaces.py` (Principle V). The user frontend gains
-a single `/login` route and an `src/features/auth` slice; no admin frontend code is added,
-because the admin panel is a separate restricted-domain application (spec FR-012/FR-013).
+**Structure Decision**: Web application. The backend gains two new apps, both created with
+`python manage.py startapp` and registered in `INSTALLED_APPS`: a leaf `backend/src/utils` app
+holding the abstract `TimestampedModel` that all models inherit, and the `backend/src/accounts`
+module for auth. Other modules reach `accounts` only through `accounts/interfaces.py`
+(Principle V). Roles and permissions are managed with django-guardian; runtime constants use
+django-constance. The user frontend gains a single `/login` route and an `src/features/auth`
+slice; no admin frontend code is added, because the admin panel is a separate
+restricted-domain application (spec FR-012/FR-013).
 
 ## Complexity Tracking
 

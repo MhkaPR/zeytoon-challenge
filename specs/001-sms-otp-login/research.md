@@ -50,6 +50,38 @@ was chosen, and what alternatives were considered.
 - **Alternatives considered**: Hand-rolled JWT (rejected: reinventing security-critical code);
   opaque DB sessions (rejected: contradicts Principle XI, which mandates JWT).
 
+## R4b. Roles and permissions
+
+- **Decision**: Manage roles and object-level permissions with **django-guardian**. Global
+  roles are Django `Group`s (`regular`, `admin`); `guest` is the absence of a session.
+  Object-level grants use django-guardian's `assign_perm` / `get_objects_for_user`.
+- **Rationale**: The user asked for django-guardian; it is the maintained standard for
+  Django object-level permissions and avoids a hand-rolled role column (Principle XII).
+  Group membership keeps global roles simple while guardian covers future per-object cases.
+- **Alternatives considered**: A `role` column on the user (rejected: cannot express
+  object-level permissions); custom permission tables (rejected: reinvents guardian).
+
+## R4c. Runtime constants
+
+- **Decision**: Use **django-constance** with the database backend for runtime-adjustable
+  values (OTP length/TTL, attempt limits, lockout, rate limits, contact channels,
+  return-URL allowlist, default path). No custom `AuthSettings` model.
+- **Rationale**: The user asked for django-constance; its database backend stores constants
+  in a Django model table, satisfying Principle XIII, and exposes an admin UI for operators
+  without bespoke code (Principle XII).
+- **Alternatives considered**: A bespoke singleton settings model (rejected by the user);
+  values only in `settings.py` (rejected: not runtime-adjustable).
+
+## R4d. Shared timestamp base
+
+- **Decision**: Define an abstract `TimestampedModel` (`created_at`, `updated_at`) once in a
+  shared `utils` app; all persistent domain models inherit it.
+- **Rationale**: The user asked for a shared base; it removes duplicated timestamp fields and
+  keeps audit columns consistent (Principle XII, DRY). `utils` is a dependency-free leaf so it
+  does not violate module boundaries (Principle V).
+- **Alternatives considered**: Per-model timestamp fields (rejected: duplication); a third-party
+  base-model package (rejected: a small abstract base is enough and avoids a dependency).
+
 ## R5. CSRF strategy
 
 - **Decision**: Use Django's CSRF framework with double-submit tokens: the CSRF cookie is

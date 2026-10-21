@@ -114,8 +114,11 @@ codes are visible in the backend log (masked codes are never logged in productio
 ### V12 — Guest state and configurable values — proves FR-010, FR-030, SC-004
 
 1. Load a public page while logged out; confirm the guest signal.
-2. Change a threshold (e.g. `otp_ttl_seconds`) in `AuthSettings` via the Django admin and
-   repeat a scenario; confirm the new value takes effect without code changes.
+2. Change a threshold (e.g. `OTP_TTL_SECONDS`) in the django-constance database constants via
+   the Django admin and repeat a scenario; confirm the new value takes effect without code
+   changes.
+3. Grant the `admin` group to a user with django-guardian and confirm role-based checks
+   reflect the change.
 
 ## Automated Test Entry Points
 

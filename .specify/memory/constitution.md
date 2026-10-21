@@ -3,10 +3,12 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
-Bump rationale: MINOR. Adds two principles (XII. Prefer Established Libraries and
-  Generators, XIII. Configurable Values) that materially expand the project's engineering
-  guidance. No existing principle is removed or redefined.
+Version change: 1.1.0 → 1.1.1
+Bump rationale: PATCH. Clarifies Principle XIII to name django-constance (database backend)
+  for runtime constants. No new or redefined principle.
+
+Prior amendment: 1.0.0 → 1.1.0 (MINOR) added principles XII. Prefer Established Libraries
+  and Generators and XIII. Configurable Values.
 
 Modified principles:
   - [PRINCIPLE_1_NAME]  → I. Product Domain
@@ -167,8 +169,9 @@ time, and keeps the codebase consistent with framework conventions.
 - Every tunable value MUST be configurable through Django settings or Django models; it
   MUST NOT be hard-coded in application code.
 - Values that operators or administrators change at runtime (thresholds, ceilings, contact
-  channels, allowlists) MUST live in Django models, consistent with the LLM cost-ceiling
-  rule.
+  channels, allowlists) MUST be stored in the database, using **django-constance** with its
+  database backend for general runtime constants and a Django model where the value has its
+  own domain identity (as with the LLM cost-ceiling rule).
 - Environment-specific values (timeouts, expirations, external endpoints) MUST live in
   `settings.py` and be overridable per environment.
 - Hard-coded magic numbers in business logic are FORBIDDEN.
@@ -186,11 +189,16 @@ control, and keeps behavior auditable.
 - Hosting: all services and data hosted in Iran.
 - Secrets: injected via environment variables only.
 - Validation: Pydantic at every external data boundary.
+- Authorization: roles and object-level permissions are managed with django-guardian; ad-hoc
+  boolean role flags are FORBIDDEN.
+- Shared model base: audit timestamps (`created_at`, `updated_at`) live in an abstract
+  `TimestampedModel` in a shared `utils` app that domain models inherit.
 - Cost control: LLM ceiling configurable in Django models, enforced at runtime.
-- Configuration: all tunable values live in Django settings or Django models; no
-  hard-coded thresholds or limits in business logic.
+- Configuration: all tunable values live in Django settings, django-constance database
+  constants, or Django models; no hard-coded thresholds or limits in business logic.
 - Dependencies: prefer maintained, widely adopted libraries and framework generators over
-  custom implementations.
+  custom implementations (for example django-guardian for permissions and django-constance
+  for runtime constants).
 
 ## Development Workflow and Quality Gates
 
@@ -222,4 +230,4 @@ control, and keeps behavior auditable.
 - The Sync Impact Report at the top of this file is temporary review material and MUST be
   removed before the amended constitution is committed.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
+**Version**: 1.1.1 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
