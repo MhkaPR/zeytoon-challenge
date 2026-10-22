@@ -7,7 +7,7 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 /**
  * Card with the shadow-as-border technique (no CSS border), radius 8px, white surface.
- * The inner ``#eff6ff`` ring in the featured stack is what gives the card its inner glow.
+ * The inner ``#f6f9f0`` ring in the featured stack is what gives the card its inner glow.
  */
 export function Card({ variant = "plain", className = "", ...props }: CardProps) {
   const shadow = variant === "featured" ? "shadow-[var(--ds-shadow-card)]" : "shadow-[var(--ds-shadow-subtle)]";

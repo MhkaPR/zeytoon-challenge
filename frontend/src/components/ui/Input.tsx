@@ -7,7 +7,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 /**
  * Text input using the shadow-as-border technique instead of a CSS border, with the
- * consistent blue focus ring.
+ * consistent olive focus ring.
  */
 export function Input({ label, hint, className = "", id, ...props }: InputProps) {
   return (

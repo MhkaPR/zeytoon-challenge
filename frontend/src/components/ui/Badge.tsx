@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
 /**
- * Pill badge: tinted blue background (#dbeafe), blue text (#1d4ed8), full-pill radius.
+ * Pill badge: tinted olive background (#ecf2de), dark olive text (#4d6224), full-pill radius.
  * Pills are for badges/tags only — never primary action buttons.
  */
 export function Badge({ className = "", ...props }: HTMLAttributes<HTMLSpanElement>) {

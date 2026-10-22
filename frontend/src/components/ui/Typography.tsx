@@ -13,7 +13,7 @@ const tones: Record<Tone, string> = {
   body: "text-[var(--ds-ink)]",
   muted: "text-[var(--ds-ink-muted)]",
   // Accent tone is reserved for links/active markers, never body copy.
-  accent: "text-[var(--ds-blue-700)]",
+  accent: "text-[var(--ds-olive-700)]",
 };
 
 export interface TextProps extends HTMLAttributes<HTMLElement> {

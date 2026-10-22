@@ -15,7 +15,7 @@ import { strings } from "@/src/lib/i18n/strings";
 
 /**
  * Landing page. Demonstrates the DESIGN.md system: RTL Persian layout, white canvas, black
- * text with blue accents, shadow-as-border cards, and generous whitespace.
+ * text with olive accents, shadow-as-border cards, and generous whitespace.
  */
 export default function Home() {
   return (

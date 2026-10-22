@@ -96,7 +96,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           required
         />
         {error && (
-          <Body role="alert" className="text-[14px] text-[var(--ds-blue-900)]">
+          <Body role="alert" className="text-[14px] text-[var(--ds-danger)]">
             {error}
           </Body>
         )}
@@ -123,7 +123,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         {expired ? strings.requestNewCode : `${strings.timeRemaining} ${label}`}
       </Badge>
       {error && (
-        <Body role="alert" className="text-[14px] text-[var(--ds-blue-900)]">
+        <Body role="alert" className="text-[14px] text-[var(--ds-danger)]">
           {error}
         </Body>
       )}

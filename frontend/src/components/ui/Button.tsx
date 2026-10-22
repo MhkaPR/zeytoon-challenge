@@ -9,15 +9,15 @@ const base =
   "focus-visible:outline-none";
 
 const variants: Record<Variant, string> = {
-  // Primary Blue CTA (#1d4ed8 background, white text)
+  // Primary Olive CTA (#60782e background, white text)
   primary:
-    "bg-[var(--ds-blue-700)] text-white hover:bg-[var(--ds-blue-900)] shadow-[var(--ds-shadow-ring)]",
-  // Primary White (shadow-bordered) secondary button — black text, blue accent on hover
+    "bg-[var(--ds-olive-700)] text-white hover:bg-[var(--ds-olive-900)] shadow-[var(--ds-shadow-ring)]",
+  // Primary White (shadow-bordered) secondary button — black text, olive accent on hover
   secondary:
     "bg-[var(--ds-white)] text-[var(--ds-ink)] shadow-[var(--ds-shadow-light-ring)] " +
-    "hover:bg-[var(--ds-blue-900)] hover:text-white",
-  // Text-only ghost button — black text, blue-tinted hover surface
-  ghost: "bg-transparent text-[var(--ds-ink)] hover:bg-[var(--ds-blue-50)]",
+    "hover:bg-[var(--ds-olive-900)] hover:text-white",
+  // Text-only ghost button — black text, olive-tinted hover surface
+  ghost: "bg-transparent text-[var(--ds-ink)] hover:bg-[var(--ds-olive-50)]",
 };
 
 const sizes: Record<Size, string> = {
