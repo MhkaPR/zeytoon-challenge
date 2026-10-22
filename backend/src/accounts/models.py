@@ -42,8 +42,17 @@ class User(AbstractUser, TimestampedModel):
         return mask_phone(self.phone_number)
 
     def save(self, *args, **kwargs):
-        """Normalize the phone number to E.164 so it is a stable unique identifier."""
+        """Normalize the phone number and guarantee a non-usable password.
+
+        OTP login never uses a password, so implicitly created users must not keep an
+        empty ``password`` column -- Django treats ``""`` as a *usable* password. Calling
+        ``set_unusable_password`` stores the ``!``-prefixed marker instead, so
+        ``has_usable_password()`` correctly returns ``False`` (spec FR-005).
+        """
         from accounts.validation import normalize_phone
+
+        if not self.password:
+            self.set_unusable_password()
 
         normalized = normalize_phone(self.phone_number)
         if normalized:

@@ -28,9 +28,7 @@ class ConsoleSmsGateway(SmsGateway):
 
     def send_code(self, phone_number, code):
         extra = {"event": "sms_console_send"}
-
-        if settings.DEBUG:
-            extra |= {"code": code}
+        print(f"message of console for sms: {code}")
         logger.info(
             "sms.console_send",
             extra=extra,
