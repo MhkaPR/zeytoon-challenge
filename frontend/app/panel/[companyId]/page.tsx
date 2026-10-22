@@ -1,12 +1,12 @@
 "use client";
 
+import { Card, Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
-import { Body, Card, CardTitle, DisplayHero } from "@/src/components/ui";
-import { PlanEligibilityNotice } from "@/src/features/panel/PlanEligibilityNotice";
 import { ContinueRegistration } from "@/src/features/company/ContinueRegistration";
 import { CompanySwitcher } from "@/src/features/panel/CompanySwitcher";
+import { PlanEligibilityNotice } from "@/src/features/panel/PlanEligibilityNotice";
 import { useActiveCompany } from "@/src/features/panel/useActiveCompany";
 import { strings } from "@/src/lib/i18n/strings";
 
@@ -27,7 +27,9 @@ export default function CompanyPanelPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col gap-[24px] px-[32px] py-[64px]">
-      <DisplayHero className="text-[36px]">{strings.companyPanel}</DisplayHero>
+      <Typography className="text-[36px] font-semibold" type="h1">
+        {strings.companyPanel}
+      </Typography>
       <CompanySwitcher companies={switcher?.companies ?? []} activeId={id} />
       {loading ? null : entry?.view === "continue_registration" ? (
         <ContinueRegistration
@@ -37,9 +39,9 @@ export default function CompanyPanelPage({
           onContinue={(companyId) => router.push(`/panel/${companyId}`)}
         />
       ) : entry?.view === "full_panel" ? (
-        <Card variant="featured" className="flex flex-col gap-[8px] p-[32px]">
-          <CardTitle>{strings.fullPanel}</CardTitle>
-          <Body>{entry.company.company_name}</Body>
+        <Card className="flex flex-col gap-[8px] p-[32px]" variant="tertiary">
+          <Card.Title>{strings.fullPanel}</Card.Title>
+          <Typography>{entry.company.company_name}</Typography>
           <PlanEligibilityNotice companyId={entry.company.id} />
         </Card>
       ) : null}

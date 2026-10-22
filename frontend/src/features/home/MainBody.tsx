@@ -1,9 +1,9 @@
 "use client";
 
+import { Card, Typography } from "@heroui/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-import { Body, BodyLarge, Card, MonoLabel } from "@/src/components/ui";
 import { strings } from "@/src/lib/i18n/strings";
 import { FilterBox, EMPTY_FILTERS, type FilterState } from "./FilterBox";
 import { SearchBox } from "./SearchBox";
@@ -20,29 +20,38 @@ export function MainBody({ brandLogo }: { brandLogo?: ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
 
   return (
-    <section className="flex flex-col items-center gap-[32px] text-center">
-      {brandLogo ?? (
-        <MonoLabel className="text-[var(--ds-olive-700)]">{strings.appName}</MonoLabel>
-      )}
-      <BodyLarge className="max-w-[640px]">{strings.searchTitle}</BodyLarge>
+    <section className="flex flex-col items-center gap-[40px] text-center">
+      <div className="flex flex-col items-center gap-[16px]">
+        {brandLogo ?? (
+          <Typography className="font-semibold text-accent" type="body-xs">
+            {strings.appName}
+          </Typography>
+        )}
+        <Typography
+          className="max-w-[640px] text-[28px] font-semibold leading-[1.5] sm:text-[32px]"
+          type="h1"
+        >
+          {strings.searchTitle}
+        </Typography>
+        <Typography className="max-w-[560px] text-[16px] leading-[1.8]" color="muted">
+          {strings.heroSubtitle}
+        </Typography>
+      </div>
 
       <div className="w-full max-w-[720px]">
         <SearchBox />
       </div>
 
-      <div className="w-full max-w-[960px] text-start">
+      <div className="flex w-full max-w-[960px] flex-col gap-[24px] text-start">
         <ServiceTypeChips value={serviceType} onChange={setServiceType} />
-      </div>
-
-      <div className="w-full max-w-[960px] text-start">
         <FilterBox serviceType={serviceType} value={filters} onChange={setFilters} />
       </div>
 
-      <Card variant="plain" className="w-full max-w-[960px] text-start">
-        <MonoLabel>{strings.resultsTitle}</MonoLabel>
-        <Body tone="muted" className="mt-[8px]">
-          {strings.resultsPending}
-        </Body>
+      <Card className="w-full max-w-[960px] text-start" variant="secondary">
+        <Card.Header>
+          <Card.Title>{strings.resultsEmptyTitle}</Card.Title>
+          <Card.Description>{strings.resultsPending}</Card.Description>
+        </Card.Header>
       </Card>
     </section>
   );

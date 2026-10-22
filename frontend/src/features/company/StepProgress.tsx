@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge, Body } from "@/src/components/ui";
+import { Chip, Typography } from "@heroui/react";
+
 import type { StepProgress as StepProgressItem } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
 
@@ -13,6 +14,12 @@ function stateLabel(state: string, completed: boolean): string {
   if (completed) return strings.stepDone;
   if (state === "locked") return strings.stepLocked;
   return strings.stepPending;
+}
+
+function stateColor(state: string, completed: boolean) {
+  if (completed) return "success" as const;
+  if (state === "locked") return "default" as const;
+  return "warning" as const;
 }
 
 /** Shows which registration steps are done and which is pending (FR-026). */
@@ -31,8 +38,10 @@ export function StepProgress({
           aria-current={step.step_key === currentStep ? "step" : undefined}
           className="flex items-center justify-between gap-[8px]"
         >
-          <Body>{STEP_LABELS[step.step_key] ?? step.step_key}</Body>
-          <Badge>{stateLabel(step.state, step.completed)}</Badge>
+          <Typography>{STEP_LABELS[step.step_key] ?? step.step_key}</Typography>
+          <Chip color={stateColor(step.state, step.completed)}>
+            {stateLabel(step.state, step.completed)}
+          </Chip>
         </li>
       ))}
     </ol>

@@ -1,9 +1,9 @@
 "use client";
 
+import { Button, Label, SearchField } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button, Input } from "@/src/components/ui";
 import { strings } from "@/src/lib/i18n/strings";
 
 /**
@@ -14,27 +14,36 @@ export function SearchBox() {
   const router = useRouter();
   const [query, setQuery] = useState("");
 
+  function submit() {
+    const trimmed = query.trim();
+    router.push(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search");
+  }
+
   return (
     <form
       role="search"
       className="flex w-full flex-col items-stretch gap-[8px] sm:flex-row"
       onSubmit={(event) => {
         event.preventDefault();
-        const trimmed = query.trim();
-        router.push(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search");
+        submit();
       }}
     >
       <div className="flex-1">
-        <Input
-          type="search"
-          name="q"
+        <SearchField
           aria-label={strings.searchTitle}
-          placeholder={strings.searchPlaceholder}
+          name="q"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
+          onChange={setQuery}
+        >
+          <Label className="sr-only">{strings.searchTitle}</Label>
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder={strings.searchPlaceholder} />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
       </div>
-      <Button type="submit" variant="primary" className="sm:self-end">
+      <Button className="sm:self-end" type="submit">
         {strings.searchSubmit}
       </Button>
     </form>

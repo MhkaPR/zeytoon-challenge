@@ -1,9 +1,10 @@
 "use client";
 
+import { Card, Chip, Typography } from "@heroui/react";
 import { use } from "react";
 
-import { Body, Card, DisplayHero, MonoLabel } from "@/src/components/ui";
 import { Header } from "@/src/features/site/Header";
+import { SearchBox } from "@/src/features/home/SearchBox";
 import { strings } from "@/src/lib/i18n/strings";
 
 /**
@@ -22,11 +23,17 @@ export default function SearchPage({
   return (
     <>
       <Header />
-      <main className="mx-auto flex w-full max-w-[960px] flex-1 flex-col gap-[16px] px-[32px] py-[80px]">
-        <DisplayHero className="text-[40px]">{strings.searchTitle}</DisplayHero>
-        {query && <MonoLabel>{query}</MonoLabel>}
-        <Card variant="plain">
-          <Body tone="muted">{strings.resultsPending}</Body>
+      <main className="mx-auto flex w-full max-w-[960px] flex-1 flex-col gap-[24px] px-[32px] py-[64px]">
+        <Typography className="text-[32px] font-semibold" type="h1">
+          {strings.searchTitle}
+        </Typography>
+        <SearchBox />
+        {query && <Chip variant="soft">{query}</Chip>}
+        <Card variant="secondary">
+          <Card.Header>
+            <Card.Title>{strings.resultsEmptyTitle}</Card.Title>
+            <Card.Description>{strings.resultsPending}</Card.Description>
+          </Card.Header>
         </Card>
       </main>
     </>

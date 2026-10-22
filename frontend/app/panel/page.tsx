@@ -1,8 +1,8 @@
 "use client";
 
+import { Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 
-import { Card, DisplayHero, SectionHeading } from "@/src/components/ui";
 import { CompanyForm } from "@/src/features/company/CompanyForm";
 import { CompanySwitcher } from "@/src/features/panel/CompanySwitcher";
 import { EmptyState } from "@/src/features/panel/EmptyState";
@@ -19,13 +19,17 @@ export default function PanelPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col gap-[32px] px-[32px] py-[64px]">
-      <DisplayHero className="text-[40px]">{strings.companyPanel}</DisplayHero>
+      <Typography className="text-[40px] font-semibold" type="h1">
+        {strings.companyPanel}
+      </Typography>
       {loading ? null : switcher?.empty_state ? (
         <EmptyState onRegister={() => router.push("/panel/new")} />
       ) : (
         <>
           <CompanySwitcher companies={switcher?.companies ?? []} />
-          <SectionHeading>{strings.registerNewCompany}</SectionHeading>
+          <Typography className="text-[24px] font-semibold" type="h2">
+            {strings.registerNewCompany}
+          </Typography>
           <CompanyForm onCreated={(id) => router.push(`/panel/${id}`)} />
         </>
       )}

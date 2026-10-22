@@ -1,6 +1,7 @@
 "use client";
 
-import { Body, Button, Card, CardTitle } from "@/src/components/ui";
+import { Button, Card, Typography } from "@heroui/react";
+
 import type { Company, StepProgress as StepProgressItem } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
 
@@ -28,15 +29,13 @@ export function ContinueRegistration({
   onContinue?: (companyId: number) => void;
 }) {
   return (
-    <Card variant="featured" className="flex flex-col gap-[16px] p-[32px]">
-      <CardTitle>{strings.continueRegistration}</CardTitle>
-      <Body className="text-[var(--ds-text-muted)]">
+    <Card className="flex flex-col gap-[16px] p-[32px]" variant="tertiary">
+      <Card.Title>{strings.continueRegistration}</Card.Title>
+      <Typography className="text-muted">
         {company.company_name} — {outcomeLabel(company.verification_status)}
-      </Body>
+      </Typography>
       <StepProgress steps={steps} currentStep={currentStep} />
-      <Button variant="primary" onClick={() => onContinue?.(company.id)}>
-        {strings.goToCurrentStep}
-      </Button>
+      <Button onPress={() => onContinue?.(company.id)}>{strings.goToCurrentStep}</Button>
     </Card>
   );
 }

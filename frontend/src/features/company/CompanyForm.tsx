@@ -1,8 +1,8 @@
 "use client";
 
+import { Button, Card, Input, Label, TextField, Typography } from "@heroui/react";
 import { useState } from "react";
 
-import { Body, Button, Card, CardTitle, Input } from "@/src/components/ui";
 import { AuthApiError } from "@/src/lib/api/auth";
 import { createCompany } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
@@ -49,54 +49,58 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
   }
 
   return (
-    <Card variant="featured" className="flex flex-col gap-[16px] p-[32px]">
-      <CardTitle>{strings.registerNewCompany}</CardTitle>
-      <form className="flex flex-col gap-[12px]" onSubmit={submit}>
-        <label className="flex flex-col gap-[4px]">
-          <Body>{strings.companyDomain}</Body>
-          <Input
-            name="domain"
-            value={fields.domain}
-            onChange={(e) => update("domain", e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-[4px]">
-          <Body>{strings.companyName}</Body>
-          <Input
-            name="company_name"
-            value={fields.company_name}
-            onChange={(e) => update("company_name", e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-[4px]">
-          <Body>{strings.representativeName}</Body>
-          <Input
-            name="representative_name"
-            value={fields.representative_name}
-            onChange={(e) => update("representative_name", e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-[4px]">
-          <Body>{strings.companyPhone}</Body>
-          <Input
-            name="phone_number"
-            value={fields.phone_number}
-            onChange={(e) => update("phone_number", e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-[4px]">
-          <Body>{strings.internalNumber}</Body>
-          <Input
-            name="internal_number"
-            value={fields.internal_number}
-            onChange={(e) => update("internal_number", e.target.value)}
-          />
-        </label>
-        {error ? <Body className="text-[var(--ds-clay)]">{error}</Body> : null}
-        <Button type="submit" variant="primary" disabled={busy}>
+    <Card className="p-[32px]" variant="tertiary">
+      <Card.Header>
+        <Card.Title>{strings.registerNewCompany}</Card.Title>
+      </Card.Header>
+      <Card.Content className="mt-[16px]">
+      <form className="flex flex-col gap-[16px]" onSubmit={submit}>
+        <TextField name="domain" value={fields.domain} onChange={(v) => update("domain", v)}>
+          <Label>{strings.companyDomain}</Label>
+          <Input />
+        </TextField>
+        <TextField
+          name="company_name"
+          value={fields.company_name}
+          onChange={(v) => update("company_name", v)}
+        >
+          <Label>{strings.companyName}</Label>
+          <Input />
+        </TextField>
+        <TextField
+          name="representative_name"
+          value={fields.representative_name}
+          onChange={(v) => update("representative_name", v)}
+        >
+          <Label>{strings.representativeName}</Label>
+          <Input />
+        </TextField>
+        <TextField
+          name="phone_number"
+          value={fields.phone_number}
+          onChange={(v) => update("phone_number", v)}
+        >
+          <Label>{strings.companyPhone}</Label>
+          <Input />
+        </TextField>
+        <TextField
+          name="internal_number"
+          value={fields.internal_number}
+          onChange={(v) => update("internal_number", v)}
+        >
+          <Label>{strings.internalNumber}</Label>
+          <Input />
+        </TextField>
+        {error ? (
+          <Typography className="text-danger" role="alert">
+            {error}
+          </Typography>
+        ) : null}
+        <Button className="self-start" isDisabled={busy} type="submit">
           {strings.submitCompany}
         </Button>
       </form>
+      </Card.Content>
     </Card>
   );
 }

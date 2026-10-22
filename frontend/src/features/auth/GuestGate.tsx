@@ -1,11 +1,11 @@
 "use client";
 
+import { Typography } from "@heroui/react";
 import { useEffect, useState } from "react";
 
-import { Body } from "@/src/components/ui";
-import { strings } from "@/src/lib/i18n/strings";
-import { loadIdentity, isGuest } from "@/src/lib/session";
 import type { SessionIdentity } from "@/src/lib/api/auth";
+import { strings } from "@/src/lib/i18n/strings";
+import { isGuest, loadIdentity } from "@/src/lib/session";
 
 import { LoginForm } from "./LoginForm";
 
@@ -28,7 +28,7 @@ export function GuestGate({ children }: GuestGateProps) {
   if (isGuest(identity)) {
     return (
       <div className="flex flex-col gap-[16px]">
-        <Body>{strings.pleaseLogin}</Body>
+        <Typography>{strings.pleaseLogin}</Typography>
         <LoginForm onSuccess={(redirectTo) => window.location.assign(redirectTo || "/")} />
       </div>
     );

@@ -1,8 +1,8 @@
 "use client";
 
+import { Alert, Chip } from "@heroui/react";
 import { useEffect, useState } from "react";
 
-import { Badge, Body } from "@/src/components/ui";
 import { getPlanEligibility, type PlanEligibility } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
@@ -30,7 +30,14 @@ export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
 
   if (!eligibility) return null;
   if (eligibility.allowed) {
-    return <Badge>{strings.verifiedStatus}</Badge>;
+    return <Chip color="success">{strings.verifiedStatus}</Chip>;
   }
-  return <Body className="text-[var(--ds-amber)]">{missingLabel(eligibility.missing)}</Body>;
+  return (
+    <Alert status="warning">
+      <Alert.Indicator />
+      <Alert.Content>
+        <Alert.Description>{missingLabel(eligibility.missing)}</Alert.Description>
+      </Alert.Content>
+    </Alert>
+  );
 }

@@ -1,8 +1,8 @@
 "use client";
 
+import { Button, Input, Label, TextField, Typography } from "@heroui/react";
 import { useState } from "react";
 
-import { Badge, Body, Button, Input } from "@/src/components/ui";
 import { AuthApiError, requestOtp, verifyOtp } from "@/src/lib/api/auth";
 import { strings } from "@/src/lib/i18n/strings";
 import { setAccessToken } from "@/src/lib/session";
@@ -85,22 +85,21 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   if (step === "phone") {
     return (
       <form onSubmit={handleRequest} aria-label="login-phone" className="flex flex-col gap-[16px]">
-        <Input
-          id="phone"
+        <TextField
+          isRequired
           name="phone"
-          label={strings.phoneNumber}
-          inputMode="tel"
-          placeholder={strings.phonePlaceholder}
           value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-          required
-        />
+          onChange={setPhone}
+        >
+          <Label>{strings.phoneNumber}</Label>
+          <Input inputMode="tel" placeholder={strings.phonePlaceholder} />
+        </TextField>
         {error && (
-          <Body role="alert" className="text-[14px] text-[var(--ds-danger)]">
+          <Typography className="text-[14px] text-danger" role="alert">
             {error}
-          </Body>
+          </Typography>
         )}
-        <Button type="submit" disabled={busy}>
+        <Button isDisabled={busy} type="submit">
           {strings.sendCode}
         </Button>
       </form>
@@ -109,25 +108,19 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
   return (
     <form onSubmit={handleVerify} aria-label="login-code" className="flex flex-col gap-[16px]">
-      <Input
-        id="code"
-        name="code"
-        label={strings.enterCode}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        value={code}
-        onChange={(event) => setCode(event.target.value)}
-        required
-      />
-      <Badge aria-label="countdown">
+      <TextField isRequired name="code" value={code} onChange={setCode}>
+        <Label>{strings.enterCode}</Label>
+        <Input autoComplete="one-time-code" inputMode="numeric" />
+      </TextField>
+      <Typography aria-label="countdown" className="text-[12px] text-muted">
         {expired ? strings.requestNewCode : `${strings.timeRemaining} ${label}`}
-      </Badge>
+      </Typography>
       {error && (
-        <Body role="alert" className="text-[14px] text-[var(--ds-danger)]">
+        <Typography className="text-[14px] text-danger" role="alert">
           {error}
-        </Body>
+        </Typography>
       )}
-      <Button type="submit" disabled={busy}>
+      <Button isDisabled={busy} type="submit">
         {strings.loginButton}
       </Button>
     </form>

@@ -1,6 +1,7 @@
 "use client";
 
-import { MonoLabel } from "@/src/components/ui";
+import { ToggleButton, ToggleButtonGroup, Typography } from "@heroui/react";
+
 import { strings } from "@/src/lib/i18n/strings";
 import { SERVICE_TYPES, type ServiceTypeKey } from "./serviceTypes";
 
@@ -18,27 +19,26 @@ export function ServiceTypeChips({
 }) {
   return (
     <div className="flex flex-col gap-[8px]">
-      <MonoLabel>{strings.serviceTypeLabel}</MonoLabel>
-      <div role="group" aria-label={strings.serviceTypeLabel} className="flex flex-wrap gap-[8px]">
-        {SERVICE_TYPES.map((type) => {
-          const active = type.key === value;
-          return (
-            <button
-              key={type.key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onChange(type.key)}
-              className={`rounded-full px-[14px] py-[6px] text-[14px] font-medium transition-colors ${
-                active
-                  ? "bg-[var(--ds-olive-700)] text-white"
-                  : "bg-[var(--ds-badge-bg)] text-[var(--ds-badge-text)] hover:bg-[var(--ds-olive-200)]"
-              }`}
-            >
-              {type.label}
-            </button>
-          );
-        })}
-      </div>
+      <Typography type="body-xs" color="muted">
+        {strings.serviceTypeLabel}
+      </Typography>
+      <ToggleButtonGroup
+        aria-label={strings.serviceTypeLabel}
+        className="flex-wrap"
+        isDetached
+        selectedKeys={[value]}
+        selectionMode="single"
+        onSelectionChange={(keys) => {
+          const next = [...keys][0];
+          if (typeof next === "string") onChange(next as ServiceTypeKey);
+        }}
+      >
+        {SERVICE_TYPES.map((type) => (
+          <ToggleButton className="rounded-full" id={type.key} key={type.key}>
+            {type.label}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
     </div>
   );
 }
