@@ -12,7 +12,7 @@
 
 ### User Story 1 - Register a company (step one) and start verification (Priority: P1)
 
-An authenticated user who owns no companies (or who wants an additional one) opens the "Register new company" flow. They fill in a single, standalone company-information form — company domain, company phone number, optional extension, company name, and representative name — and submit it. On submission a company is created under their ownership with **pending verification** status, it appears in their company list flagged as **unverified**, and the next step (verification) becomes the company's current step while remaining locked until it is acted upon by the operator.
+An authenticated user who owns no companies (or who wants an additional one) opens the "Register new company" flow. They fill in a single, standalone company-information form — company domain, company phone number, optional internal number, company name, and representative name — and submit it. On submission a company is created under their ownership with **pending verification** status, it appears in their company list flagged as **unverified**, and the next step (verification) becomes the company's current step while remaining locked until it is acted upon by the operator.
 
 **Why this priority**: Nothing else in the feature exists without a company. This is the only path that creates one, and it is the entry point for the whole verification-centered experience.
 
@@ -20,8 +20,8 @@ An authenticated user who owns no companies (or who wants an additional one) ope
 
 **Acceptance Scenarios**:
 
-1. **Given** a logged-in user with no companies, **When** they submit the company-information form with domain, company phone, company name, and representative name filled in, **Then** a company is created for them with pending-verification status and appears in their company list with an unverified flag.
-2. **Given** the company-information form, **When** the user submits it with the extension field left empty, **Then** the submission is accepted (extension is optional).
+1. **Given** a logged-in user with no companies, **When** they submit the company-information form with domain, company phone number, company name, and representative name filled in, **Then** a company is created for them with pending-verification status and appears in their company list with an unverified flag.
+2. **Given** the company-information form, **When** the user submits it with the internal-number field left empty, **Then** the submission is accepted (the internal number is optional, and is the company's internal line — the extension dialled after the company phone number).
 3. **Given** the company-information form, **When** the user submits it with any mandatory field missing or invalid, **Then** the submission is rejected with a message naming the offending field, and no company is created.
 4. **Given** a newly created pending company, **When** the user opens its panel, **Then** they are sent to the "Continue company registration" view rather than a full panel, and the verification step is shown as locked pending the operator's decision.
 5. **Given** a user who already owns one or more companies, **When** they register another company, **Then** a second company is created under the same owner and both appear in their company list.
@@ -129,7 +129,7 @@ The governance behaviors around a company are modeled but not automated: ownersh
 **Company registration (step one)**
 
 - **FR-001**: The system MUST allow an authenticated user to start registering a new company, and MUST create a distinct company record per registration.
-- **FR-002**: The company-information step MUST collect: company domain, company phone number, company extension (optional), company name, and representative name; every field except the extension MUST be mandatory.
+- **FR-002**: The company-information step MUST collect: company domain, company phone number, company name, and representative name, plus an optional internal number (the extension dialled after the company phone number); every field except the internal number MUST be mandatory.
 - **FR-003**: The system MUST reject a company-information submission that misses or fails to validate any mandatory field, MUST name the offending field in the message, and MUST NOT create a company in that case.
 - **FR-004**: On a successful company-information submission, the system MUST create the company under the submitting user's ownership with a pending-verification status.
 - **FR-005**: A company in pending-verification status MUST appear in the owner's company list flagged as unverified.
@@ -196,7 +196,7 @@ The governance behaviors around a company are modeled but not automated: ownersh
 
 ### Key Entities *(include if feature involves data)*
 
-- **Company**: The registrable business entity owned by exactly one user. Holds the company domain, company phone number, optional extension, company name, representative name, a verification status, step progress, a charge status, and an archival (soft-deleted) state. Never hard-deleted.
+- **Company**: The registrable business entity owned by exactly one user. Holds the company domain, company phone number, optional internal number (the extension dialled after the company phone number), company name, representative name, a verification status, step progress, a charge status, and an archival (soft-deleted) state. Never hard-deleted.
 - **Company Owner**: The single user linked to a company. Ownership is single-owner, and any change is admin-coordinated and manual, never automatic.
 - **Registration Step**: A discrete, independently saved stage of company registration with its own form, save, and completion state, plus a locked/open state driven by whether the preceding step was approved. Step one is company information; the following step is verification.
 - **Verification Decision / History Entry**: An append-only record of one verification outcome for a company, capturing the outcome (approved or not approved), the deciding actor, the decision time, and the recorded reason or note. Entries are never altered or deleted.
