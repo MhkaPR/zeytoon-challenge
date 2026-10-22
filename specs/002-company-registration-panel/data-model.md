@@ -19,7 +19,7 @@ The registrable business entity, owned by exactly one user. Never hard-deleted.
 | internal_number | CharField (blank) | Optional extension dialled after the company phone number (FR-002). |
 | verification_status | CharField choices | `pending` / `verified` / `rejected` (FR-004, FR-013, FR-014, FR-015). |
 | charge_status | CharField choices | `charged` / `not_charged`; externally set, read-only here (FR-032). |
-| credit | PositiveIntegerField | Per-company allowance reduced only by platform views (FR-033, FR-034). Not touched by crawl. |
+| (credit) | derived | The company's current credit is **not** a stored field; it is the projection (running total) of that company's `CreditLedgerEntry` rows (FR-034). May be cached/materialized for reads, but the ledger remains the source of truth. |
 | crawl_enabled | BooleanField | Per-company crawl switch; requires `charged` (FR-035). |
 | is_archived | BooleanField | Soft-delete flag set when the owner's account is deleted (FR-038, FR-039). |
 | archived_at | DateTimeField (null) | When archival occurred. |
@@ -27,6 +27,9 @@ The registrable business entity, owned by exactly one user. Never hard-deleted.
 **Validation rules**
 - `domain`, `company_name`, `representative_name`, `phone_number` are mandatory; a missing or
   invalid field rejects the submission naming the field and creates no company (FR-003).
+- `domain` is stored normalized (lowercased, scheme/path stripped) so the admin panel can use
+  it for duplicate detection; this feature performs no detection or matching itself (FR-041,
+  FR-042).
 - `verification_status` transitions only through a recorded verification decision (FR-019).
 - Ownership is never mutated by any in-product request (FR-036, FR-037).
 
@@ -41,6 +44,34 @@ rejected --resubmit step one--> pending        (repeatable, no cooldown, FR-020)
 
 **Archival**: any state → `is_archived=true` when the owner's account is deleted; the record
 remains retrievable and is never hard-deleted (FR-038, FR-039, FR-040).
+
+## CreditLedgerEntry (append-only)
+
+One immutable row per credit movement — a **charge** (credit added) or a **decharge** (credit
+consumed). The company's current credit is the projection (running total) of these rows
+(FR-034, FR-034a). Accounting is per company, never per user (FR-033).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | BigAutoField | Primary key. |
+| company | FK → Company | Owner of the movement. |
+| direction | CharField choices | `charge` / `decharge`. |
+| amount | PositiveIntegerField | Magnitude of the movement (never zero). |
+| reason | CharField choices | `payment` (top-up, out of scope to originate here) / `platform_view` (metered view decharge) / `adjustment` (operator correction). Enabling crawl is **not** a reason — it records no movement. |
+| reference | CharField (blank) | Optional external reference (e.g. payment id, view id) supplied by the originator. |
+| actor | FK → `accounts.User` (null) | Operator/system actor for `adjustment`; null for system-generated movements. |
+| created_at | DateTimeField | Inherited; insert-only. |
+
+**Validation rules**
+- Rows are insert-only: updates and deletes are rejected at the model layer; no entry is ever
+  altered or removed (FR-034, SC-013).
+- `amount` must be positive; the sign is carried by `direction`.
+- Current credit = Σ `charge` amounts − Σ `decharge` amounts, computed per company; a projection
+  may be cached but must always equal the running total of the ledger (SC-013).
+- Only metered platform views create `decharge` movements; enabling crawl and crawl traffic
+  create none (FR-034a, FR-035).
+- Funding the ledger (`payment`) and metering platform views are owned by other features; this
+  feature owns the ledger model, its projection, and the per-company accounting rule.
 
 ## Registration Step & CompanyStepProgress
 
@@ -110,41 +141,25 @@ One immutable row per verification outcome (FR-016, FR-017, FR-018, SC-004).
   status change (FR-019).
 - The owner cannot create or influence a decision (FR-012, FR-018).
 
-## CompanyDuplicateSignal
+## Plan Eligibility Gate (no plan entity here)
 
-Detection-only signal for the admin (FR-041, FR-042, R7).
+Companies publish **plans** (host/server/etc. offerings). The plan entity, its fields, and its
+management UI are owned by another feature and are **out of scope** here (FR-030, FR-044).
+This feature owns only the **eligibility gate** that decides whether a plan action is allowed.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| company | FK → Company | The newly submitted company. |
-| matched_company | FK → Company | The existing company with the same normalized domain. |
-| domain | CharField | The matched domain, for review convenience. |
-| created_at | DateTimeField | Inherited. |
+**Interface (read-only decision)**
 
-**Validation rules**
-- Produced on exact normalized-domain match; the submission is still accepted and never
-  auto-blocked or merged (FR-042, SC-009).
-- Resolution remains the admin's responsibility; no dedup engine exists in this feature.
+`can_manage_plans(company) -> { "allowed": bool, "missing": [...] }`
 
-## Listing (owned by the `catalog` module)
-
-A company's published offer (FR-030, FR-038, FR-039).
-
-| Field | Type | Notes |
-|-------|------|-------|
-| id | BigAutoField | Primary key. |
-| company | FK → Company | Owning company. |
-| title | CharField | Offer title. |
-| status | CharField choices | `draft` / `active` / `archived`. |
-| is_archived | BooleanField | Set when the company is archived; never hard-deleted (FR-039). |
+- `allowed` is true only when `verification_status == verified` **and** `charge_status == charged`.
+- `missing` lists **every** unsatisfied prerequisite (`"verified"`, `"charged"`); when both are
+  missing both are named (FR-031, SC-002).
 
 **Validation rules**
-- Create/activate is allowed only when the company is verified **and** charged; the response
-  names every missing prerequisite (FR-030, FR-031, SC-002).
-- Existing listings are not silently destroyed when charge is removed; whether they stay
-  active is reported to the user when they next attempt a listing action (edge case "Charge
-  removed after listings exist").
-- Archived with the company, never hard-deleted (FR-040).
+- Existing plans are not silently destroyed when charge is removed; whether they stay active is
+  governed by the prerequisite rules and reported when the user next attempts a plan action
+  (edge case "Charge removed after plans exist").
+- No plan table, migration, or management endpoint exists in this feature.
 
 ## Crawl Setting
 
@@ -170,12 +185,13 @@ constance table (Principle XIII, FR-045, SC-011).
 | Constant | Default | Purpose |
 |----------|---------|---------|
 | COMPANY_STEP_DEFINITIONS | ordered list | The step sequence (keys, order, owner-input flag). |
-| COMPANY_REQUIREMENT_MESSAGES | mapping | Prerequisite messages (verified/charged) surfaced on listing blocks. |
-| COMPANY_DUPLICATE_SIGNAL_MESSAGE | text | Message shown when a duplicate domain is detected. |
+| COMPANY_REQUIREMENT_MESSAGES | mapping | Prerequisite messages (verified/charged) surfaced on plan-action blocks. |
 | COMPANY_STEP_LOCKED_MESSAGE | text | Message shown when a locked step is addressed. |
 | COMPANY_EMPTY_STATE_MESSAGE | text | Copy for the no-companies empty state. |
 
 **Notes**
+- There is no duplicate-signal constant: duplicate detection and resolution are the admin
+  panel's responsibility (FR-042), not a runtime tunable of this feature.
 - Values that must not change at runtime (e.g. DB connection, JWT lifetimes) stay in
   `settings.py` and are environment-driven (Principle XIII).
 - Defaults are the documented values from the spec's Assumptions section.
@@ -185,15 +201,17 @@ constance table (Principle XIII, FR-045, SC-011).
 - `User` 1—* `Company` (owner); single-owner, ownership change is admin-only (FR-006, FR-036).
 - `Company` 1—* `CompanyStepProgress` (one row per step).
 - `Company` 1—* `VerificationDecision` (append-only, immutable).
-- `Company` 1—* `CompanyDuplicateSignal` (as the new company and as `matched_company`).
+- `Company` 1—* `CreditLedgerEntry` (append-only, immutable); current credit is the projection
+  of these rows.
 - `User` 1—* `CompanyRegistrationDraft`; `Company` 0..1—* `CompanyRegistrationDraft`.
-- `Company` 1—* `Listing` (owned by `catalog`; archived with the company).
 - Constance constants are standalone key/value entries consumed by services, not FK-related.
 
 ## Out of Scope (explicitly)
 
 - No admin-panel/operator-interface entities, no ticket entities, no crawl-engine entities,
-  no payment/charging entities, and no search/ranking entities (FR-044).
-- No deduplication/merge engine and no automatic ownership-transfer entity.
+  no payment/charging entities, no plan (host/server offering) entities, and no search/ranking
+  entities (FR-044).
+- No duplicate-signal entity and no deduplication/merge engine (detection is the admin panel's
+  job); no automatic ownership-transfer entity.
 - No credit-consumption metering implementation (owned by views/search features); only the
-  per-company credit field and read contract are in scope.
+  per-company credit ledger model, its projection, and its read contract are in scope.

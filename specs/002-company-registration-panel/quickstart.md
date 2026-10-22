@@ -19,14 +19,14 @@ details.
 cd backend/src
 python manage.py startapp companies   # if the scaffold is not present yet
 python manage.py startapp panel
-python manage.py startapp catalog
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 ```
 
-Register the three apps in `INSTALLED_APPS`, mount `/api/v1/companies/` and
+Register the two apps in `INSTALLED_APPS`, mount `/api/v1/companies/` and
 `/api/v1/panel/` in `config/urls.py`, and add the constance constants from
-[data-model.md](./data-model.md) to `CONSTANCE_CONFIG`.
+[data-model.md](./data-model.md) to `CONSTANCE_CONFIG`. No `catalog`/plan module is created:
+plans are owned by another feature, and this feature exposes only the plan-eligibility gate.
 
 ```bash
 # in a second terminal
@@ -95,41 +95,53 @@ Use the local SQLite/Redis defaults; no SMS gateway is needed for this feature.
 2. **Expected**: `403` with the configured step-locked message, whether reached by navigation
    or direct address.
 
-### V7 — Listing prerequisites — proves FR-030, FR-031, SC-002
+### V7 — Plan eligibility gate — proves FR-030, FR-031, SC-002
 
-1. In a verified company that is not charged, attempt to create and then activate a listing.
-2. **Expected**: `409` with `fields.missing = ["charged"]`, naming the missing prerequisite.
-3. In an unverified company, attempt the same; **expected**: `409` with the missing
-   prerequisite(s) named — both when both are missing.
-4. Charge the company and activate the listing; **expected**: the action succeeds; removing
-   the charge afterwards does not silently destroy the listing, and the next listing action
-   reports the missing prerequisite.
+1. In a verified company that is not charged, call
+   `GET /api/v1/companies/{id}/plan-eligibility`.
+2. **Expected**: `{ "allowed": false, "missing": ["charged"] }`, naming the missing
+   prerequisite; no plan is created (plans belong to another feature).
+3. In an unverified company, evaluate the gate; **expected**: the missing prerequisite(s) are
+   named — both are listed when both are missing.
+4. Charge the company; **expected**: `{ "allowed": true, "missing": [] }`. Removing the charge
+   afterwards does not silently destroy existing plans; the gate reports the missing
+   prerequisite on the next evaluation.
 
-### V8 — Crawl eligibility and credit — proves FR-034, FR-035, SC-010
+### V8 — Credit ledger and projection — proves FR-033, FR-034, SC-013
+
+1. `GET /api/v1/companies/{id}/credit`; **expected**: `current_credit` is 0 with no entries.
+2. `POST /api/v1/companies/{id}/credit/movements` with `{"direction": "charge", "amount":
+   1000, "reason": "payment"}`; **expected**: exactly one entry is created and
+   `current_credit` becomes 1000.
+3. Record a decharge (e.g. a metered platform view); **expected**: one `decharge` entry is
+   created and `current_credit` equals Σ charges − Σ decharges.
+4. Attempt to modify or delete an existing entry; **expected**: refused.
+5. **Expected**: reconstructing the projection from the returned entries always equals
+   `current_credit`.
+
+### V9 — Crawl eligibility and per-company isolation — proves FR-034a, FR-035, SC-010
 
 1. Enable crawl (`POST /api/v1/companies/{id}/crawl`) while uncharged; **expected**: `409`
    with `fields.missing = ["charged"]`.
-2. Charge the company, enable crawl, and record the credit before/after.
-3. **Expected**: crawl enables successfully and credit is unchanged (crawl costs nothing).
+2. Charge the company, enable crawl, and record the ledger and credit before/after.
+3. **Expected**: crawl enables successfully, credit is unchanged, and **no** ledger entry is
+   created (crawl costs nothing).
 4. Change one company's charge/credit and confirm the other company's charge/credit is
    unchanged.
 
-### V9 — Duplicate-domain signal — proves FR-041, FR-042, SC-009
-
-1. Register a company whose domain already exists.
-2. **Expected**: the submission is accepted with a `duplicate_signal` populated (matched
-   domain); it is not blocked and not merged.
-
-### V10 — Ownership and archival — proves FR-036..FR-040, SC-007, SC-008
+### V10 — Ownership and archival — proves FR-036..FR-042, SC-007, SC-008
 
 1. Attempt an in-product ownership transfer; **expected**: `409`.
-2. Delete a user account (via the accounts feature) who owns companies and listings.
-3. **Expected**: their companies and listings are archived (soft delete), remain retrievable,
-   and nothing is hard-deleted; ownership is not transferred automatically.
+2. Register a company whose domain already exists; **expected**: the submission is accepted,
+   and this feature produces no duplicate signal and performs no detection or merge (that is
+   the admin panel's job); the domain is stored normalized.
+3. Delete a user account (via the accounts feature) who owns companies.
+4. **Expected**: their companies are archived (soft delete), remain retrievable, and nothing
+   is hard-deleted; ownership is not transferred automatically.
 
 ### V11 — Owner scoping — proves FR-028, SC-006
 
-1. As user A, request a company owned by user B (list, detail, panel entry, listing actions).
+1. As user A, request a company owned by user B (list, detail, panel entry, credit, gate).
 2. **Expected**: `404` for every company-scoped request; no company data is returned.
 
 ### V12 — Configurable values and log masking — proves FR-045, FR-046, SC-011, SC-012
@@ -139,13 +151,14 @@ Use the local SQLite/Redis defaults; no SMS gateway is needed for this feature.
    changes.
 2. Exercise the flows above, then inspect the structured JSON logs.
 3. **Expected**: no entry contains a full company phone number; verification decisions,
-   listing refusals, and ownership refusals are recorded as structured events.
+   plan-prerequisite refusals, credit movements, and ownership refusals are recorded as
+   structured events.
 
 ## Automated Test Entry Points
 
-- Backend: `pytest backend/src/companies/tests backend/src/panel/tests backend/src/catalog/tests`
+- Backend: `pytest backend/src/companies/tests backend/src/panel/tests`
   (registration, step locking, abandonment, history immutability, panel routing/scoping,
-  prerequisites, crawl gating, duplicate signal, archival, masking).
+  plan eligibility, credit-ledger projection, crawl gating, archival, masking).
 - Frontend: `yarn test` in `frontend/` for the registration forms, continue view, switcher,
   and empty state.
 
@@ -155,4 +168,5 @@ Use the local SQLite/Redis defaults; no SMS gateway is needed for this feature.
 - [ ] No `[NEEDS CLARIFICATION]` items remain in the spec.
 - [ ] Constitution gates (plan.md) still pass after implementation.
 - [ ] No admin-frontend code was added (the admin/operator panel is a separate application).
-- [ ] No company is hard-deleted and no verification history entry is ever modified or removed.
+- [ ] No company is hard-deleted and no verification-history or credit-ledger entry is ever
+      modified or removed.

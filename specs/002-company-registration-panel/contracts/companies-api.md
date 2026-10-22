@@ -53,9 +53,8 @@ Submit the company-information step (step one) and create the company.
 
 | Status | Meaning | Body |
 |--------|---------|------|
-| 201 | Company created, pending verification | `{ "company": { "id", "domain", "company_name", "verification_status": "pending", "unverified": true }, "step_progress": {...}, "duplicate_signal": null }` |
+| 201 | Company created, pending verification | `{ "company": { "id", "domain", "company_name", "verification_status": "pending", "unverified": true }, "step_progress": {...} }` |
 | 400 | Missing/invalid mandatory field | error `code: "invalid_field"`, `fields` names the offending field(s); no company created (FR-003) |
-| 200 | Created **and** duplicate domain detected | same body as 201 but `duplicate_signal` populated with the matched domain (the submission is accepted, never auto-blocked, FR-041, FR-042) |
 | 401 | Not authenticated | error `code: "not_authenticated"` |
 
 **Rules**
@@ -63,6 +62,8 @@ Submit the company-information step (step one) and create the company.
   and appears in the owner's company list flagged unverified (FR-004, FR-005).
 - A user may submit repeatedly to create additional companies; each is a distinct record
   (FR-001, FR-006).
+- The `domain` is stored normalized so the admin panel can detect duplicates; this feature
+  performs no detection, produces no signal, and never auto-blocks or auto-merges (FR-041, FR-042).
 
 ### GET /api/v1/companies
 
@@ -161,30 +162,70 @@ Data for the switcher; when the caller owns no companies the payload supports th
 | 200 | Has companies | `{ "companies": [ { "id", "company_name", "verification_status", "unverified" } ], "empty_state": false }` (FR-022). |
 
 **Rules**
-- Switching companies must not expose one company's verification, charge, credit, or listing
+- Switching companies must not expose one company's verification, charge, credit, or plan
   data while another is selected; every panel read is scoped to a single company (FR-029).
 
-## Listing prerequisites and crawl
+## Plan eligibility and credit
 
-### POST /api/v1/companies/{id}/listings
+Plans (host/server offerings) are owned by another feature; there is **no plan endpoint
+here**. This feature exposes only the eligibility gate that a plan-owning feature calls, plus
+the per-company credit ledger and the crawl flag.
 
-Create a listing. Guarded by the verified + charged prerequisite (FR-030).
+### GET /api/v1/companies/{id}/plan-eligibility
 
-| Status | Meaning | Body |
-|--------|---------|------|
-| 201 | Created | `{ "listing": { "id", "status": "draft" } }` |
-| 409 | Prerequisite(s) missing | error `code: "company_requirement_missing"`, `fields.missing` lists **every** missing prerequisite (e.g. `["verified", "charged"]`), and `message` follows the configured prerequisite message (FR-031, SC-002). |
-| 404 | Not owned / not found | error `code: "not_found"`. |
-
-### POST /api/v1/companies/{id}/listings/{listing_id}/activate
-
-Activate a listing. Same prerequisite guard as creation (FR-030, FR-031).
+Evaluate whether plan actions are allowed for this company (FR-030, FR-031).
 
 | Status | Meaning | Body |
 |--------|---------|------|
-| 200 | Activated | `{ "listing": { "id", "status": "active" } }` |
-| 409 | Prerequisite(s) missing | error `code: "company_requirement_missing"`, `fields.missing` lists every missing prerequisite. |
+| 200 | Allowed | `{ "allowed": true, "missing": [] }` |
+| 200 | Blocked | `{ "allowed": false, "missing": ["verified", "charged"], "message": "<configured>" }` — `missing` lists **every** unsatisfied prerequisite; when both are missing both are named (SC-002). |
 | 404 | Not owned / not found | error `code: "not_found"`. |
+
+**Rules**
+- `allowed` is true only when the company is `verified` **and** `charged` (FR-030).
+- The gate is read-only; it creates or activates no plan (the plan feature owns that).
+- Existing plans are not silently destroyed when charge is removed; the gate reports the
+  missing prerequisite the next time a plan action is evaluated (edge case "Charge removed
+  after plans exist").
+
+### GET /api/v1/companies/{id}/credit
+
+Read the company's current credit and its ledger (FR-034).
+
+| Status | Meaning | Body |
+|--------|---------|------|
+| 200 | OK | `{ "current_credit": 1200, "currency": "credit", "entries": [ { "id", "direction": "charge"\|"decharge", "amount", "reason", "created_at" } ] }` — `current_credit` is the projection (running total) of the entries; entries are returned newest-first. |
+| 404 | Not owned / not found | error `code: "not_found"`. |
+
+**Rules**
+- The ledger is append-only: entries are never altered or removed, and every charge/decharge
+  movement is exactly one entry (FR-034, SC-013).
+- Credit is per company; the ledger never includes another company's movements (FR-033).
+- Metered platform views (owned by the views/search features) append `decharge` entries;
+  enabling crawl and crawl traffic append none (FR-034a, FR-035).
+
+### POST /api/v1/companies/{id}/credit/movements
+
+Record a charge or decharge movement. Called by the owning features (payment for top-ups,
+views for metered consumption); operator `adjustment` allowed for the admin actor.
+
+**Request**
+
+```json
+{ "direction": "charge", "amount": 1000, "reason": "payment", "reference": "pay_123" }
+```
+
+| Status | Meaning | Body |
+|--------|---------|------|
+| 201 | Recorded | `{ "entry": { "direction", "amount", "reason", "created_at" }, "current_credit": 2200 }` |
+| 400 | Invalid movement (non-positive amount, unknown reason) | error `code: "invalid_movement"`. |
+| 403 | Not permitted for this reason | error `code: "not_permitted"`. |
+| 404 | Not owned / not found | error `code: "not_found"`. |
+
+**Rules**
+- Exactly one append-only entry is created per movement; the response returns the recomputed
+  projection (FR-034, SC-013).
+- Enabling crawl MUST NOT be expressed as a credit movement (FR-034a, FR-035).
 
 ### POST /api/v1/companies/{id}/crawl
 
@@ -204,29 +245,30 @@ Enable crawling for the company (free; requires a charged account).
 
 **Rules**
 - Enabling crawl never consumes credit (edge case "Crawl enabled then account becomes
-  uncharged"; FR-035); only platform views consume credit (FR-034).
+  uncharged"; FR-035); only platform views consume credit (FR-034, FR-034a).
 
-## Ownership, duplicate signal, and governance hooks
+## Ownership and governance hooks
 
 - **Ownership transfer**: any in-product attempt returns `409` error
   `code: "ownership_transfer_unsupported"` directing the user to the admin-coordinated manual
   process; no path changes ownership automatically (FR-036, FR-037, SC-008).
-- **Duplicate signal**: surfaced on `POST /api/v1/companies` as `duplicate_signal` (never a
-  block) and exposed to the admin-side actor for review (FR-041, FR-042, SC-009).
+- **Duplicate detection**: out of scope; the admin panel owns it. The company domain is stored
+  normalized so the admin panel can match it, and no signal model or endpoint exists here
+  (FR-041, FR-042, SC-009).
 - **Archival**: deleting a user account (handled by the `accounts` feature) archives that
-  user's companies and listings; archived companies and listings remain retrievable and are
-  never hard-deleted (FR-038, FR-039, FR-040).
-- **Abuse hooks**: company state (verification, charge, archival) and the duplicate signal are
-  readable by the admin-side actor; this feature exposes no admin management tooling
-  (FR-043, FR-044).
+  user's companies; archived companies remain retrievable and are never hard-deleted (FR-038,
+  FR-039, FR-040).
+- **Abuse hooks**: company state (verification, charge, credit, archival) is readable by the
+  admin-side actor; this feature exposes no admin management tooling (FR-043, FR-044).
 
 ## Cross-cutting behaviors
 
 - **Scoping**: every company-scoped request checks ownership; non-owned companies are `404`
   (FR-028, SC-006).
-- **Logging**: verification decisions, listing-prerequisite refusals, and ownership-transfer
-  refusals emit structured JSON events with masked phone numbers (FR-046, SC-012).
+- **Logging**: verification decisions, plan-prerequisite refusals, credit movements, and
+  ownership-transfer refusals emit structured JSON events with masked phone numbers (FR-046,
+  SC-012).
 - **Configuration**: messages and step definitions come from django-constance constants, so
   operators can change them at runtime without code changes (FR-045, SC-011).
-- **Out of scope**: no admin-panel/operator UI, ticket, crawl-engine, payment/charging, or
-  search/ranking endpoints exist here (FR-044).
+- **Out of scope**: no admin-panel/operator UI, ticket, crawl-engine, payment/charging, plan
+  management, duplicate detection, or search/ranking endpoints exist here (FR-044).

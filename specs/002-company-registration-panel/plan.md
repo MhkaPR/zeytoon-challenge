@@ -19,12 +19,15 @@ own and switch between multiple companies, shows an empty state with "Register n
 when none exist, opens the full panel for verified companies, and shows a
 "Continue company registration" view (with step completion and routing to the current step)
 for pending or rejected companies — including a redirect when the full-panel URL is reached
-directly. Company-scoped commercial rules gate listing creation/activation on the company
-being both verified and charged (naming every missing prerequisite), model per-company
-charge status and credit, allow crawl enabling only for charged accounts at no credit cost,
-produce a duplicate-domain signal for the admin, keep ownership admin-only, and archive
-(never hard-delete) companies and listings. Every tunable value is a django-constance
-runtime constant, and the design prefers established libraries and framework generators.
+directly. Company-scoped commercial rules expose an eligibility gate that blocks plan actions
+unless the company is both verified and charged (naming every missing prerequisite), model
+per-company charge status and credit as an append-only credit ledger whose projection is the
+company's current credit, and allow crawl enabling only for charged accounts at no credit
+cost. Ownership stays admin-only, and companies are archived (never hard-deleted). What a
+company publishes is a **plan** (host/server offering), whose entity and management UI are
+owned by another feature and are out of scope here, as are duplicate-company detection (the
+admin panel's job) and payment/charging. Every tunable value is a django-constance runtime
+constant, and the design prefers established libraries and framework generators.
 
 ## Technical Context
 
@@ -37,12 +40,14 @@ Pydantic (boundary validation), drf-spectacular (OpenAPI contract), pytest + pyt
 Next.js 16.4.2, React 19.3, Tailwind 4, Vitest + Testing Library.
 
 **Storage**: PostgreSQL (source of truth for companies, registration steps, verification
-history, charge/credit, listings). Redis backs cache/throttles and may hold short-lived
-registration-draft TTLs. Meilisearch is not involved (search/ranking out of scope).
+history, charge status, and the credit ledger). Redis backs cache/throttles, may hold
+short-lived registration-draft TTLs, and may cache the credit projection (the ledger remains
+the source of truth). Meilisearch is not involved (search/ranking out of scope).
 
 **Testing**: pytest + pytest-django with DRF `APITestCase`/`APIClient` covering registration,
 step locking, mid-step abandonment, append-only verification history, panel routing and
-scoping, listing prerequisites, crawl gating, duplicate signal, archival, and log masking.
+scoping, plan eligibility gating, credit-ledger projection, crawl gating, archival, and log
+masking.
 Frontend: Vitest + Testing Library for the registration forms, continue view, panel switcher,
 and empty state.
 
@@ -55,15 +60,15 @@ The admin/operator panel is a separate restricted-domain application and is out 
 (read-heavy overall profile); company list and panel-entry resolution p95 < 300 ms.
 
 **Constraints**: Company-scoped authorization on every request (owner-only); verification
-history append-only and immutable; no company hard-deletion; all tunables runtime-configurable;
-no full phone number in any log (reuse `utils.logging` masking); no LLM calls; single-owner
-model with no automatic ownership change; data and services hosted in Iran.
+history and credit ledger append-only and immutable; no company hard-deletion; all tunables
+runtime-configurable; no full phone number in any log (reuse `utils.logging` masking); no LLM
+calls; single-owner model with no automatic ownership change; data and services hosted in Iran.
 
 **Scale/Scope**: Hundreds of providers/companies and many end users; a user may own any number
 of companies. 5 user stories (P1 registration, P2 panel entry/switching/continue view,
-P3 verification decision + log, P4 listing prerequisites + crawl, P5 business rules), ~10
-backend endpoints across the `companies`/`panel`/`catalog` modules, and the user-frontend
-registration + panel routes.
+P3 verification decision + log, P4 plan eligibility + credit + crawl, P5 business rules), ~10
+backend endpoints across the `companies`/`panel` modules, and the user-frontend registration +
+panel routes.
 
 ## Constitution Check
 
@@ -71,15 +76,15 @@ registration + panel routes.
 
 | Principle | Gate | Status |
 |-----------|------|--------|
-| I. Product Domain | Company registration/panel and listing gating directly serve provider data ingestion and the comparison product. | PASS |
+| I. Product Domain | Company registration/panel and plan-eligibility gating directly serve provider data ingestion and the comparison product. | PASS |
 | II. Cost and External Resources | No LLM calls; no ceiling interaction in this feature. | PASS (N/A) |
 | III. Security and Secrets | Secrets via env only; Pydantic boundary validation on all inputs; owner-only object access; no phone numbers in logs. | PASS |
 | IV. Data Governance | Postgres (source of truth) + Redis hosted in Iran; no external egress. | PASS |
-| V. Architecture | Modular monolith; new `companies`/`panel`/`catalog` apps created with `python manage.py startapp`; cross-module access only through `interfaces.py`; Postgres source of truth; Docker packaging. | PASS |
+| V. Architecture | Modular monolith; new `companies`/`panel` apps created with `python manage.py startapp`; cross-module access only through `interfaces.py`; Postgres source of truth; Docker packaging. | PASS |
 | VI. Performance and Scalability | 100 req/s target; Redis caching and owner-scoped indexed queries on the hot panel path. | PASS |
-| VII. Observability | Structured JSON logs for verification decisions, listing refusals, ownership refusals, archival; sampling on hot paths; phone masking. | PASS |
+| VII. Observability | Structured JSON logs for verification decisions, plan-prerequisite refusals, credit movements, ownership refusals, archival; sampling on hot paths; phone masking. | PASS |
 | VIII. Quality and Testing | Every domain behavior (step locking, append-only history, prerequisites, scoping, archival) ships with an automated test. | PASS |
-| IX. Data Retention | Companies/listings archived, never hard-deleted; history retained and retrievable. | PASS |
+| IX. Data Retention | Companies archived, never hard-deleted; verification history and credit ledger retained, append-only, and retrievable. | PASS |
 | X. Crawling Ethics | This feature only models the per-company crawl enable switch and its charged precondition; the crawl engine itself is out of scope. | PASS |
 | XI. Authentication | Reuses the existing JWT (SimpleJWT) auth from the `accounts` feature; operator decisions are guarded by the `admin` role/guardian perms. | PASS |
 | XII. Prefer Established Libraries | Pydantic validation, django-guardian permissions, django-constance constants, drf-spectacular contracts, `startapp` generators; no hand-written equivalents. | PASS |
@@ -108,17 +113,19 @@ specs/002-company-registration-panel/
 backend/
 └── src/
     ├── config/
-    │   ├── settings.py            # register companies/panel/catalog; add CONSTANCE_CONFIG keys
+    │   ├── settings.py            # register companies/panel; add CONSTANCE_CONFIG keys
     │   └── urls.py                # mount /api/v1/companies/ and /api/v1/panel/
     ├── utils/                     # unchanged (TimestampedModel, logging/masking reused)
     ├── accounts/                  # unchanged (owner FK target, JWT auth, role checks)
     ├── companies/                 # NEW module (python manage.py startapp companies)
     │   ├── models.py              # Company, CompanyStepProgress, VerificationDecision,
-    │   │                          #   CompanyRegistrationDraft, CompanyDuplicateSignal
+    │   │                          #   CompanyRegistrationDraft, CreditLedgerEntry
     │   ├── interfaces.py          # the only sanctioned entry point for other modules
     │   ├── services.py            # register/step-save/abandon, record decision, archive,
-    │   │                          #   charge/credit reads, prerequisite checks, ownership refusal
-    │   ├── selectors.py           # owner-scoped reads, step-progress/current-step resolution
+    │   │                          #   charge/flags, credit ledger writes + projection,
+    │   │                          #   plan eligibility check, ownership refusal
+    │   ├── selectors.py           # owner-scoped reads, step-progress/current-step resolution,
+    │   │                          #   credit projection reads
     │   ├── serializers.py         # DRF I/O + Pydantic boundary schemas
     │   ├── api.py                 # DRF views for company registration + operator decision
     │   ├── urls.py                # /api/v1/companies/*
@@ -129,7 +136,8 @@ backend/
     │       ├── test_step_locking.py
     │       ├── test_mid_step_abandonment.py
     │       ├── test_verification_history.py
-    │       ├── test_duplicate_signal.py
+    │       ├── test_plan_eligibility.py
+    │       ├── test_credit_ledger.py
     │       ├── test_archival_ownership.py
     │       └── test_log_masking.py
     ├── panel/                     # NEW module (python manage.py startapp panel)
@@ -141,15 +149,8 @@ backend/
     │       ├── test_panel_entry.py
     │       ├── test_company_switching.py
     │       └── test_owner_scoping.py
-    └── catalog/                   # NEW module (python manage.py startapp catalog)
-        ├── models.py              # Listing (company offer; archived, never hard-deleted)
-        ├── interfaces.py          # listing operations for other modules
-        ├── services.py            # create/activate guarded by companies prerequisites
-        ├── api.py                 # DRF views for listing create/activate + crawl enable
-        ├── urls.py                # /api/v1/companies/{id}/listings, .../crawl
-        └── tests/
-            ├── test_listing_prerequisites.py
-            └── test_crawl_gating.py
+    └── (no catalog module)        # plans are owned by another feature; this feature exposes
+                                   #   only the companies.plan-eligibility gate + crawl flag
 
 frontend/
 ├── app/
@@ -169,16 +170,19 @@ frontend/
 └── tests/                         # component tests for forms, continue view, switcher
 ```
 
-**Structure Decision**: Web application, modular monolith. Three scaffolded-but-empty apps
+**Structure Decision**: Web application, modular monolith. Two scaffolded-but-empty apps
 become real modules and are registered in `INSTALLED_APPS`: `companies` owns the company
-domain (registration, steps, verification history, charge/credit, crawl flag, duplicate
-signal, archival, ownership rules); `panel` is a thin user-facing module that resolves panel
-entry and company switching over the `companies` interface; `catalog` owns the company offer
-(`Listing`) and enforces the create/activate prerequisite by calling `companies`. Other
-modules reach them only through their `interfaces.py` (Principle V). The user frontend gains
-`/panel` and `/panel/[companyId]` routes plus `src/features/company` and `src/features/panel`
-slices; no admin-frontend code is added, because the admin/operator panel is a separate
-restricted-domain application.
+domain (registration, steps, verification history, charge status, the append-only credit
+ledger and its projection, crawl flag, the plan-eligibility gate, archival, and ownership
+rules); `panel` is a thin user-facing module that resolves panel entry and company switching
+over the `companies` interface. Other modules reach them only through their `interfaces.py`
+(Principle V). The plan entity and its management UI are owned by another feature, so no
+`catalog`/plan module is created here; this feature exposes only the eligibility gate that a
+plan-owning feature calls. Duplicate-company detection lives in the admin panel, so no
+duplicate-signal model or constant exists here. The user frontend gains `/panel` and
+`/panel/[companyId]` routes plus `src/features/company` and `src/features/panel` slices; no
+admin-frontend code is added, because the admin/operator panel is a separate restricted-domain
+application.
 
 ## Complexity Tracking
 

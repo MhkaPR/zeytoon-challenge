@@ -66,43 +66,43 @@ An operator — working in an interface that is not part of this feature — rev
 
 ---
 
-### User Story 4 - Listing prerequisites and crawl eligibility (Priority: P4)
+### User Story 4 - Plan prerequisites, credit, and crawl eligibility (Priority: P4)
 
-Inside a verified company's panel, the user tries to create or activate a listing. The action is blocked unless the company is both verified and its account is charged, and when it is blocked the user is told exactly which prerequisite is missing. Enabling crawling is free but requires a charged account, and crawling itself never consumes credit — only views that occur through the platform consume credit.
+Inside a verified company's panel, the user tries to create or activate a **plan** (a host, server, or similar offering the company publishes). The action is blocked unless the company is both verified and its account is charged, and when it is blocked the user is told exactly which prerequisite is missing. What a company publishes is a **plan**, not a generic listing; the plan entity and its management UI are owned by another feature and are out of scope here — this feature owns only the **eligibility gate** that decides whether plan actions are allowed. Credit is a per-company ledger: each charge or decharge is recorded, and the company's current credit is the projection of that ledger. Enabling crawling is free but requires a charged account, and crawling itself never consumes credit — only views that occur through the platform consume credit.
 
 **Why this priority**: These are the commercial rules that make a company's panel valuable, and they depend on the verification and panel work already existing. They are P4 because the panel must open before these controls are reachable.
 
-**Independent Test**: In a verified company that is not charged, attempt to create and activate a listing and confirm the action is blocked naming the missing charge prerequisite; charge the company and confirm the action becomes available; then disable charging again and confirm enabling crawl is likewise blocked while crawl itself does not reduce credit.
+**Independent Test**: In a verified company that is not charged, evaluate a plan action and confirm the gate reports it blocked naming the missing charge prerequisite; charge the company and confirm the gate reports the action allowed; then disable charging again and confirm enabling crawl is likewise blocked while crawl itself does not reduce credit.
 
 **Acceptance Scenarios**:
 
-1. **Given** a verified company whose account is not charged, **When** the user tries to create a listing, **Then** the action is blocked and the message says the account is not charged.
-2. **Given** an unverified company, **When** a listing action is attempted, **Then** the action is blocked and the message says the company is not yet verified.
-3. **Given** a company that is neither verified nor charged, **When** a listing action is attempted, **Then** the blocked message names both missing prerequisites.
-4. **Given** a verified and charged company, **When** the user creates and activates a listing, **Then** the action is allowed.
+1. **Given** a verified company whose account is not charged, **When** a plan action is evaluated, **Then** the gate reports it blocked and the message says the account is not charged.
+2. **Given** an unverified company, **When** a plan action is evaluated, **Then** the gate reports it blocked and the message says the company is not yet verified.
+3. **Given** a company that is neither verified nor charged, **When** a plan action is evaluated, **Then** the blocked message names both missing prerequisites.
+4. **Given** a verified and charged company, **When** a plan action is evaluated, **Then** the gate reports it allowed (the plan entity and its management UI are out of scope).
 5. **Given** a charged company, **When** the user enables crawling, **Then** crawling is enabled without consuming credit.
 6. **Given** a company whose account is not charged, **When** the user tries to enable crawling, **Then** the action is blocked because a charged account is required.
 7. **Given** a company with crawling enabled, **When** traffic is served through the crawl path, **Then** the company's credit is unchanged (only views through the platform consume credit).
 8. **Given** two companies owned by the same user, **When** one company's charge or credit changes, **Then** the other company's charge and credit are unaffected (credit is per company).
+9. **Given** a company, **When** credit is charged or decharged, **Then** exactly one ledger entry is recorded for the movement and the company's current credit is the projection of all its ledger entries.
 
 ---
 
-### User Story 5 - Ownership, archival, duplicate signals, and abuse hooks (Priority: P5)
+### User Story 5 - Ownership, archival, and abuse hooks (Priority: P5)
 
-The governance behaviors around a company are modeled but not automated: ownership is single-owner and only ever changed by an admin-coordinated manual process, deleting a user account archives their companies and listings instead of removing them, a duplicate-domain signal is surfaced (without a dedup engine), and the company exposes the states and hooks that admin-side fraud and abuse management needs.
+The governance behaviors around a company are modeled but not automated: ownership is single-owner and only ever changed by an admin-coordinated manual process, deleting a user account archives their companies instead of removing them, and the company exposes the states and hooks that admin-side fraud and abuse management needs. Duplicate-company detection and resolution are the admin panel's responsibility and are out of scope for this feature; this feature only stores the company domain in a normalized form that the admin panel can use.
 
 **Why this priority**: These are durability, trust, and compliance guarantees. They do not gate the day-one flows above, so they come last, but they must be modeled now because retrofitting history and ownership rules later is far more costly.
 
-**Independent Test**: Confirm a user cannot transfer ownership themselves; mark a user account deleted and confirm their companies and listings remain resolvable in an archived state and are never hard-deleted; register a company whose domain matches an existing company and confirm a warning/duplicate signal is produced; and confirm the abuse-related states are readable by an admin-side actor.
+**Independent Test**: Confirm a user cannot transfer ownership themselves; mark a user account deleted and confirm their companies remain resolvable in an archived state and are never hard-deleted; and confirm the abuse-related states are readable by an admin-side actor.
 
 **Acceptance Scenarios**:
 
 1. **Given** a company with an owner, **When** the owner tries to hand the company to another user from inside the panel, **Then** the transfer is refused and the user is directed to the admin-coordinated manual process.
 2. **Given** a company whose ownership was transferred through the admin-coordinated process, **When** the company is examined, **Then** it shows exactly one owner (single-owner model) and the change is traceable.
-3. **Given** a user account that is deleted, **When** the deletion is processed, **Then** that user's companies and listings are archived rather than removed, and they remain available to history, search-engine, and complaint handling.
-4. **Given** an archived company, **When** its history and listings are requested, **Then** they are still retrievable, and no operation hard-deletes a company.
-5. **Given** an existing company with a given domain, **When** another user submits a registration using the same domain, **Then** the system surfaces a duplicate-domain signal or warning, and the submission is not silently blocked by an automatic dedup decision.
-6. **Given** a company suspected of fraud or abuse, **When** an admin-side actor needs to act, **Then** the company's state and the required hooks are available to that actor without this feature providing admin tooling.
+3. **Given** a user account that is deleted, **When** the deletion is processed, **Then** that user's companies are archived rather than removed, and they remain available to history, search-engine, and complaint handling.
+4. **Given** an archived company, **When** its history is requested, **Then** it is still retrievable, and no operation hard-deletes a company.
+5. **Given** a company suspected of fraud or abuse, **When** an admin-side actor needs to act, **Then** the company's state and the required hooks are available to that actor without this feature providing admin tooling.
 
 ---
 
@@ -112,15 +112,17 @@ The governance behaviors around a company are modeled but not automated: ownersh
 - **Step locking**: a step that follows an unapproved step is never enterable — by navigation, by direct address, or by reaching the panel directly.
 - **Direct address to an unverified company's full panel**: resolved by redirect to the continue-registration view; the full panel must not render even briefly with real data.
 - **Accessing another user's company**: a user requesting a company they do not own sees no company data (treated as not found or not permitted); company scope is enforced on every company-scoped request.
-- **Company with a domain that matches an existing company**: a duplicate signal/warning is produced and the operator resolves it; the system does not auto-reject or auto-merge.
+- **Company with a domain that matches an existing company**: detection and resolution belong to the admin panel; this feature stores the normalized domain and does not auto-reject, auto-merge, or surface a duplicate signal of its own.
 - **Rejected company accessed again**: the continue view presents the registration step as the current step; the earlier rejection remains in the append-only history.
 - **Approval after an earlier rejection**: the company becomes verified, the full panel opens, and both the rejection and the approval remain in the history.
-- **Listing blocked with both prerequisites missing**: the message names both, rather than stopping at the first failure.
-- **Charge removed after listings exist**: existing listings are not silently destroyed; whether they remain active is governed by the charged/verified prerequisite rules and must be reported to the user when they attempt listing actions.
+- **Plan action blocked with both prerequisites missing**: the message names both, rather than stopping at the first failure.
+- **Charge removed after plans exist**: existing plans are not silently destroyed; whether they remain active is governed by the charged/verified prerequisite rules and must be reported to the user when they attempt plan actions.
 - **Crawl enabled then account becomes uncharged**: crawl use consumes no credit, so the account's credit is unchanged; the charged requirement remains a precondition the user is told about when enabling.
+- **Credit movement with no prior entries**: the company's current credit is zero; the first charge or decharge creates the first ledger entry and the projection reflects it.
+- **Credit projection audit**: reconstructing the company's current credit from its ledger entries always equals the projected value, and no ledger entry is altered or removed.
 - **Deleted user who was the sole owner of a company**: the company is archived, is never hard-deleted, and ownership is not transferred automatically.
 - **Company in an abuse-related state**: the state is visible to the admin-side actor and blocks or explains the user-facing actions that depend on it, without this feature exposing management tooling.
-- **User with several companies in mixed states**: the panel reflects the selected company's state only; switching companies never leaks one company's verification, credit, or listing data into another.
+- **User with several companies in mixed states**: the panel reflects the selected company's state only; switching companies never leaks one company's verification, credit, or plan data into another.
 
 ## Requirements *(mandatory)*
 
@@ -165,33 +167,34 @@ The governance behaviors around a company are modeled but not automated: ownersh
 - **FR-026**: The continue-registration view MUST show which steps are completed and which step is pending, MUST respect step locking, and MUST take the user to the current step.
 - **FR-027**: When a user addresses an unverified company's full-panel location directly, the system MUST redirect them to that company's continue-registration view and MUST NOT render the full panel.
 - **FR-028**: Company-scoped requests MUST be limited to companies the requesting user owns; a user MUST NOT see another user's company data.
-- **FR-029**: Switching companies MUST NOT expose one company's verification status, charge status, credit, or listings while another company is selected.
+- **FR-029**: Switching companies MUST NOT expose one company's verification status, charge status, credit, or plans while another company is selected.
 
-**Listing prerequisites and credit**
+**Plan prerequisites, credit, and crawl**
 
-- **FR-030**: The system MUST allow a listing to be created or activated only when the company is both verified and its account is charged.
-- **FR-031**: When a listing action is blocked, the system MUST block the action control and state exactly which prerequisite is missing; when both are missing, both MUST be named.
+- **FR-030**: The system MUST expose an eligibility gate such that a plan action (creating or activating a plan) is allowed only when the company is both verified and its account is charged. The plan entity and its management UI are owned by another feature and are out of scope here.
+- **FR-031**: When a plan action is evaluated as blocked, the system MUST report the action as blocked and state exactly which prerequisite is missing; when both are missing, both MUST be named.
 - **FR-032**: The system MUST model the charge status of a company as charged or not charged, and MUST NOT implement the charging or payment process itself.
 - **FR-033**: Credit MUST be accounted per company, not per user; a change to one company's credit or charge status MUST NOT affect the user's other companies.
-- **FR-034**: Only views that occur through the platform MUST consume credit.
+- **FR-034**: Credit MUST be modeled as an append-only ledger of charge and decharge movements, one entry per movement, and the company's current credit MUST be the projection (running total) of its ledger entries; no ledger entry may be altered or removed.
+- **FR-034a**: Only views that occur through the platform MUST consume credit — that is, a decharge is recorded for each metered platform view; enabling crawl and crawl traffic MUST NOT record any credit movement.
 - **FR-035**: Enabling crawling MUST require a charged account, MUST be free of charge, and MUST NOT itself consume credit.
 
 **Ownership, archival, and governance hooks**
 
 - **FR-036**: Company ownership MUST be single-owner at all times and MUST never change automatically.
 - **FR-037**: Ownership transfer MUST be performed only through an admin-coordinated, manual process initiated by a ticket outside this feature; the system MUST refuse in-product attempts by a user to transfer ownership and MUST direct them to that manual process.
-- **FR-038**: Deleting a user account MUST archive that user's companies and listings (soft delete) rather than removing them.
+- **FR-038**: Deleting a user account MUST archive that user's companies (soft delete) rather than removing them.
 - **FR-039**: A company MUST never be hard-deleted, so that history, search-engine visibility, and complaint handling are preserved.
-- **FR-040**: Archived companies and their listings MUST remain retrievable for history and complaint handling.
-- **FR-041**: The system MUST produce a duplicate-company detection signal — at minimum, a warning when a submitted company domain matches an existing company's domain — and MUST NOT block or merge registrations automatically on that basis.
-- **FR-042**: Duplicate-company resolution MUST remain the admin's responsibility; this feature MUST provide the signal only, not a deduplication engine.
+- **FR-040**: Archived companies MUST remain retrievable for history and complaint handling.
+- **FR-041**: Company domains MUST be stored in a normalized form suitable for duplicate detection by the admin panel, and this feature MUST NOT block or merge registrations automatically on the basis of a domain match.
+- **FR-042**: Duplicate-company detection and resolution MUST remain the admin panel's responsibility; this feature MUST NOT implement a detection signal or a deduplication engine, and MUST NOT depend on one.
 - **FR-043**: The system MUST expose the company states and hooks that admin-side fraud and abuse management requires, without providing admin management tooling.
 - **FR-044**: This feature MUST NOT implement or depend on the admin panel or operator interface, the ticket system, the crawl engine, the payment gateway or account charging, or search-result ranking design.
 
 **Configuration and observability**
 
 - **FR-045**: Every tunable value in this feature (step definitions, prerequisite messages, and similar) MUST be configurable by operators at runtime rather than hard-coded in application code.
-- **FR-046**: The system MUST record verification decisions, listing prerequisite refusals, and ownership changes as structured, observable events, and MUST mask or omit personal data such as phone numbers from logs.
+- **FR-046**: The system MUST record verification decisions, plan-prerequisite refusals, credit movements, and ownership changes as structured, observable events, and MUST mask or omit personal data such as phone numbers from logs.
 - **FR-047**: The feature MUST prefer established, maintained libraries and framework-provided generators over hand-written implementations for any capability that already has a well-supported library.
 
 ### Key Entities *(include if feature involves data)*
@@ -201,10 +204,10 @@ The governance behaviors around a company are modeled but not automated: ownersh
 - **Registration Step**: A discrete, independently saved stage of company registration with its own form, save, and completion state, plus a locked/open state driven by whether the preceding step was approved. Step one is company information; the following step is verification.
 - **Verification Decision / History Entry**: An append-only record of one verification outcome for a company, capturing the outcome (approved or not approved), the deciding actor, the decision time, and the recorded reason or note. Entries are never altered or deleted.
 - **Company Charge Status**: A per-company charged / not-charged indicator. Only the status is modeled; the charging process itself is out of scope.
-- **Company Credit**: A per-company consumption allowance, reduced only by views that occur through the platform. Enabling crawl does not reduce it.
-- **Listing**: A company's published offer. It can be created or activated only when the company is verified and charged, and it is archived (never hard-deleted) when its owner's account is deleted.
+- **Credit Ledger Entry**: One append-only, immutable record of a credit movement for a company — a charge (credit added) or a decharge (credit consumed), with the direction, amount, reason, and time. Never altered or removed.
+- **Company Credit (projection)**: The company's current credit, computed as the running total (projection) of its credit ledger entries. Accounting is per company, never per user. Enabling crawl does not reduce it; only metered platform views add decharges.
+- **Plan Eligibility Gate**: The rule that a plan action (creating or activating a plan) is allowed only when the company is verified and charged, returning every missing prerequisite. The plan entity and its management UI belong to another feature and are out of scope here.
 - **Crawl Setting**: A per-company switch that enables crawling. It requires a charged account, costs nothing, and consumes no credit.
-- **Duplicate Signal**: A warning produced when a submitted company domain matches an existing company's domain; a signal for the admin, not a dedup decision.
 - **Abuse State / Hook**: The condition and data points exposed for admin-side fraud and abuse management without admin tooling.
 - **Feature Settings**: The operator-configurable tunables for this feature — step definitions and prerequisite messages — held outside application code.
 
@@ -213,17 +216,18 @@ The governance behaviors around a company are modeled but not automated: ownersh
 ### Measurable Outcomes
 
 - **SC-001**: A user with no companies can go from opening the company panel to having a pending company listed as unverified in under 3 minutes.
-- **SC-002**: 100% of listing creation or activation attempts made without both prerequisites satisfied are blocked, and 100% of those blocks name every missing prerequisite.
+- **SC-002**: 100% of plan actions evaluated without both prerequisites satisfied are reported blocked, and 100% of those blocks name every missing prerequisite.
 - **SC-003**: 100% of company-panel entries for unverified companies — including entries by direct address — show the continue-registration view and never the full panel.
 - **SC-004**: 100% of decided verifications produce exactly one append-only history entry recording the outcome, the deciding actor, the time, and the recorded note, and no existing entry is ever modified or removed.
 - **SC-005**: A user who abandons a step half-finished loses only that step's unsaved input and resumes at the same step in 100% of tested interruptions; no data saved by an earlier completed step is lost.
 - **SC-006**: 0% of company-scoped requests return data for a company the requester does not own.
-- **SC-007**: 100% of deleted user accounts leave their companies and listings archived and retrievable, and 0 companies are hard-deleted across the tested lifecycle.
+- **SC-007**: 100% of deleted user accounts leave their companies archived and retrievable, and 0 companies are hard-deleted across the tested lifecycle.
 - **SC-008**: 100% of in-product ownership-transfer attempts by users are refused and directed to the admin-coordinated manual process; 0 ownership changes occur automatically.
-- **SC-009**: 100% of registrations whose domain matches an existing company produce a duplicate signal, and 0 registrations are silently blocked or merged by the system on that basis.
+- **SC-009**: 100% of company domains are stored in a normalized form, and 0 registrations are silently blocked or merged by this feature on the basis of a domain match.
 - **SC-010**: Changing one company's charge status or credit never changes another company's charge status or credit in any tested scenario.
 - **SC-011**: 100% of the tunable values in this feature can be changed by operators at runtime without editing application code.
 - **SC-012**: No log entry produced by this feature contains an unmasked phone number.
+- **SC-013**: For every company, the current credit always equals the running total of its ledger entries, and 100% of charge/decharge movements produce exactly one append-only ledger entry that is never altered or removed.
 
 ## Assumptions
 
@@ -233,9 +237,9 @@ The governance behaviors around a company are modeled but not automated: ownersh
 - **Rejection reason is recorded internally**: the operator's explanatory call is manual and outside the system; whatever is written into the decision record is retained as the audit reason and is not shown in the continue view.
 - **Crawl inherits the verification requirement** from panel access: crawling is reachable only from a verified company's full panel, and additionally requires a charged account. It costs nothing and consumes no credit.
 - **"Charged" is an externally set per-company status**: charging is performed by the payment process, which is out of scope; this feature reads the status and enforces its consequences.
-- **Views through the platform are the only credit consumers**: crawl traffic and enabling crawl consume nothing; the exact metering of platform views is defined by the views/search features and is out of scope here.
+- **Credit is a per-company ledger projected to a current balance**: the ledger records charges and decharges as append-only entries; the running total is the company's current credit. Views through the platform are the only decharge source; the exact metering of platform views is defined by the views/search features and is out of scope here, as is funding the ledger (payment/charging).
 - **A user may own any number of companies** with no per-user cap in this feature; each is independently verified, charged, and credited.
-- **The admin panel, operator interface, ticket system, crawl engine, payment/charging implementation, and search ranking are delivered elsewhere**; this feature models their effects, states, and hooks only.
+- **The admin panel, operator interface, ticket system, crawl engine, payment/charging implementation, plan (host/server offering) management, duplicate-company detection, and search ranking are delivered elsewhere**; this feature models their effects, states, and hooks only.
 - **Roles and authentication are provided by the existing login feature**: this feature assumes an authenticated user and an admin/operator actor, and does not re-specify authentication.
-- **Company domain is the practical duplicate-detection key**, since it is the most reliable public identifier; other matching heuristics are left to the admin.
+- **Company domain is the practical duplicate-detection key for the admin panel**, since it is the most reliable public identifier; this feature stores it normalized and leaves detection, matching heuristics, and resolution entirely to the admin panel.
 - **Archived companies remain resolvable for history, SEO, and complaints**, and any operator-configurable retention behavior follows the project's data-retention principle.
