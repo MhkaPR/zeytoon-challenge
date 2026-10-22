@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     # Local
     "utils",
     "accounts",
+    "companies",
 ]
 
 MIDDLEWARE = [
@@ -249,6 +250,30 @@ CONSTANCE_CONFIG = {
         "Allowed relative return targets after login.",
     ),
     "DEFAULT_RETURN_PATH": ("/", "Fallback page when the return target is invalid."),
+    # Company Registration & Company Panel (spec 002)
+    "COMPANY_STEP_DEFINITIONS": (
+        [
+            {"key": "company_information", "order": 1, "owner_input": True},
+            {"key": "verification", "order": 2, "owner_input": False},
+        ],
+        "Ordered registration steps; the first step is company information, next is verification.",
+    ),
+    "COMPANY_REQUIREMENT_MESSAGES": (
+        {
+            "verified": "The company must be verified first.",
+            "charged": "The company account must be charged.",
+            "both": "The company must be verified and its account must be charged.",
+        },
+        "Prerequisite messages surfaced when a plan action is blocked.",
+    ),
+    "COMPANY_STEP_LOCKED_MESSAGE": (
+        "This step is locked until the previous step is approved.",
+        "Message shown when a locked registration step is addressed.",
+    ),
+    "COMPANY_EMPTY_STATE_MESSAGE": (
+        "You have no companies yet. Register a new company to get started.",
+        "Copy for the company panel empty state.",
+    ),
 }
 
 

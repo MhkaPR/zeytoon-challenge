@@ -162,11 +162,40 @@ Use the local SQLite/Redis defaults; no SMS gateway is needed for this feature.
 - Frontend: `yarn test` in `frontend/` for the registration forms, continue view, switcher,
   and empty state.
 
+## Validation Run (2026-10-22)
+
+Every scenario below was executed against the real HTTP surface by
+`backend/src/companies/tests/test_quickstart.py` (13 tests, all green), alongside the full
+suite (`pytest backend/src/companies/tests` → 72 passed) and `yarn test` in `frontend/`
+(7 passed). Result: **PASS**.
+
+- V1 — register step one; `201` pending/unverified; internal number optional; each missing
+  mandatory field names itself with `400` and creates nothing. **PASS**
+- V2 — two distinct companies under one owner; each independently pending. **PASS**
+- V3 — approval ⇒ `201` + `verified`; not-approved ⇒ `200` + `rejected` and step one
+  reopens; a later decision leaves earlier entries intact; the owner is refused. **PASS**
+- V4 — switcher non-empty; unverified entry ⇒ `continue_registration`; direct full panel
+  ⇒ `303` to `/panel-entry`; verified panel renders. **PASS**
+- V5 — abandon clears only that step's draft and resumes at the same step. **PASS**
+- V6 — the locked verification step is refused with `403 step_locked`. **PASS**
+- V7 — unverified+uncharged ⇒ missing `{verified, charged}`; verified-only ⇒ `["charged"]`;
+  verified+charged ⇒ allowed; removing the charge reports the prerequisite again. **PASS**
+- V8 — empty ⇒ `0`; charge `1000` ⇒ `1000`; decharge `250` ⇒ `750`; ledger reconstruction
+  equals `current_credit`; entries are immutable. **PASS**
+- V9 — uncharged crawl ⇒ `409` with `fields.missing=["charged"]`; charged crawl enables with
+  no credit movement; credit unchanged. **PASS**
+- V10 — transfer refused (`409`); duplicate domain accepted, stored normalized, no
+  detection/merge; account deletion archives both companies and no record is hard-deleted.
+  **PASS**
+- V11 — every company-scoped request for a non-owned company ⇒ `404`. **PASS**
+- V12 — constance prerequisite message change takes effect with no code change; structured
+  events are emitted and no log line leaks the full phone number. **PASS**
+
 ## Success Checklist
 
-- [ ] V1–V12 pass.
-- [ ] No `[NEEDS CLARIFICATION]` items remain in the spec.
-- [ ] Constitution gates (plan.md) still pass after implementation.
-- [ ] No admin-frontend code was added (the admin/operator panel is a separate application).
-- [ ] No company is hard-deleted and no verification-history or credit-ledger entry is ever
+- [X] V1–V12 pass.
+- [X] No `[NEEDS CLARIFICATION]` items remain in the spec.
+- [X] Constitution gates (plan.md) still pass after implementation.
+- [X] No admin-frontend code was added (the admin/operator panel is a separate application).
+- [X] No company is hard-deleted and no verification-history or credit-ledger entry is ever
       modified or removed.
