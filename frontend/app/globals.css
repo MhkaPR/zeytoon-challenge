@@ -1,26 +1,158 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens from DESIGN.md — Vercel (Olive Primary Accent, RTL Persian).
+ *
+ * Text is BLACK; the olive scale is the accent only (CTA, links, focus, badges, workflow
+ * markers) anchored on #60782e. Supporting hues (§2.2) are role-bound: warning, error,
+ * success, info, highlight. The layout is fully RTL with Persian copy and logical CSS
+ * properties.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary olive accent scale (never used for body/heading text) */
+  --ds-olive-950: #1d250e;
+  --ds-olive-900: #2f3b17;
+  --ds-olive-800: #445521;
+  --ds-olive-700: #60782e;
+  --ds-olive-600: #79973a;
+  --ds-olive-500: #91b545;
+  --ds-olive-400: #a7c568;
+  --ds-olive-300: #c1d694;
+  --ds-olive-200: #dae7c0;
+  --ds-olive-100: #ecf2de;
+  --ds-olive-50: #f6f9f0;
+
+  /* Text */
+  --ds-ink: #000000;
+  --ds-ink-muted: #4b5563;
+  --ds-white: #ffffff;
+
+  /* Workflow accents — a single olive tonal ramp (Develop → Preview → Ship) */
+  --ship-text: #445521;
+  --preview-text: #60782e;
+  --develop-text: #91b545;
+
+  /* Supporting role-bound colors (§2.2) — status/syntax only, never decorative */
+  --ds-warning: #c18825;
+  --ds-warning-surface: #f8eedd;
+  --ds-warning-text: #785417;
+  --ds-danger: #ae5b37;
+  --ds-danger-surface: #f5e6e0;
+  --ds-danger-text: #6d3922;
+  --ds-success: #3c9287;
+  --ds-success-surface: #e2f3f1;
+  --ds-success-text: #29655d;
+  --ds-info: #437ba3;
+  --ds-info-surface: #e2ecf3;
+  --ds-info-text: #294c65;
+  --ds-highlight: #955087;
+  --ds-highlight-surface: #f1e4ee;
+  --ds-highlight-text: #5d3254;
+
+  /* Interactive */
+  --ds-link: #60782e;
+  --ds-link-hover: #445521;
+  --ds-focus-color: hsla(79, 48%, 36%, 1);
+  --ds-focus-ring: rgba(145, 181, 69, 0.5);
+
+  /* Surface & overlay */
+  --ds-overlay-backdrop-color: hsla(79, 60%, 98%, 1);
+  --geist-selection-text-color: hsla(79, 60%, 94%, 1);
+  --ds-badge-bg: #ecf2de;
+  --ds-badge-text: #4d6224;
+
+  /* Shadow-as-border system — rings tinted with the primary olive */
+  --ds-shadow-ring: rgba(96, 120, 46, 0.10) 0px 0px 0px 1px;
+  --ds-shadow-light-ring: rgb(218, 231, 192) 0px 0px 0px 1px;
+  --ds-shadow-subtle: rgba(96, 120, 46, 0.10) 0px 0px 0px 1px,
+    rgba(96, 120, 46, 0.05) 0px 2px 2px;
+  --ds-shadow-card: rgba(96, 120, 46, 0.10) 0px 0px 0px 1px,
+    rgba(96, 120, 46, 0.05) 0px 2px 2px,
+    rgba(96, 120, 46, 0.05) 0px 8px 8px -8px,
+    #f6f9f0 0px 0px 0px 1px;
+
+  /* Semantic */
+  --background: var(--ds-white);
+  --foreground: var(--ds-ink);
 }
 
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ds-ink);
+  --color-ink-muted: var(--ds-ink-muted);
+  --color-accent: var(--ds-olive-700);
+  --color-line: var(--ds-olive-100);
+  --color-surface-tint: var(--ds-olive-50);
+  --color-link: var(--ds-link);
+  --color-focus: var(--ds-focus-color);
+  --color-badge-bg: var(--ds-badge-bg);
+  --color-badge-text: var(--ds-badge-text);
+  --color-ship: var(--ship-text);
+  --color-preview: var(--preview-text);
+  --color-develop: var(--develop-text);
+  --color-warning: var(--ds-warning);
+  --color-danger: var(--ds-danger);
+  --color-success: var(--ds-success);
+  --color-info: var(--ds-info);
+  --color-highlight: var(--ds-highlight);
+
+  /* Fonts: Persian UI font first, then Geist for Latin/numerals/code */
+  --font-sans: var(--font-vazirmatn), var(--font-geist-sans), Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radius scale */
+  --radius-micro: 2px;
+  --radius-subtle: 4px;
+  --radius-standard: 6px;
+  --radius-comfortable: 8px;
+  --radius-image: 12px;
+  --radius-nav: 64px;
+  --radius-nav-lg: 100px;
+
+  /* Spacing scale (base unit 8px; 16px jumps straight to 32px) */
+  --spacing-1: 1px;
+  --spacing-2: 2px;
+  --spacing-3: 3px;
+  --spacing-4: 4px;
+  --spacing-5: 5px;
+  --spacing-6: 6px;
+  --spacing-8: 8px;
+  --spacing-10: 10px;
+  --spacing-12: 12px;
+  --spacing-14: 14px;
+  --spacing-16: 16px;
+  --spacing-32: 32px;
+  --spacing-36: 36px;
+  --spacing-40: 40px;
+
+  /* Shadows */
+  --shadow-ring: var(--ds-shadow-ring);
+  --shadow-light-ring: var(--ds-shadow-light-ring);
+  --shadow-subtle: var(--ds-shadow-subtle);
+  --shadow-card: var(--ds-shadow-card);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Ligatures are structural for Latin Geist text; Persian copy uses normal tracking. */
+html {
+  font-feature-settings: "liga" 1;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--geist-selection-text-color);
+}
+
+/* Consistent olive focus ring for accessibility. */
+:focus-visible {
+  outline: 2px solid var(--ds-focus-color);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--ds-focus-ring);
 }
