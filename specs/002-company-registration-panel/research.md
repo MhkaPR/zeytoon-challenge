@@ -53,15 +53,19 @@ was chosen, and what alternatives were considered. No `NEEDS CLARIFICATION` item
 
 ## R4. Panel entry resolution and unverified redirect
 
-- **Decision**: A single `panel` service resolves entry for the selected company: verified ⇒
-  full-panel payload; pending/rejected ⇒ continue-registration payload (completed/current
-  steps + route). The full-panel route is a server-guarded endpoint that returns a redirect
-  instruction (or `303`/`409`-style redirect response) to the continue view when the company
+- **Decision**: The panel is a user-facing surface over the company domain, so it lives inside
+  the `companies` module — **no separate `panel` Django app**. A `companies` service resolves
+  entry for the selected company: verified ⇒ full-panel payload; pending/rejected ⇒
+  continue-registration payload (completed/current steps + route). The full-panel route is a
+  server-guarded endpoint that returns a `303` redirect to the continue view when the company
   is unverified, so the full panel never renders with real data (FR-024, FR-025, FR-027).
 - **Rationale**: SC-003 demands 100% of entries for unverified companies — including direct
   address — show the continue view and never the full panel; resolving the decision
-  server-side keeps the rule in one place and immune to client routing gaps.
-- **Alternatives considered**: Client-only route guards (rejected: a direct URL could briefly
+  server-side keeps the rule in one place and immune to client routing gaps. Keeping the panel
+  in `companies` avoids a Django app that would exist only to re-expose the same domain
+  (Principle XII) and keeps all company-scoped logic behind one interface (Principle V).
+- **Alternatives considered**: A separate `panel` Django app (rejected by the user: it would
+  only re-expose `companies`); client-only route guards (rejected: a direct URL could briefly
   render the panel and the rule would not be authoritative); separate endpoints per state
   without a guard (rejected: leaks the full-panel shape for unverified companies).
 

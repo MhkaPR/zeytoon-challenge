@@ -1,7 +1,9 @@
 # Contract: Company Registration & Panel API (v1)
 
-Base paths: `/api/v1/companies` (company domain) and `/api/v1/panel` (panel entry/switching).
-JSON in, JSON out. All timestamps ISO-8601 UTC. Error bodies use the existing shared shape
+Base path: `/api/v1/companies`. Everything in this feature — registration, the panel
+entry/switching surface, verification decisions, the plan-eligibility gate, credit, and crawl
+— is served by the single `companies` module (there is no separate `panel` app). JSON in, JSON
+out. All timestamps ISO-8601 UTC. Error bodies use the existing shared shape
 (`accounts.exceptions`) — this contract is the reviewed source of intent; the generated
 OpenAPI schema (drf-spectacular) is the machine-readable form.
 
@@ -127,7 +129,7 @@ Record a verification decision. Operator-only; the company owner is refused.
 
 ## Company panel
 
-### GET /api/v1/panel/companies/{id}/entry
+### GET /api/v1/companies/{id}/panel-entry
 
 Resolve what the panel should render for the selected company.
 
@@ -137,14 +139,14 @@ Resolve what the panel should render for the selected company.
 | 200 | Owner, pending/rejected | `{ "view": "continue_registration", "company": {...}, "step_progress": [...], "current_step": "verification", "verification_status": "pending" }` (FR-025, FR-026). |
 | 404 | Not owned / not found | error `code: "not_found"` (FR-028). |
 
-### GET /api/v1/panel/companies/{id}/panel
+### GET /api/v1/companies/{id}/panel
 
 The full company panel location.
 
 | Status | Meaning | Body |
 |--------|---------|------|
 | 200 | Verified owner | full-panel payload (FR-024). |
-| 303 | Owner, unverified | `Location: /api/v1/panel/companies/{id}/entry`; the full panel is NOT rendered (FR-027, SC-003). |
+| 303 | Owner, unverified | `Location: /api/v1/companies/{id}/panel-entry`; the full panel is NOT rendered (FR-027, SC-003). |
 | 404 | Not owned / not found | error `code: "not_found"`. |
 
 **Rules**
@@ -152,9 +154,11 @@ The full company panel location.
   the continue view; the full panel never renders with real data for it (FR-027, edge case
   "Direct address").
 
-### GET /api/v1/panel/companies
+### GET /api/v1/companies/panel-switcher
 
 Data for the switcher; when the caller owns no companies the payload supports the empty state.
+This is a distinct path from `GET /api/v1/companies` (the plain list) so the switcher payload
+carries the empty-state contract.
 
 | Status | Meaning | Body |
 |--------|---------|------|

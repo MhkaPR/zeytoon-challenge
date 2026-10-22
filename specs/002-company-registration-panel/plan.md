@@ -67,8 +67,7 @@ calls; single-owner model with no automatic ownership change; data and services 
 **Scale/Scope**: Hundreds of providers/companies and many end users; a user may own any number
 of companies. 5 user stories (P1 registration, P2 panel entry/switching/continue view,
 P3 verification decision + log, P4 plan eligibility + credit + crawl, P5 business rules), ~10
-backend endpoints across the `companies`/`panel` modules, and the user-frontend registration +
-panel routes.
+backend endpoints in the `companies` module, and the user-frontend registration + panel routes.
 
 ## Constitution Check
 
@@ -80,7 +79,7 @@ panel routes.
 | II. Cost and External Resources | No LLM calls; no ceiling interaction in this feature. | PASS (N/A) |
 | III. Security and Secrets | Secrets via env only; Pydantic boundary validation on all inputs; owner-only object access; no phone numbers in logs. | PASS |
 | IV. Data Governance | Postgres (source of truth) + Redis hosted in Iran; no external egress. | PASS |
-| V. Architecture | Modular monolith; new `companies`/`panel` apps created with `python manage.py startapp`; cross-module access only through `interfaces.py`; Postgres source of truth; Docker packaging. | PASS |
+| V. Architecture | Modular monolith; one new `companies` app created with `python manage.py startapp`; other modules access it only through `interfaces.py`; Postgres source of truth; Docker packaging. | PASS |
 | VI. Performance and Scalability | 100 req/s target; Redis caching and owner-scoped indexed queries on the hot panel path. | PASS |
 | VII. Observability | Structured JSON logs for verification decisions, plan-prerequisite refusals, credit movements, ownership refusals, archival; sampling on hot paths; phone masking. | PASS |
 | VIII. Quality and Testing | Every domain behavior (step locking, append-only history, prerequisites, scoping, archival) ships with an automated test. | PASS |
@@ -113,8 +112,8 @@ specs/002-company-registration-panel/
 backend/
 └── src/
     ├── config/
-    │   ├── settings.py            # register companies/panel; add CONSTANCE_CONFIG keys
-    │   └── urls.py                # mount /api/v1/companies/ and /api/v1/panel/
+    │   ├── settings.py            # register companies; add CONSTANCE_CONFIG keys
+    │   └── urls.py                # mount /api/v1/companies/
     ├── utils/                     # unchanged (TimestampedModel, logging/masking reused)
     ├── accounts/                  # unchanged (owner FK target, JWT auth, role checks)
     ├── companies/                 # NEW module (python manage.py startapp companies)
@@ -127,7 +126,8 @@ backend/
     │   ├── selectors.py           # owner-scoped reads, step-progress/current-step resolution,
     │   │                          #   credit projection reads
     │   ├── serializers.py         # DRF I/O + Pydantic boundary schemas
-    │   ├── api.py                 # DRF views for company registration + operator decision
+    │   ├── api.py                 # DRF views for registration, operator decision, panel
+    │   │                          #   entry/switch/continue view, plan gate, credit, crawl
     │   ├── urls.py                # /api/v1/companies/*
     │   ├── constants.py           # constance CONSTANCE_CONFIG additions (runtime tunables)
     │   ├── admin.py               # operator: decide verification, set charge/credit, review signals
@@ -138,19 +138,15 @@ backend/
     │       ├── test_verification_history.py
     │       ├── test_plan_eligibility.py
     │       ├── test_credit_ledger.py
-    │       ├── test_archival_ownership.py
-    │       └── test_log_masking.py
-    ├── panel/                     # NEW module (python manage.py startapp panel)
-    │   ├── interfaces.py          # panel-facing read interface (thin over companies)
-    │   ├── services.py            # resolve panel entry (full vs continue) + company switching
-    │   ├── api.py                 # DRF views for the panel entry/switcher/continue view
-    │   ├── urls.py                # /api/v1/panel/*
-    │   └── tests/
     │       ├── test_panel_entry.py
     │       ├── test_company_switching.py
-    │       └── test_owner_scoping.py
-    └── (no catalog module)        # plans are owned by another feature; this feature exposes
-                                   #   only the companies.plan-eligibility gate + crawl flag
+    │       ├── test_owner_scoping.py
+    │       ├── test_archival_ownership.py
+    │       └── test_log_masking.py
+    └── (no other module)          # plans are owned by another feature; this feature exposes
+                                   #   only the plan-eligibility gate + crawl flag. There is no
+                                   #   separate `panel` app: the panel endpoints live in
+                                   #   `companies`.
 
 frontend/
 ├── app/
@@ -165,21 +161,23 @@ frontend/
 │   │   ├── CompanySwitcher.tsx
 │   │   ├── EmptyState.tsx
 │   │   └── useActiveCompany.ts
-│   ├── lib/api/companies.ts       # typed client for /api/v1/companies/* and /api/v1/panel/*
+│   ├── lib/api/companies.ts       # typed client for /api/v1/companies/*
 │   └── lib/i18n/strings.ts        # add Persian copy for the new views
 └── tests/                         # component tests for forms, continue view, switcher
 ```
 
-**Structure Decision**: Web application, modular monolith. Two scaffolded-but-empty apps
-become real modules and are registered in `INSTALLED_APPS`: `companies` owns the company
-domain (registration, steps, verification history, charge status, the append-only credit
-ledger and its projection, crawl flag, the plan-eligibility gate, archival, and ownership
-rules); `panel` is a thin user-facing module that resolves panel entry and company switching
-over the `companies` interface. Other modules reach them only through their `interfaces.py`
-(Principle V). The plan entity and its management UI are owned by another feature, so no
-`catalog`/plan module is created here; this feature exposes only the eligibility gate that a
-plan-owning feature calls. Duplicate-company detection lives in the admin panel, so no
-duplicate-signal model or constant exists here. The user frontend gains `/panel` and
+**Structure Decision**: Web application, modular monolith. A single scaffolded-but-empty app
+becomes the real module: `companies`, registered in `INSTALLED_APPS`, owns the entire company
+domain — registration and steps, verification history, charge status, the append-only credit
+ledger and its projection, crawl flag, the plan-eligibility gate, archival, ownership rules,
+**and the panel entry/switching endpoints**. There is no separate `panel` app: the panel is a
+user-facing surface over the same company domain, so its services and views live in
+`companies/services.py` and `companies/api.py` with routes in `companies/urls.py`. Other
+modules reach the domain only through `companies/interfaces.py` (Principle V). The plan entity
+and its management UI are owned by another feature, so no `catalog`/plan module is created
+here; this feature exposes only the eligibility gate that a plan-owning feature calls.
+Duplicate-company detection lives in the admin panel, so no duplicate-signal model or constant
+exists here. The user frontend gains `/panel` and
 `/panel/[companyId]` routes plus `src/features/company` and `src/features/panel` slices; no
 admin-frontend code is added, because the admin/operator panel is a separate restricted-domain
 application.

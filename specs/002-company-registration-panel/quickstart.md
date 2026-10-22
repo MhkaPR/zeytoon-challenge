@@ -18,15 +18,15 @@ details.
 # from repo root
 cd backend/src
 python manage.py startapp companies   # if the scaffold is not present yet
-python manage.py startapp panel
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 ```
 
-Register the two apps in `INSTALLED_APPS`, mount `/api/v1/companies/` and
-`/api/v1/panel/` in `config/urls.py`, and add the constance constants from
-[data-model.md](./data-model.md) to `CONSTANCE_CONFIG`. No `catalog`/plan module is created:
-plans are owned by another feature, and this feature exposes only the plan-eligibility gate.
+Register the single `companies` app in `INSTALLED_APPS`, mount `/api/v1/companies/` in
+`config/urls.py`, and add the constance constants from [data-model.md](./data-model.md) to
+`CONSTANCE_CONFIG`. There is **no** separate `panel` app — the panel entry/switching endpoints
+live in `companies` — and no `catalog`/plan module: plans are owned by another feature, and
+this feature exposes only the plan-eligibility gate.
 
 ```bash
 # in a second terminal
@@ -76,7 +76,7 @@ Use the local SQLite/Redis defaults; no SMS gateway is needed for this feature.
    "Continue company registration" view showing completed steps and the pending step, with a
    route to the current step.
 3. Address the full-panel location directly for an unverified company
-   (`GET /api/v1/panel/companies/{id}/panel`).
+   (`GET /api/v1/companies/{id}/panel`).
 4. **Expected**: `303` redirect to the continue view; the full panel never renders.
 5. Switch from a verified to a pending company; **expected**: no full-panel data for the
    pending company is exposed.
@@ -156,7 +156,7 @@ Use the local SQLite/Redis defaults; no SMS gateway is needed for this feature.
 
 ## Automated Test Entry Points
 
-- Backend: `pytest backend/src/companies/tests backend/src/panel/tests`
+- Backend: `pytest backend/src/companies/tests`
   (registration, step locking, abandonment, history immutability, panel routing/scoping,
   plan eligibility, credit-ledger projection, crawl gating, archival, masking).
 - Frontend: `yarn test` in `frontend/` for the registration forms, continue view, switcher,
