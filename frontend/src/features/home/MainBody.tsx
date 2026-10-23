@@ -41,18 +41,6 @@ export function MainBody({ brandLogo }: { brandLogo?: ReactNode }) {
       <div className="w-full max-w-[720px]">
         <SearchBox />
       </div>
-
-      <div className="flex w-full max-w-[960px] flex-col gap-[24px] text-start">
-        <ServiceTypeChips value={serviceType} onChange={setServiceType} />
-        <FilterBox serviceType={serviceType} value={filters} onChange={setFilters} />
-      </div>
-
-      <Card className="w-full max-w-[960px] text-start" variant="secondary">
-        <Card.Header>
-          <Card.Title>{strings.resultsEmptyTitle}</Card.Title>
-          <Card.Description>{strings.resultsPending}</Card.Description>
-        </Card.Header>
-      </Card>
     </section>
   );
 }

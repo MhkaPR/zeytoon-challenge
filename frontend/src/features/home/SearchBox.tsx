@@ -43,9 +43,6 @@ export function SearchBox() {
           </SearchField.Group>
         </SearchField>
       </div>
-      <Button className="sm:self-end" type="submit">
-        {strings.searchSubmit}
-      </Button>
     </form>
   );
 }
