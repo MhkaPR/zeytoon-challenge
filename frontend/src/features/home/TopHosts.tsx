@@ -1,4 +1,5 @@
 import { Card, Chip, Typography } from "@heroui/react";
+import { ChevronLeft, MapPin, Star } from "lucide-react";
 import NextLink from "next/link";
 
 import { strings, topHosts } from "@/src/lib/i18n/strings";
@@ -23,35 +24,73 @@ export function TopHosts() {
         {topHosts.map((host) => (
           <NextLink
             key={host.domain}
-            className="rounded-[var(--radius)] focus-visible:outline-none"
             href={`/companies/${encodeURIComponent(host.domain)}`}
+            className="group block rounded-[var(--radius)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
           >
             <Card
-              className="flex h-full flex-row items-center gap-[16px] p-[20px] transition-shadow hover:shadow-overlay"
-              variant="secondary"
+              className="flex h-full flex-col gap-[14px] p-[20px] transition-all duration-200 group-hover:-translate-y-[1px] group-hover:shadow-overlay"
+              variant="default"
             >
-              <span
-                aria-hidden
-                className="flex size-[36px] shrink-0 items-center justify-center rounded-full bg-accent font-mono text-[15px] font-medium text-accent-foreground"
-              >
-                {host.rank}
-              </span>
-              <div className="flex flex-1 flex-col gap-[4px]">
-                <Card.Title>{host.name}</Card.Title>
-                <Typography className="text-[12px]" type="code">
-                  {host.domain}
-                </Typography>
-                <Typography color="muted" type="body-sm">
-                  {`${strings.topHostsLocationLabel}: ${host.location}`}
-                </Typography>
-              </div>
-              <div className="flex flex-col items-end gap-[8px]">
-                <Chip color="accent" size="sm" variant="soft">
+              {/* Row 1 — identity */}
+              <div className="flex items-center gap-[12px]">
+                <span
+                  aria-hidden
+                  className="flex size-[36px] shrink-0 items-center justify-center rounded-full bg-accent font-mono text-[15px] font-semibold text-accent-foreground"
+                >
+                  {host.rank}
+                </span>
+
+                <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
+                  <Card.Title className="truncate">{host.name}</Card.Title>
+                  <Typography
+                    className="truncate text-[12px]"
+                    type="code"
+                    color="muted"
+                  >
+                    {host.domain}
+                  </Typography>
+                </div>
+
+                <Chip
+                  color="accent"
+                  size="sm"
+                  variant="soft"
+                  className="shrink-0"
+                >
                   {host.service}
                 </Chip>
-                <Typography className="font-mono text-[13px] font-medium">
-                  {`${strings.rankingScoreLabel} ${host.score}`}
-                </Typography>
+              </div>
+
+              {/* Row 2 — meta */}
+              <div className="flex items-center justify-between gap-[8px] border-t border-[var(--separator)] pt-[12px]">
+                <div className="flex min-w-0 items-center gap-[6px]">
+                  <MapPin aria-hidden className="size-[13px] shrink-0 text-muted" />
+                  <Typography
+                    className="truncate text-[12px]"
+                    type="body-xs"
+                    color="muted"
+                  >
+                    {host.location}
+                  </Typography>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-[10px]">
+                  <div className="flex items-center gap-[4px]">
+                    <Star
+                      aria-hidden
+                      className="size-[12px] fill-[var(--accent)] text-[var(--accent)]"
+                    />
+                    <Typography className="font-mono text-[12px] font-medium">
+                      {host.score}
+                    </Typography>
+                    <span className="sr-only">{strings.rankingScoreLabel}</span>
+                  </div>
+
+                  <ChevronLeft
+                    aria-hidden
+                    className="size-[16px] text-muted transition-transform duration-200 group-hover:-translate-x-[2px]"
+                  />
+                </div>
               </div>
             </Card>
           </NextLink>

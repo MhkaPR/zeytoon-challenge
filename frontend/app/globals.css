@@ -54,13 +54,13 @@
    */
 
   /* Base */
-  --background: var(--ds-white);
+  --background: oklch(0.979 0 0 / 0.92);
   --foreground: var(--ds-ink);
   --surface: var(--ds-white);
   --surface-foreground: var(--ds-ink);
   --surface-secondary: var(--ds-olive-50);
   --surface-secondary-foreground: var(--ds-ink);
-  --surface-tertiary: var(--ds-olive-50);
+  --surface-tertiary: var(--ds-olive-50); 
   --surface-tertiary-foreground: var(--ds-ink);
   --overlay: var(--ds-white);
   --overlay-foreground: var(--ds-ink);

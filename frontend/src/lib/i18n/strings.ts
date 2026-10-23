@@ -11,6 +11,7 @@ export const strings = {
   sendCode: "ارسال کد",
   enterCode: "کد ارسال شده به پیامک را وارد کنید",
   codeIncorrect: "کد نادرست است",
+  moreDisplay: "نمایش بیشتر",
   timeRemaining: "زمان باقیمانده",
   requestNewCode: "کد جدید درخواست کنید",
   loginButton: "ورود",
@@ -18,7 +19,7 @@ export const strings = {
   genericError: "خطایی رخ داد. دوباره تلاش کنید.",
   heroTitle: "مقایسه پلن های میزبانی و سرور در میان صدها ارائه دهنده",
   heroSubtitle:
-    "پلن های میزبانی و سرور را یک جا جست و جو و مقایسه کنید. ارائه دهندگان داده های خود را متصل می کنند و شما پلن مناسب را پیدا می کنید.",
+    "پلن های میزبانی و سرور را یک جا جست و جو و مقایسه کنید.",
   comparePlans: "مقایسه پلن ها",
   howItWorks: "چگونه کار می کند",
   stepDevelop: "توسعه",
@@ -113,6 +114,8 @@ export const strings = {
   aboutTorbPoint2Body: "پلن ها را بر اساس قیمت، منابع و موقعیت سرور کنار هم بگذارید.",
   aboutTorbPoint3Title: "خرید بدون واسطه",
   aboutTorbPoint3Body: "انتخاب و خرید را مستقیم با ارائه دهنده نهایی می کنید.",
+  aboutTorbPoint4Title: "رایگان و بدون ثبت‌نام",
+  aboutTorbPoint4Body: "همه‌ی پلن‌ها و مقایسه‌ها بدون نیاز به حساب کاربری در دسترس است.",
 
   howItWorksTitle: "مراحل کار با سایت",
   howItWorksIntro: "در سه گام ساده پلن مناسب خود را پیدا کنید.",
@@ -241,9 +244,10 @@ export const topHosts = [
 
 /** Recently verified providers; mock until the approval feed is served by the API. */
 export const recentlyApproved = [
-  { name: "هاست ایرانیان", domain: "iranhost.ir", service: strings.serviceHost, time: "۲۴ ساعت پیش" },
+  { name: "هاست ایرانیان", logo: "https://www.arvancloud.ir/favicon.ico", domain: "iranhost.ir", service: strings.serviceHost, time: "۲۴ ساعت پیش" },
   {
     name: "سرور آسیا",
+    logo: "https://www.arvancloud.ir/favicon.ico",
     domain: "asia-server.ir",
     service: strings.serviceVirtualServer,
     time: "۲ روز پیش",
@@ -251,6 +255,7 @@ export const recentlyApproved = [
   {
     name: "ابریار",
     domain: "abriyar.ir",
+    logo: "https://www.arvancloud.ir/favicon.ico",
     service: strings.serviceDedicatedServer,
     time: "۳ روز پیش",
   },

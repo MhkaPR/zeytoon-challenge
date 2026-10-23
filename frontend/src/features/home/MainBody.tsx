@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Typography } from "@heroui/react";
+import { Typography } from "@heroui/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -10,13 +10,9 @@ import { FaqSection } from "./FaqSection";
 import { HomeCtas } from "./HomeCtas";
 import { HomeFooter } from "./HomeFooter";
 import { HowItWorks } from "./HowItWorks";
-import { RankingCriteria } from "./RankingCriteria";
 import { RecentlyApproved } from "./RecentlyApproved";
-import { RevenueModel } from "./RevenueModel";
 import { SearchBox } from "./SearchBox";
-import { ServiceTypeChips } from "./ServiceTypeChips";
 import type { ServiceTypeKey } from "./serviceTypes";
-import { TopHosts } from "./TopHosts";
 
 /**
  * The main page body (PAGES.yaml main page): hero brand logo, search box, the two browse
@@ -62,9 +58,7 @@ export function MainBody({ brandLogo }: { brandLogo?: ReactNode }) {
         <div className="flex w-full flex-col gap-[80px] text-start">
           <AboutTorb />
           <HowItWorks />
-          <TopHosts />
           <RecentlyApproved />
-          <RevenueModel />
           <FaqSection />
         </div>
       </div>

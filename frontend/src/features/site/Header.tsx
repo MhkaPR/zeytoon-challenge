@@ -24,7 +24,7 @@ export function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-20 bg-surface ${scrolled ? "shadow-surface" : ""}`}
+      className={`sticky top-0 z-20 bg-background ${scrolled ? "shadow-surface" : ""}`}
     >
       <div className="relative mx-auto flex w-full max-w-[1200px] flex-row items-center justify-between gap-[16px] px-[32px] py-[16px]">
         <Logo />
