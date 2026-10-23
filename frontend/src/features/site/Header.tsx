@@ -1,19 +1,24 @@
 "use client";
 
-import { buttonVariants } from "@heroui/styles";
-import NextLink from "next/link";
 import { useEffect, useState } from "react";
 
-import { strings } from "@/src/lib/i18n/strings";
+import { LoginButton } from "@/src/features/auth/LoginButton";
+import { useSession } from "@/src/features/auth/SessionProvider";
+import { UserMenu } from "@/src/features/auth/UserMenu";
 import { Logo } from "./Logo";
+import { MobileMenu } from "./MobileMenu";
 import { SiteMenu } from "./SiteMenu";
 
 /**
- * Sticky site header: logo, menu (mobile-collapsible), and the login action. The login
- * button is hidden on narrow screens where it collapses into a menu item (PAGES.yaml).
+ * Sticky site header. Desktop: logo, inline links, and the account action. Mobile: the menu
+ * button on the left, the wordmark centered, and the account action (login button or the
+ * user's phone number) on the right so it is always reachable without opening the menu.
  */
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const { identity, isAuthenticated } = useSession();
+  // Render nothing auth-related until the identity resolves to avoid a login/user-menu flash.
+  const authReady = identity !== null;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 0);
@@ -26,17 +31,24 @@ export function Header() {
     <header
       className={`sticky top-0 z-20 bg-background ${scrolled ? "shadow-surface" : ""}`}
     >
-      <div className="relative mx-auto flex w-full max-w-[1200px] flex-row items-center justify-between gap-[16px] px-[32px] py-[16px]">
-        <Logo />
-        <nav aria-label={strings.navMainPage} className="flex flex-row items-center gap-[16px]">
+      <div className="relative mx-auto grid w-full max-w-[1200px] grid-cols-[auto_1fr_auto] items-center gap-[12px] px-[16px] py-[12px] sm:px-[24px] md:flex md:gap-[32px] md:px-[32px] md:py-[16px]">
+        {/* Mobile: menu button first (left in RTL). Desktop: hidden. */}
+        <div className="order-1 justify-self-start">
+          <MobileMenu />
+        </div>
+
+        {/* Brand: centered on mobile, leading on desktop. */}
+        <Logo className="order-2 justify-self-center md:order-1 md:justify-self-start" />
+
+        {/* Desktop links, just after the brand. */}
+        <div className="hidden md:order-2 md:block md:ms-auto">
           <SiteMenu />
-          <NextLink
-            className={`${buttonVariants({ size: "sm" })} hidden md:inline-flex`}
-            href="/login"
-          >
-            {strings.login}
-          </NextLink>
-        </nav>
+        </div>
+
+        {/* The one call to action — login, or the user's account. Always on the right. */}
+        <div className="order-3 flex shrink-0 items-center justify-self-end">
+          {authReady && (isAuthenticated ? <UserMenu /> : <LoginButton />)}
+        </div>
       </div>
     </header>
   );

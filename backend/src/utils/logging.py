@@ -19,12 +19,31 @@ _KV_RE = re.compile(
 )
 
 
+def _national_format(value):
+    """Render a phone number in its national format, or ``None`` when it cannot be parsed."""
+    try:
+        from django.conf import settings
+        from phonenumbers import PhoneNumberFormat, format_number, parse
+
+        parsed = parse(str(value).strip(), settings.PHONE_DEFAULT_REGION)
+        return format_number(parsed, PhoneNumberFormat.NATIONAL)
+    except Exception:
+        return None
+
+
 def mask_phone(value):
-    """Mask a phone number, keeping a short prefix and suffix (e.g. 0912***6789)."""
-    digits = re.sub(r"\D", "", str(value))
-    if len(digits) <= 6:
+    """Mask a phone number in a form its owner still recognizes (e.g. ``0912***6789``).
+
+    The national-format rendering keeps the number recognizable in the UI (the user sees
+    their own number) while never exposing the full value (spec FR-026). Numbers that cannot
+    be parsed fall back to a plain digit mask.
+    """
+    digits = re.sub(r"\D", "", _national_format(value) or str(value))
+    if len(digits) <= 4:
         return "*" * len(digits)
-    return f"{digits[:4]}{'*' * (len(digits) - 7)}{digits[-3:]}"
+    if len(digits) <= 8:
+        return f"{digits[:2]}{'*' * (len(digits) - 4)}{digits[-2:]}"
+    return f"{digits[:4]}***{digits[-4:]}"
 
 
 def mask_text(text):

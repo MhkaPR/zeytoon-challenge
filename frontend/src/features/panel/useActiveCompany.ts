@@ -39,7 +39,14 @@ export function useActiveCompany(companyId?: number) {
   }, [companyId]);
 
   useEffect(() => {
-    load();
+    // Kick off the async load without calling setState synchronously inside the effect body.
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (active) load();
+    });
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   return { switcher, entry, loading, error, reload: load };

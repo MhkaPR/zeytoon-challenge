@@ -63,6 +63,21 @@ export interface PlanEligibility {
   message?: string;
 }
 
+export interface CreditEntry {
+  id: number;
+  direction: "charge" | "decharge";
+  amount: number;
+  reason: string;
+  reference: string;
+  created_at: string;
+}
+
+export interface CompanyCredit {
+  current_credit: number;
+  currency: string;
+  entries: CreditEntry[];
+}
+
 async function request<T>(
   path: string,
   accessToken: string,
@@ -114,6 +129,18 @@ export function getPlanEligibility(accessToken: string, companyId: number) {
   return request<PlanEligibility>(
     `/api/v1/companies/${companyId}/plan-eligibility`,
     accessToken,
+  );
+}
+
+export function getCompanyCredit(accessToken: string, companyId: number) {
+  return request<CompanyCredit>(`/api/v1/companies/${companyId}/credit`, accessToken);
+}
+
+export function setCrawlEnabled(accessToken: string, companyId: number, enabled: boolean) {
+  return request<{ crawl_enabled: boolean; credit_unchanged: boolean }>(
+    `/api/v1/companies/${companyId}/crawl`,
+    accessToken,
+    { method: "POST", body: JSON.stringify({ enabled }) },
   );
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { Typography } from "@heroui/react";
+import { Button, Typography } from "@heroui/react";
 import { useEffect, useState } from "react";
 
 import type { SessionIdentity } from "@/src/lib/api/auth";
 import { strings } from "@/src/lib/i18n/strings";
 import { isGuest, loadIdentity } from "@/src/lib/session";
 
-import { LoginForm } from "./LoginForm";
+import { useLoginDialog } from "./LoginDialog";
+import { useOptionalSession } from "./SessionProvider";
 
 export interface GuestGateProps {
   children: React.ReactNode;
@@ -18,18 +19,25 @@ export interface GuestGateProps {
  * them to the originating page afterwards (spec FR-010, US2).
  */
 export function GuestGate({ children }: GuestGateProps) {
-  const [identity, setIdentity] = useState<SessionIdentity | null>(null);
+  const session = useOptionalSession();
+  // Fallback identity for isolated renders (e.g. tests) where no provider is present.
+  const [localIdentity, setLocalIdentity] = useState<SessionIdentity | null>(null);
+  const { open, isOpen } = useLoginDialog();
 
   useEffect(() => {
-    loadIdentity().then(setIdentity);
-  }, []);
+    if (session) return;
+    loadIdentity().then(setLocalIdentity);
+  }, [session]);
+
+  const identity = session ? session.identity : localIdentity;
+  const isAuthenticated = session ? session.isAuthenticated : Boolean(identity && !isGuest(identity));
 
   if (identity === null) return null;
-  if (isGuest(identity)) {
+  if (!isAuthenticated) {
     return (
       <div className="flex flex-col gap-[16px]">
         <Typography>{strings.pleaseLogin}</Typography>
-        <LoginForm onSuccess={(redirectTo) => window.location.assign(redirectTo || "/")} />
+        {!isOpen && <Button onPress={open}>{strings.login}</Button>}
       </div>
     );
   }

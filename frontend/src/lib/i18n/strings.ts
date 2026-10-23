@@ -16,6 +16,9 @@ export const strings = {
   requestNewCode: "کد جدید درخواست کنید",
   loginButton: "ورود",
   pleaseLogin: "برای ادامه وارد شوید.",
+  userMenuLabel: "حساب کاربری",
+  myCompanies: "شرکت های من",
+  logout: "خروج",
   genericError: "خطایی رخ داد. دوباره تلاش کنید.",
   heroTitle: "مقایسه پلن های میزبانی و سرور در میان صدها ارائه دهنده",
   heroSubtitle:
@@ -63,6 +66,50 @@ export const strings = {
   panelBlockedBoth: "شرکت باید تأیید شده و حساب آن شارژ شده باشد.",
   fullPanel: "پنل کامل شرکت",
 
+  panelSubtitle: "شرکت های خود را مدیریت کنید و وضعیت تأیید و حساب هر کدام را ببینید.",
+  panelCompaniesTitle: "شرکت های من",
+  panelEmptyTitle: "هنوز شرکتی ثبت نکرده اید",
+  panelEmptyBody:
+    "برای شروع، شرکت خود را ثبت کنید. پس از بررسی و تأیید کارشناسان، پنل کامل شرکت باز می شود.",
+  panelLoading: "در حال بارگذاری…",
+  companyStatusTitle: "وضعیت تأیید",
+  chargeStatusTitle: "وضعیت حساب",
+  chargedStatus: "شارژشده",
+  notChargedStatus: "شارژنشده",
+  creditTitle: "اعتبار شرکت",
+  crawlTitle: "خزش (Crawl)",
+  crawlEnabledStatus: "فعال",
+  crawlDisabledStatus: "غیرفعال",
+  crawlHint: "فعال سازی خزش رایگان است و نیاز به حساب شارژشده دارد.",
+  currentStepTitle: "مرحله فعلی",
+  nextStepHint: "برای ادامه، مرحله زیر را تکمیل کنید.",
+  pendingHint:
+    "اطلاعات شرکت ثبت شده و در حال بررسی است. پس از تأیید کارشناسان، پنل کامل شرکت باز می شود.",
+  rejectedHint:
+    "اطلاعات شرکت تأیید نشد. برای اصلاح، مرحله اطلاعات شرکت را دوباره تکمیل و ثبت کنید.",
+  companyInfoTitle: "اطلاعات شرکت",
+  plansGateTitle: "امکان مدیریت پلن ها",
+  plansGateAllowed: "همه پیش نیازها فراهم است؛ می توانید پلن های شرکت را مدیریت کنید.",
+  panelPermissionsTitle: "دسترسی ها",
+  panelPermissionsHint:
+    "برای ساخت و فعال سازی پلن، شرکت باید هم تأیید شده و هم حساب آن شارژشده باشد.",
+
+  // Company registration page (requirement: dedicated registration page)
+  registerCompanyTitle: "ثبت شرکت جدید در ترب هاست",
+  registerCompanyIntro:
+    "برای افزودن شرکت خود به ترب هاست، اطلاعات شرکت و دامنه آن را ثبت کنید. پس از ثبت، کارشناسان ما اطلاعات را بررسی و شرکت را تأیید می کنند.",
+  registerCompanyHintsTitle: "نکته های مهم پیش از ثبت",
+  registerCompanyStepsTitle: "مراحل ثبت شرکت",
+  registerCompanyStepsIntro: "ثبت شرکت در دو مرحله انجام می شود:",
+  registerStepInfoDesc:
+    "اطلاعات شرکت، دامنه، نام نماینده و شماره تماس را وارد و ثبت می کنید.",
+  registerStepVerificationDesc:
+    "کارشناسان ترب هاست اطلاعات را بررسی می کنند و نتیجه تأیید را ثبت می کنند.",
+  registerCompanyCreatedTitle: "شرکت شما ثبت شد",
+  registerCompanyCreatedBody:
+    "اطلاعات شرکت ثبت شد و در فهرست شرکت های شما با وضعیت «در انتظار تأیید» نمایش داده می شود.",
+  goToCompaniesPanel: "رفتن به پنل شرکت های من",
+
   // Site chrome & main page (PAGES.yaml)
   brandTagline: "مقایسه پلن های میزبانی و سرور",
   navMainPage: "صفحه اصلی",
@@ -70,6 +117,7 @@ export const strings = {
   navAboutUs: "درباره ما",
   menuOpen: "باز کردن منو",
   menuClose: "بستن منو",
+  menuTitle: "منوی سایت",
   searchTitle: "جست و جوی شرکت ها و سرویس ها",
   searchPlaceholder: "نام شرکت یا پلن را وارد کنید",
   searchSubmit: "جست و جو",
@@ -94,6 +142,8 @@ export const strings = {
   clearFilters: "پاک کردن فیلترها",
   filtersTitle: "فیلترها",
   anyOption: "همه",
+  approve: "تایید",
+  cancel: "لغو",
   resultsTitle: "نتایج",
   resultsPending: "جست و جو و فیلترها آماده است؛ نمایش نتایج به زودی فعال می شود.",
   resultsEmptyTitle: "هنوز چیزی برای نمایش نیست",

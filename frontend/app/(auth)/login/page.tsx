@@ -1,28 +1,24 @@
 "use client";
 
-import { Card, Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { LoginForm } from "@/src/features/auth/LoginForm";
-import { captureReturnUrl } from "@/src/features/auth/returnUrl";
-import { strings } from "@/src/lib/i18n/strings";
+import { useLoginDialog } from "@/src/features/auth/LoginDialog";
 
+/**
+ * Legacy ``/login`` entry point. Login is a modal over the current page, so this route opens
+ * the site-wide login dialog and lands the user back on the main page rather than rendering a
+ * standalone login screen. The dialog state lives in the root layout, so it survives the
+ * client-side redirect.
+ */
 export default function LoginPage() {
   const router = useRouter();
+  const { open } = useLoginDialog();
 
   useEffect(() => {
-    captureReturnUrl();
-  }, []);
+    open();
+    router.replace("/");
+  }, [open, router]);
 
-  return (
-    <main className="flex flex-1 items-center justify-center p-[32px]">
-      <Card className="w-full max-w-sm p-[32px]" variant="tertiary">
-        <Typography className="mb-[32px] text-[40px] font-semibold" type="h1">
-          {strings.login}
-        </Typography>
-        <LoginForm onSuccess={(redirectTo) => router.replace(redirectTo || "/")} />
-      </Card>
-    </main>
-  );
+  return null;
 }

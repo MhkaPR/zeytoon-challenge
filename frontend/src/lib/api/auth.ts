@@ -85,11 +85,26 @@ export function verifyOtp(phoneNumber: string, code: string, returnUrl?: string)
   });
 }
 
-export async function getSession(): Promise<SessionIdentity> {
+/**
+ * Read the current identity. The backend resolves the user from the ``Authorization: Bearer``
+ * header (contracts/auth-api.md §GET /session), so the in-memory access token MUST be sent;
+ * without it the request is always treated as a guest.
+ */
+export async function getSession(accessToken?: string | null): Promise<SessionIdentity> {
+  const headers: Record<string, string> = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const response = await fetch(`${API_BASE}/api/v1/auth/session`, {
+    headers,
     credentials: "include",
   });
   return (await response.json()) as SessionIdentity;
+}
+
+/** Exchange the httpOnly refresh cookie for a fresh access token (rotating refresh). */
+export function refreshAccessToken() {
+  return request<{ access_token: string; token_type: string; expires_in: number }>(
+    "/api/v1/auth/token/refresh",
+  );
 }
 
 export function logout() {

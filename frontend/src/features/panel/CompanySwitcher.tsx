@@ -1,24 +1,19 @@
 "use client";
 
-import { Chip, Link, Typography } from "@heroui/react";
+import { Chip } from "@heroui/react";
+import { Building2, Check } from "lucide-react";
 import NextLink from "next/link";
 
 import type { SwitcherEntry } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
 
-function statusLabel(entry: SwitcherEntry): string {
-  if (entry.verification_status === "verified") return strings.verifiedStatus;
-  if (entry.verification_status === "rejected") return strings.rejectedStatus;
-  return strings.pendingStatus;
-}
+import { verificationColor, verificationLabel } from "./status";
 
-function statusColor(entry: SwitcherEntry) {
-  if (entry.verification_status === "verified") return "success" as const;
-  if (entry.verification_status === "rejected") return "danger" as const;
-  return "warning" as const;
-}
-
-/** Lets the user switch the active company; content follows the selected one (FR-022). */
+/**
+ * Company switcher. Renders as a horizontal, scrollable row of selectable cards so the panel
+ * keeps the same layout on mobile and desktop; the active company is clearly marked and the
+ * content below always reflects the selected one (FR-022).
+ */
 export function CompanySwitcher({
   companies,
   activeId,
@@ -26,26 +21,41 @@ export function CompanySwitcher({
   companies: SwitcherEntry[];
   activeId?: number;
 }) {
+  if (companies.length === 0) return null;
+
   return (
-    <nav aria-label={strings.switchCompany} className="flex flex-wrap gap-[8px]">
-      {companies.map((entry) => (
-        <Link
-          key={entry.id}
-          aria-current={entry.id === activeId ? "page" : undefined}
-          className={`flex items-center gap-[8px] rounded-full px-[14px] py-[8px] transition-colors ${
-            entry.id === activeId
-              ? "bg-accent text-accent-foreground shadow-surface"
-              : "bg-surface shadow-surface hover:bg-surface-secondary"
-          }`}
-          href={`/panel/${entry.id}`}
-          render={({ ref, ...domProps }) => (
-            <NextLink {...domProps} ref={ref as React.Ref<HTMLAnchorElement>} href={`/panel/${entry.id}`} />
-          )}
-        >
-          <Typography className="font-medium">{entry.company_name}</Typography>
-          <Chip color={statusColor(entry)}>{statusLabel(entry)}</Chip>
-        </Link>
-      ))}
+    <nav aria-label={strings.switchCompany} className="w-full">
+      <ul className="-mx-[4px] flex snap-x snap-mandatory gap-[12px] overflow-x-auto px-[4px] pb-[4px]">
+        {companies.map((entry) => {
+          const active = entry.id === activeId;
+          return (
+            <li key={entry.id} className="snap-start">
+              <NextLink
+                aria-current={active ? "true" : undefined}
+                href={`/panel/${entry.id}`}
+                className={`flex min-w-[220px] flex-col gap-[10px] rounded-[var(--radius)] bg-surface p-[16px] shadow-surface transition-all hover:shadow-overlay mt-2 ${
+                  active ? "ring-2 ring-accent" : "ring-1 ring-border"
+                }`}
+              >
+                <div className="flex items-center gap-[8px]">
+                  <span
+                    aria-hidden
+                    className={`flex size-[32px] shrink-0 items-center justify-center rounded-full ${
+                      active ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-muted"
+                    }`}
+                  >
+                    {active ? <Check className="size-4" /> : <Building2 className="size-4" />}
+                  </span>
+                  <span className="truncate text-[15px] font-semibold">{entry.company_name}</span>
+                </div>
+                <Chip color={verificationColor(entry.verification_status)} size="sm" variant="soft">
+                  {verificationLabel(entry.verification_status)}
+                </Chip>
+              </NextLink>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }

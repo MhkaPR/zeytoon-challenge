@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Chip } from "@heroui/react";
+import { Alert } from "@heroui/react";
 import { useEffect, useState } from "react";
 
 import { getPlanEligibility, type PlanEligibility } from "@/src/lib/api/companies";
@@ -30,7 +30,14 @@ export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
 
   if (!eligibility) return null;
   if (eligibility.allowed) {
-    return <Chip color="success">{strings.verifiedStatus}</Chip>;
+    return (
+      <Alert status="accent">
+        <Alert.Indicator />
+        <Alert.Content>
+          <Alert.Description>{strings.plansGateAllowed}</Alert.Description>
+        </Alert.Content>
+      </Alert>
+    );
   }
   return (
     <Alert status="warning">

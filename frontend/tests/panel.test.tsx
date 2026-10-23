@@ -1,6 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/panel",
+}));
+
+import { CompanyOverview } from "@/src/features/panel/CompanyOverview";
 import { ContinueRegistration } from "@/src/features/company/ContinueRegistration";
 import { CompanySwitcher } from "@/src/features/panel/CompanySwitcher";
 import { EmptyState } from "@/src/features/panel/EmptyState";
@@ -78,5 +84,22 @@ describe("ContinueRegistration", () => {
     expect(
       screen.getByRole("button", { name: strings.goToCurrentStep }),
     ).toBeInTheDocument();
+    // The redesign surfaces the current step prominently.
+    expect(screen.getByText(strings.currentStepTitle)).toBeInTheDocument();
+  });
+});
+
+describe("CompanyOverview", () => {
+  it("shows the company identity, statuses, and the crawl control", () => {
+    render(
+      <CompanyOverview
+        company={{ ...company, verification_status: "verified", charge_status: "charged", crawl_enabled: false }}
+      />,
+    );
+    expect(screen.getByText("Example Hosting")).toBeInTheDocument();
+    expect(screen.getByText(strings.verifiedStatus)).toBeInTheDocument();
+    expect(screen.getByText(strings.chargedStatus)).toBeInTheDocument();
+    expect(screen.getByText(strings.crawlTitle)).toBeInTheDocument();
+    expect(screen.getByText(strings.representativeName)).toBeInTheDocument();
   });
 });
