@@ -21,7 +21,7 @@ export function CompanySwitcher({
 
   return (
     <nav aria-label={strings.switchCompany} className="w-full">
-      <ul className="flex flex-col gap-[12px] sm:-mx-1 sm:flex-row sm:snap-x sm:snap-mandatory sm:overflow-x-auto sm:px-[4px] sm:pb-[4px]">
+      <ul className="flex flex-col gap-[12px] sm:-mx-1 sm:flex-row sm:flex-wrap sm:px-[4px] sm:pb-[4px]">
         {companies.map((entry) => {
           const active = entry.id === activeId;
 
