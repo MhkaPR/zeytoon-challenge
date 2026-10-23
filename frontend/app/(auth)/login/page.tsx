@@ -3,24 +3,22 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { Card, DisplayHero } from "@/src/components/ui";
-import { LoginForm } from "@/src/features/auth/LoginForm";
-import { captureReturnUrl } from "@/src/features/auth/returnUrl";
-import { strings } from "@/src/lib/i18n/strings";
+import { useLoginDialog } from "@/src/features/auth/LoginDialog";
 
+/**
+ * Legacy ``/login`` entry point. Login is a modal over the current page, so this route opens
+ * the site-wide login dialog and lands the user back on the main page rather than rendering a
+ * standalone login screen. The dialog state lives in the root layout, so it survives the
+ * client-side redirect.
+ */
 export default function LoginPage() {
   const router = useRouter();
+  const { open } = useLoginDialog();
 
   useEffect(() => {
-    captureReturnUrl();
-  }, []);
+    open();
+    router.replace("/");
+  }, [open, router]);
 
-  return (
-    <main className="flex flex-1 items-center justify-center p-[32px]">
-      <Card variant="featured" className="w-full max-w-sm p-[32px]">
-        <DisplayHero className="mb-[32px] text-[40px]">{strings.login}</DisplayHero>
-        <LoginForm onSuccess={(redirectTo) => router.replace(redirectTo || "/")} />
-      </Card>
-    </main>
-  );
+  return null;
 }

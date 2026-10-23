@@ -6,7 +6,11 @@
  * signal from (spec FR-010).
  */
 
-import { getSession, type SessionIdentity } from "@/src/lib/api/auth";
+import {
+  getSession,
+  refreshAccessToken,
+  type SessionIdentity,
+} from "@/src/lib/api/auth";
 
 let accessToken: string | null = null;
 
@@ -19,7 +23,18 @@ export function getAccessToken(): string | null {
 }
 
 export async function loadIdentity(): Promise<SessionIdentity> {
-  return getSession();
+  // The access token lives in memory with the httpOnly refresh cookie as the durable
+  // credential. After a page reload the in-memory token is gone, so recover one from the
+  // refresh cookie before asking for the identity (spec FR-010).
+  if (!accessToken) {
+    try {
+      const refreshed = await refreshAccessToken();
+      accessToken = refreshed.access_token;
+    } catch {
+      return { authenticated: false, role: "guest" };
+    }
+  }
+  return getSession(accessToken);
 }
 
 export function isGuest(identity: SessionIdentity): boolean {

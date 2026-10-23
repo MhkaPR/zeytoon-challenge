@@ -88,8 +88,10 @@ class OtpVerifyView(APIView):
 
 
 class TokenRefreshView(APIView):
+    # A token refresh is NOT an OTP action: it must not consume the per-source OTP budget,
+    # because the frontend refreshes on every page load. It still falls under the global
+    # anon/user limits, which is plenty for abuse protection (FR-019 covers OTP only).
     authentication_classes = []
-    throttle_classes = [OtpSourceThrottle]
 
     @extend_schema(request=None, responses={200: TokenRefreshResponseSerializer})
     def post(self, request):

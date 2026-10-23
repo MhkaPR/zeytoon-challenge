@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     # Local
     "utils",
     "accounts",
+    "companies",
 ]
 
 MIDDLEWARE = [
@@ -179,9 +180,15 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": env("THROTTLE_ANON", "60/min"),
         "user": env("THROTTLE_USER", "120/min"),
-        "otp_request_phone": env("THROTTLE_OTP_REQUEST_PHONE", "5/hour"),
+        # Per-phone ceilings. These are intentionally loose enough for local development
+        # (repeated re-requests while testing) while still bounding abuse; FR-019 requires
+        # this limit to exist, not a specific number.
+        "otp_request_phone": env("THROTTLE_OTP_REQUEST_PHONE", "20/hour"),
         "otp_verify_phone": env("THROTTLE_OTP_VERIFY_PHONE", "10/min"),
-        "otp_source": env("THROTTLE_OTP_SOURCE", "30/hour"),
+        # Per-source (IP + user-agent) budget for the OTP request/verify endpoints. This is
+        # deliberately generous because it is shared by everyone behind one NAT/dev machine;
+        # the per-phone limits above are what actually stop credential abuse.
+        "otp_source": env("THROTTLE_OTP_SOURCE", "120/hour"),
     },
     "EXCEPTION_HANDLER": "accounts.exceptions.api_exception_handler",
 }
@@ -249,6 +256,30 @@ CONSTANCE_CONFIG = {
         "Allowed relative return targets after login.",
     ),
     "DEFAULT_RETURN_PATH": ("/", "Fallback page when the return target is invalid."),
+    # Company Registration & Company Panel (spec 002)
+    "COMPANY_STEP_DEFINITIONS": (
+        [
+            {"key": "company_information", "order": 1, "owner_input": True},
+            {"key": "verification", "order": 2, "owner_input": False},
+        ],
+        "Ordered registration steps; the first step is company information, next is verification.",
+    ),
+    "COMPANY_REQUIREMENT_MESSAGES": (
+        {
+            "verified": "The company must be verified first.",
+            "charged": "The company account must be charged.",
+            "both": "The company must be verified and its account must be charged.",
+        },
+        "Prerequisite messages surfaced when a plan action is blocked.",
+    ),
+    "COMPANY_STEP_LOCKED_MESSAGE": (
+        "This step is locked until the previous step is approved.",
+        "Message shown when a locked registration step is addressed.",
+    ),
+    "COMPANY_EMPTY_STATE_MESSAGE": (
+        "You have no companies yet. Register a new company to get started.",
+        "Copy for the company panel empty state.",
+    ),
 }
 
 

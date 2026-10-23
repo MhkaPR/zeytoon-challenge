@@ -30,7 +30,12 @@ class User(AbstractUser, TimestampedModel):
     )
 
     # AbstractUser already defines is_active; blocked users are refused at login.
-    REQUIRED_FIELDS = []
+    #
+    # ``phone_number`` is a required, unique field, so it MUST be listed here: otherwise
+    # ``createsuperuser`` would only collect username/password and store an empty phone,
+    # which collides with the empty phone of guardian's ``AnonymousUser`` row (and with any
+    # second admin). Listing it makes ``createsuperuser`` prompt for ``--phone_number``.
+    REQUIRED_FIELDS = ["phone_number"]
     USERNAME_FIELD = "username"
 
     class Meta:
@@ -69,7 +74,11 @@ class User(AbstractUser, TimestampedModel):
         """Return the user's role based on group membership.
 
         ``admin`` wins over ``regular``; a user in neither group is treated as ``regular``.
+        A Django superuser (e.g. one made with ``createsuperuser``) is always an admin, so
+        the account created by the management command is immediately usable as an operator.
         """
+        if self.is_superuser:
+            return self.ADMIN_GROUP
         group_names = set(self.groups.values_list("name", flat=True))
         if self.ADMIN_GROUP in group_names:
             return self.ADMIN_GROUP

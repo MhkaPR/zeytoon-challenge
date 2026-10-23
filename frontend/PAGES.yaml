@@ -1,0 +1,73 @@
+index:
+  - main
+
+
+components:
+  company_card:
+    position: vertical
+    blocks:
+      - name: company explained
+
+
+
+page:
+  main:
+    blocks:
+      - name: header
+        position: horizontal
+        blocks:
+          - name: logo
+          - name: menu
+            desc: this menu is a button in the left and horizontal list of words of menu in the desktop mode
+            extra:
+              items:
+                - main page
+                - companies
+                - about us
+          - name: button
+            extra:
+              name: login
+              hints:
+                - if system is into mobile mode it MUST simple item of menu because of no space
+      - name: body
+        position: vertical
+        blocks:
+          - name: logo of brand
+          - name: search box
+            desc: this element if we click on it it goes to top and converts to a search page to user can search
+                  companies and services. when user types and searches plans and companies comes below.
+          - name: chips
+            position: horizontal
+            desc: bottom and near of search box to filter - fast - type of service
+            extra:
+              count: 4
+              extra:
+                items:
+                  - host
+                  - virtual server
+                  - dedicated server
+                  - CDN
+
+          - name: filter box
+            position: horizontal
+            desc: bottom of chips that user can filter plans immediately instead of searching
+            blocks:
+              - name: server locations
+                extra:
+                  type: combo box
+                  items: (dynamically based on above filter buttons)
+
+              - name: resource identifier
+                desc: some chooser for choosing value of ram cpu and hard traffic for filtering sorted  in small to big that this 
+                      data got from api. just for host and servers no CDN (just traffic)
+
+              - name: price range box
+                desc: it is a combo box that if user click on it , opens a rang field to can filter its need range of price
+
+
+
+
+
+
+
+

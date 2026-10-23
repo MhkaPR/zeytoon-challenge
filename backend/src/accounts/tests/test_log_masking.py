@@ -15,8 +15,8 @@ PHONE = "+989123456789"
 def test_mask_phone_keeps_only_prefix_and_suffix():
     masked = mask_phone(PHONE)
     assert PHONE not in masked
-    assert masked.startswith("9891")
-    assert masked.endswith("789")
+    # Rendered in national format so the owner still recognizes it, but never the full value.
+    assert masked == "0912***6789"
 
 
 def test_mask_text_redacts_phone_code_and_token():
