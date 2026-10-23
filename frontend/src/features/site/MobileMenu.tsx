@@ -36,7 +36,7 @@ export function MobileMenu() {
           <Menu className="size-5" />
         </Button>
         <Drawer.Backdrop>
-          <Drawer.Content placement="right">
+          <Drawer.Content placement="left">
             <Drawer.Dialog aria-label={strings.menuTitle} className="w-[300px] max-w-[85vw]">
               <Drawer.CloseTrigger />
               <Drawer.Header>
