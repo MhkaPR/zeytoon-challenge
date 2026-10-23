@@ -19,7 +19,7 @@ def test_verify_success_returns_tokens_and_redirect(api_client, issued_code):
     assert response.data["token_type"] == "Bearer"
     assert response.data["access_token"]
     assert response.data["redirect_to"] == "/plans"
-    assert "***" in response.data["user"]["phone_masked"]
+    assert "***" in response.data["user"]["phone"]
 
 
 def test_verify_wrong_code_message(api_client, issued_code):

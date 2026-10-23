@@ -63,12 +63,12 @@ Submit the code to complete login.
 
 **Responses**
 
-| Status | Meaning | Body |
-|--------|---------|------|
-| 200 | Logged in | `{ "access_token": "...", "token_type": "Bearer", "expires_in": 900, "redirect_to": "/plans/compare?ids=1,2", "user": { "phone_masked": "0912***6789", "role": "regular" } }` and a `Set-Cookie` refresh token |
-| 400 | Wrong, expired, or absent code | error `code: "otp_incorrect"`, `message` = "The code is incorrect" (FR-015) |
-| 409 | Blocked user | error `code: "user_blocked"`, block message + channels (FR-021) |
-| 429 | Too many attempts / locked out | error `code: "too_many_attempts"` or `"locked_out"` (FR-016, FR-017, FR-020) |
+| Status | Meaning | Body                                                                                                                                                                                                    |
+|--------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 200 | Logged in | `{ "access_token": "...", "token_type": "Bearer", "expires_in": 900, "redirect_to": "/plans/compare?ids=1,2", "user": { "phone": "09123456789", "role": "regular" } }` and a `Set-Cookie` refresh token |
+| 400 | Wrong, expired, or absent code | error `code: "otp_incorrect"`, `message` = "The code is incorrect" (FR-015)                                                                                                                             |
+| 409 | Blocked user | error `code: "user_blocked"`, block message + channels (FR-021)                                                                                                                                         |
+| 429 | Too many attempts / locked out | error `code: "too_many_attempts"` or `"locked_out"` (FR-016, FR-017, FR-020)                                                                                                                            |
 
 **Rules**
 - Invalid `return_url` never fails the login; `redirect_to` falls back to the default page
@@ -100,10 +100,10 @@ Invalidate the caller's tokens.
 
 Return the current identity and role, or an explicit guest result.
 
-| Status | Meaning | Body |
-|--------|---------|------|
-| 200 | Authenticated | `{ "authenticated": true, "user": { "phone_masked": "0912***6789", "role": "regular" } }` |
-| 200 | Guest | `{ "authenticated": false, "role": "guest" }` |
+| Status | Meaning | Body                                                                               |
+|--------|---------|------------------------------------------------------------------------------------|
+| 200 | Authenticated | `{ "authenticated": true, "user": { "phone": "09123456789", "role": "regular" } }` |
+| 200 | Guest | `{ "authenticated": false, "role": "guest" }`                                      |
 
 This endpoint is the canonical guest-vs-authenticated signal for the frontend (FR-010).
 

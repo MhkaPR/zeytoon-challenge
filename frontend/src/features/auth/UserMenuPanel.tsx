@@ -24,7 +24,7 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
           {strings.userMenuLabel}
         </Typography>
         <Typography className="text-[15px] font-medium">
-          {identity?.user?.phone_masked ?? strings.userMenuLabel}
+          {identity?.user?.phone ?? strings.userMenuLabel}
         </Typography>
       </div>
       <Separator />

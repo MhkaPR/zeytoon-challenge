@@ -36,7 +36,7 @@ describe("GuestGate", () => {
         ok: true,
         json: async () => ({
           authenticated: true,
-          user: { phone_masked: "+98***6789", role: "regular" },
+          user: { phone: "+989046993150", role: "regular" },
         }),
       }),
     );

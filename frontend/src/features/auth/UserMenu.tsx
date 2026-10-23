@@ -13,7 +13,7 @@ import { useSession } from "./SessionProvider";
 export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const { identity, signOut } = useSession();
-  const maskedPhone = identity?.user?.phone_masked;
+  const maskedPhone = identity?.user?.phone;
 
   async function handleAction(key: React.Key) {
     onNavigate?.();

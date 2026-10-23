@@ -21,7 +21,7 @@ describe("header", () => {
   it("shows a recognizable national-format phone and the menu button", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
-      json: async () => ({ authenticated: true, user: { phone_masked: "0912***6789", role: "regular" } }),
+      json: async () => ({ authenticated: true, user: { phon: "09123456789", role: "regular" } }),
     })));
     render(
       <SessionProvider>

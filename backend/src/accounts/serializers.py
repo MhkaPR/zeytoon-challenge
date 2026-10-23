@@ -63,7 +63,7 @@ class OtpVerifySerializer(serializers.Serializer):
 
 
 class UserIdentitySerializer(serializers.Serializer):
-    phone_masked = serializers.CharField()
+    phone = serializers.CharField()
     role = serializers.CharField()
 
 
