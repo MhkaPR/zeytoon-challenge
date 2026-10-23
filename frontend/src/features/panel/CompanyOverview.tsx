@@ -63,7 +63,7 @@ export function CompanyOverview({ company }: { company: Company }) {
 
   return (
     <div className="flex flex-col gap-[24px]">
-      <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="secondary">
+      <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="default">
         <div className="flex flex-wrap items-start justify-between gap-[16px]">
           <div className="flex items-center gap-[12px]">
             <span
@@ -113,7 +113,7 @@ export function CompanyOverview({ company }: { company: Company }) {
         </div>
       </Card>
 
-      <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="secondary">
+      <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="default">
         <div className="flex flex-col gap-[4px]">
           <Typography className="text-[18px] font-semibold" type="h2">
             {strings.plansGateTitle}
@@ -125,7 +125,7 @@ export function CompanyOverview({ company }: { company: Company }) {
         <PlanEligibilityNotice companyId={company.id} />
       </Card>
 
-      <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="secondary">
+      <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="default">
         <div className="flex flex-wrap items-center justify-between gap-[16px]">
           <div className="flex flex-col gap-[4px]">
             <Typography className="text-[18px] font-semibold" type="h2">

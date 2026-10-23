@@ -60,7 +60,7 @@
   --surface-foreground: var(--ds-ink);
   --surface-secondary: var(--ds-olive-50);
   --surface-secondary-foreground: var(--ds-ink);
-  --surface-tertiary: var(--ds-olive-50); 
+  --surface-tertiary: var(--ds-olive-50);
   --surface-tertiary-foreground: var(--ds-ink);
   --overlay: var(--ds-white);
   --overlay-foreground: var(--ds-ink);
@@ -123,4 +123,61 @@ body {
 
 ::selection {
   background: var(--geist-selection-text-color);
+}
+
+@layer components {
+  /* Default (neutral) */
+  .alert--default {
+    @apply bg-default-soft border-default-soft text-default-soft-foreground;
+  }
+  .alert--default .alert__title {
+    @apply text-default-soft-foreground font-semibold;
+  }
+  .alert--default .alert__description {
+    @apply text-default-soft-foreground opacity-80;
+  }
+
+  /* Accent */
+  .alert--accent {
+    @apply bg-accent-soft border-accent-soft text-accent-soft-foreground;
+  }
+  .alert--accent .alert__title {
+    @apply text-accent-soft-foreground font-semibold;
+  }
+  .alert--accent .alert__description {
+    @apply text-accent-soft-foreground opacity-80;
+  }
+
+  /* Success */
+  .alert--success {
+    @apply bg-success-soft border-success-soft text-success-soft-foreground;
+  }
+  .alert--success .alert__title {
+    @apply text-success-soft-foreground font-semibold;
+  }
+  .alert--success .alert__description {
+    @apply text-success-soft-foreground opacity-80;
+  }
+
+  /* Warning */
+  .alert--warning {
+    @apply bg-warning-soft border-warning-soft text-warning-soft-foreground;
+  }
+  .alert--warning .alert__title {
+    @apply text-warning-soft-foreground font-semibold;
+  }
+  .alert--warning .alert__description {
+    @apply text-warning-soft-foreground opacity-80;
+  }
+
+  /* Danger */
+  .alert--danger {
+    @apply bg-danger-soft border-danger-soft text-danger-soft-foreground;
+  }
+  .alert--danger .alert__title {
+    @apply text-danger-soft-foreground font-semibold;
+  }
+  .alert--danger .alert__description {
+    @apply text-danger-soft-foreground opacity-80;
+  }
 }

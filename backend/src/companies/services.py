@@ -33,8 +33,11 @@ def _seed_step_progress(company):
     for index, step in enumerate(definitions):
         if index == 0:
             state = CompanyStepProgress.State.APPROVED
-        else:
+        elif index == 1:
+            state = CompanyStepProgress.State.OPEN
+        else :
             state = CompanyStepProgress.State.LOCKED
+
         CompanyStepProgress.objects.create(
             company=company,
             step_key=step["key"],

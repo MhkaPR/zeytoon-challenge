@@ -9,6 +9,7 @@ import { CompanyOverview } from "@/src/features/panel/CompanyOverview";
 import { CompanySwitcher } from "@/src/features/panel/CompanySwitcher";
 import { useActiveCompany } from "@/src/features/panel/useActiveCompany";
 import { strings } from "@/src/lib/i18n/strings";
+import NextLink from "next/link";
 
 /**
  * Panel route for a selected company. The backend resolves full-panel vs continue view and
@@ -38,9 +39,8 @@ export default function CompanyPanelPage({
         </div>
       ) : (
         <>
-          {companies.length > 1 && <CompanySwitcher activeId={id} companies={companies} />}
           {entry?.view === "continue_registration" ? (
-            <ContinueRegistration 
+            <ContinueRegistration
               company={entry.company}
               currentStep={entry.current_step}
               onContinue={(companyId) => router.push(`/panel/${companyId}`)}

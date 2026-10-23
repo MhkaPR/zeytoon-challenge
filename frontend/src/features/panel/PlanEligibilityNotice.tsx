@@ -31,7 +31,7 @@ export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
   if (!eligibility) return null;
   if (eligibility.allowed) {
     return (
-      <Alert status="accent">
+      <Alert status="default" >
         <Alert.Indicator />
         <Alert.Content>
           <Alert.Description>{strings.plansGateAllowed}</Alert.Description>
