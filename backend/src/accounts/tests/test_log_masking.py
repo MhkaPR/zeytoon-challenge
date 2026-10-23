@@ -43,7 +43,7 @@ def test_otp_flow_logs_do_not_leak_phone(issued_code, caplog):
     assert caplog.records, "expected log records"
     for record in caplog.records:
         # The service logs a masked identifier in ``extra`` and never the raw phone.
-        phone_masked = getattr(record, "phone_masked", None)
-        if phone_masked is not None:
-            assert PHONE not in phone_masked
+        phone = getattr(record, "phone", None)
+        if phone is not None:
+            assert PHONE not in phone
         assert PHONE not in record.getMessage()

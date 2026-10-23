@@ -13,7 +13,7 @@ import { useSession } from "./SessionProvider";
 export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const { identity, signOut } = useSession();
-  const maskedPhone = identity?.user?.phone_masked;
+  const phone = identity?.user?.phone;
 
   async function handleAction(key: React.Key) {
     onNavigate?.();
@@ -30,7 +30,7 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <Dropdown>
       <Button className="gap-[6px]" variant="ghost">
-        <span className="font-medium text-foreground">{maskedPhone ?? strings.userMenuLabel}</span>
+        <span className="font-medium text-foreground">{phone ?? strings.userMenuLabel}</span>
         <ChevronDown aria-hidden className="size-4 text-muted" />
       </Button>
       <Dropdown.Popover>

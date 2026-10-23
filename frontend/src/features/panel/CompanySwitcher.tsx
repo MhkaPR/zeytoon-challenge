@@ -3,7 +3,7 @@
 import { Chip } from "@heroui/react";
 import { Building2, Check } from "lucide-react";
 import NextLink from "next/link";
-import { buttonVariants } from "@heroui/react"; // Import the variant function
+import { buttonVariants } from "@heroui/react";
 
 import type { SwitcherEntry } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
@@ -21,20 +21,19 @@ export function CompanySwitcher({
 
   return (
     <nav aria-label={strings.switchCompany} className="w-full">
-      <ul className="-mx-[4px] flex snap-x snap-mandatory gap-[12px] overflow-x-auto px-[4px] pb-[4px]">
+      <ul className="flex flex-col gap-[12px] sm:-mx-1 sm:flex-row sm:flex-wrap sm:px-[4px] sm:pb-[4px]">
         {companies.map((entry) => {
           const active = entry.id === activeId;
 
           return (
-            <li key={entry.id} className="snap-start">
+            <li key={entry.id} className="sm:snap-start">
               <NextLink
                 href={`/panel/${entry.id}`}
                 aria-current={active ? "page" : undefined}
-                // Apply the button's visual styles directly to the link
                 className={buttonVariants({
                   variant: "secondary",
                   className:
-                    "flex h-auto w-[220px] flex-col items-stretch justify-start gap-[10px] p-[16px] text-left",
+                    "flex h-auto w-full flex-col items-stretch justify-start gap-[10px] p-[16px] text-left sm:w-[220px]",
                 })}
               >
                 <div className="flex items-center gap-[8px]">

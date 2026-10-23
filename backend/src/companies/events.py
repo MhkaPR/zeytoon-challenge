@@ -16,7 +16,7 @@ def _emit(event, company=None, actor=None, **extra):
     if company is not None:
         payload["company_id"] = company.pk
         if getattr(company, "phone_number", None):
-            payload["phone_masked"] = mask_phone(company.phone_number)
+            payload["phone"] = company.phone_number
     if actor is not None:
         payload["actor_id"] = getattr(actor, "pk", None)
     payload.update(extra)

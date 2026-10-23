@@ -133,7 +133,7 @@ and role.
 ### Implementation for User Story 2
 
 - [X] T050 [US2] Implement the session/role resolver in `backend/src/accounts/selectors.py` (returns guest when there is no valid token or the user is blocked/revoked; otherwise the user's group role)
-- [X] T051 [US2] Implement `GET /api/v1/auth/session` in `backend/src/accounts/api.py` returning `{authenticated, user{phone_masked, role}}` or `{authenticated: false, role: "guest"}`
+- [X] T051 [US2] Implement `GET /api/v1/auth/session` in `backend/src/accounts/api.py` returning `{authenticated, user{phone, role}}` or `{authenticated: false, role: "guest"}`
 - [X] T052 [US2] Expose `get_user_role`/`is_authenticated` through `backend/src/accounts/interfaces.py` for other modules
 - [X] T053 [P] [US2] Implement the frontend guest-state signal and login prompt in `frontend/src/lib/session/` and `frontend/src/features/auth/`
 - [X] T054 [US2] Run `pytest backend/src/accounts/tests` and `yarn test` in `frontend/` and fix failures until the User Story 2 suite is green

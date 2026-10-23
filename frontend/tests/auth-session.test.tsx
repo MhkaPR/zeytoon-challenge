@@ -31,7 +31,7 @@ function backend() {
         ok: true,
         json: async () =>
           ok
-            ? { authenticated: true, user: { phone_masked: "+98***6789", role: "regular" } }
+            ? { authenticated: true, user: { phone: "+989123456789", role: "regular" } }
             : { authenticated: false, role: "guest" },
       };
     }
@@ -46,7 +46,7 @@ function backend() {
           token_type: "Bearer",
           expires_in: 60,
           redirect_to: "/",
-          user: { phone_masked: "+98***6789", role: "regular" },
+          user: { phone: "+989123456789", role: "regular" },
         }),
       };
     }

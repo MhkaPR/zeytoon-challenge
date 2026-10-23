@@ -13,7 +13,7 @@ export type Role = "guest" | "regular" | "admin";
 export interface SessionIdentity {
   authenticated: boolean;
   role?: Role;
-  user?: { phone_masked: string; role: Role };
+  user?: { phone: string; role: Role };
 }
 
 export interface VerifyResult {
@@ -21,7 +21,7 @@ export interface VerifyResult {
   token_type: string;
   expires_in: number;
   redirect_to: string;
-  user: { phone_masked: string; role: Role };
+  user: { phone: string; role: Role };
 }
 
 export interface ApiErrorBody {

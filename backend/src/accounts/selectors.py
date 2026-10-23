@@ -37,7 +37,7 @@ def resolve_current_user(request):
         return {"authenticated": False, "role": GUEST}
     return {
         "authenticated": True,
-        "user": {"phone_masked": mask_phone(user.phone_number), "role": user.role()},
+        "user": {"phone": user.phone_number, "role": user.role()},
     }
 
 

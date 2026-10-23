@@ -81,7 +81,7 @@ class OtpVerifyView(APIView):
             "token_type": "Bearer",
             "expires_in": result["tokens"]["expires_in"],
             "redirect_to": result["redirect_to"],
-            "user": {"phone_masked": mask_phone(user.phone_number), "role": user.role()},
+            "user": {"phone": user.phone_number, "role": user.role()},
         }
         response = Response(body, status=status.HTTP_200_OK)
         return _set_refresh_cookie(response, result["tokens"]["refresh_token"])
