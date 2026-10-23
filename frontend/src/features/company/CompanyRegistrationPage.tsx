@@ -10,7 +10,7 @@ import { CompanyForm } from "./CompanyForm";
 
 /** The two registration steps, shown below the intro so the owner knows what is coming. */
 const STEPS = [
-  { index: "۱", title: strings.stepCompanyInfo, body: strings.registerStepInfoDesc },
+  { index: "۱", title: strings.stepCompanyInfo, body: strings.registerStepInfoDesc},
   { index: "۲", title: strings.stepVerification, body: strings.registerStepVerificationDesc },
 ] as const;
 
@@ -42,17 +42,6 @@ export function CompanyRegistrationPage() {
           {strings.registerCompanyIntro}
         </Typography>
       </header>
-
-      <Card className="flex flex-col gap-[16px] p-[24px]" variant="secondary">
-        <Card.Title>{strings.registerCompanyHintsTitle}</Card.Title>
-        <ul className="flex flex-wrap gap-[8px]">
-          {HINTS.map((hint) => (
-            <li key={hint}>
-              <Chip variant="soft">{hint}</Chip>
-            </li>
-          ))}
-        </ul>
-      </Card>
 
       <section className="flex flex-col gap-[16px]">
         <Typography className="text-[24px] font-semibold" type="h2">

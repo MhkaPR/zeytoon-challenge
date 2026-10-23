@@ -180,9 +180,15 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": env("THROTTLE_ANON", "60/min"),
         "user": env("THROTTLE_USER", "120/min"),
-        "otp_request_phone": env("THROTTLE_OTP_REQUEST_PHONE", "5/hour"),
+        # Per-phone ceilings. These are intentionally loose enough for local development
+        # (repeated re-requests while testing) while still bounding abuse; FR-019 requires
+        # this limit to exist, not a specific number.
+        "otp_request_phone": env("THROTTLE_OTP_REQUEST_PHONE", "20/hour"),
         "otp_verify_phone": env("THROTTLE_OTP_VERIFY_PHONE", "10/min"),
-        "otp_source": env("THROTTLE_OTP_SOURCE", "30/hour"),
+        # Per-source (IP + user-agent) budget for the OTP request/verify endpoints. This is
+        # deliberately generous because it is shared by everyone behind one NAT/dev machine;
+        # the per-phone limits above are what actually stop credential abuse.
+        "otp_source": env("THROTTLE_OTP_SOURCE", "120/hour"),
     },
     "EXCEPTION_HANDLER": "accounts.exceptions.api_exception_handler",
 }

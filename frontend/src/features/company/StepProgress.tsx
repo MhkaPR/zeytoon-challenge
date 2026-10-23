@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Lock } from "lucide-react";
+import { Check, Clock, Lock, X } from "lucide-react";
 
 import type { StepProgress as StepProgressItem } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
@@ -38,6 +38,14 @@ function resolveState(state: string, completed: boolean): StepState {
       icon: <Lock className="size-4" />,
       ring: "ring-border",
     };
+  }
+  else if ( state === "rejected") {
+    return {
+      label: strings.stepRejected,
+      tone: "bg-danger text-white",
+      icon: <X className="size-4"/>,
+      ring: "ring-border",
+    }
   }
   return {
     label: strings.stepPending,

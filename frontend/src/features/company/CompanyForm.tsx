@@ -55,7 +55,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
       </Card.Header>
       <Card.Content className="mt-[16px]">
       <form className="flex flex-col gap-[16px]" onSubmit={submit}>
-        <TextField name="domain" value={fields.domain} onChange={(v) => update("domain", v)}>
+        <TextField name="domain" value={fields.domain} onChange={(v) => update("domain", v)} isRequired>
           <Label>{strings.companyDomain}</Label>
           <Input />
         </TextField>
@@ -63,6 +63,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           name="company_name"
           value={fields.company_name}
           onChange={(v) => update("company_name", v)}
+          isRequired
         >
           <Label>{strings.companyName}</Label>
           <Input />
@@ -71,6 +72,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           name="representative_name"
           value={fields.representative_name}
           onChange={(v) => update("representative_name", v)}
+          isRequired
         >
           <Label>{strings.representativeName}</Label>
           <Input />
@@ -79,6 +81,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           name="phone_number"
           value={fields.phone_number}
           onChange={(v) => update("phone_number", v)}
+          isRequired
         >
           <Label>{strings.companyPhone}</Label>
           <Input />

@@ -33,3 +33,12 @@ def test_source_throttle_key_uses_ip_and_user_agent():
         META = {"REMOTE_ADDR": "1.2.3.4", "HTTP_USER_AGENT": "pytest"}
 
     assert throttles._client_source(_Req()) == "1.2.3.4:pytest"
+
+
+def test_regression_token_refresh_is_not_source_throttled():
+    """Bug: ``/token/refresh`` shared the OTP per-source budget, so ordinary page loads
+    (which refresh on every reload) exhausted the 30/hour OTP limit and locked the user out.
+    """
+    from accounts.api import TokenRefreshView
+
+    assert throttles.OtpSourceThrottle not in TokenRefreshView.throttle_classes
