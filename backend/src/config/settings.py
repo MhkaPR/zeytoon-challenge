@@ -61,10 +61,14 @@ INSTALLED_APPS = [
     "guardian",
     "constance",
     "drf_spectacular",
+    "storages",
     # Local
     "utils",
     "accounts",
     "companies",
+    "catalog",
+    "notifications",
+    "admin_console",
 ]
 
 MIDDLEWARE = [
@@ -280,6 +284,59 @@ CONSTANCE_CONFIG = {
         "You have no companies yet. Register a new company to get started.",
         "Copy for the company panel empty state.",
     ),
+    # Admin Console — Company Approval & Site Data Maintenance (spec 003)
+    "REPLAY_PERIOD_HOURS": (24, "Hours between scheduled replays for one link."),
+    "REPLAY_BATCH_SIZE": (50, "Maximum links selected per scheduled replay cycle."),
+    "FAILURE_RATE_THRESHOLD": (
+        0.5,
+        "Failure rate (0..1) over the window that opens a link alert.",
+    ),
+    "FAILURE_RATE_WINDOW_RUNS": (5, "Trailing replay runs used to derive a failure rate."),
+    "LABELING_ENABLED": (False, "Whether LLM table labeling is allowed (off by default)."),
+    "LABELING_PROVIDER": ("openai", "LLM labeling provider key."),
+    "LABELING_MODEL": ("", "LLM model used for labeling (empty = provider default)."),
+    "LABELING_LANGUAGE": ("fa", "Language requested for generated labels."),
+    "LABELING_BATCH_SIZE": (10, "Tables labeled per LLM call."),
+    "SITEMAP_FETCH_TIMEOUT_SECONDS": (15, "Timeout for sitemap/robots requests."),
+    "SITEMAP_MAX_INDEX_DEPTH": (3, "Maximum sitemap-index nesting to follow."),
+    "LINK_DISCOVERY_MAX_LINKS": (500, "Maximum candidate links stored per discovery run."),
+    "CLEANING_RULES": ({}, "Per-field cleaning rules keyed by plan schema field."),
+    "CLEANING_UNIT_FAMILIES": (
+        {
+            "data_size": {
+                "base": "MB",
+                "units": {"KB": 0.001, "MB": 1, "GB": 1000, "TB": 1000000},
+                "aliases": {"K": "KB", "G": "GB", "T": "TB", "گیگ": "GB", "گیگابایت": "GB", "ترابایت": "TB", "مگابایت": "MB"},
+            },
+            "currency": {
+                "base": "IRR",
+                "units": {"IRR": 1, "TOMAN": 10},
+                "aliases": {"ریال": "IRR", "تومان": "TOMAN", "تومن": "TOMAN"},
+            },
+            "rate": {
+                "base": "per_second",
+                "units": {"per_second": 1, "per_minute": 1 / 60},
+                "aliases": {"PERSEC": "per_second", "PERSECOND": "per_second", "PERMIN": "per_minute", "PERMINUTE": "per_minute"},
+            },
+        },
+        "Unit-family conversion tables used by the cleaning engine.",
+    ),
+    "CAPTURE_MODES_ALLOWED": (
+        ["interactive", "fixed_duration"],
+        "Capture modes the console accepts (FR-013).",
+    ),
+    "CAPTURE_FIXED_DURATION_MS": (15000, "Default fixed-duration capture length in ms."),
+    "PUBLISH_AUTO_THRESHOLD": (0.0, "Cleaning confidence at/above which publication is automatic."),
+    "TABLE_DISCOVERY_MIN_ROWS": (2, "Minimum rows for a domtrack table candidate."),
+    "TABLE_DISCOVERY_MIN_COLS": (2, "Minimum columns for a domtrack table candidate."),
+    "TABLE_DISCOVERY_DEDUPE": (True, "Whether domtrack de-duplicates discovered tables."),
+    "REPLAY_MODE": ("clean", "domtrack replay mode (clean keeps widgets from false diffs)."),
+    "REPLAY_SPEED": (1.0, "domtrack replay speed multiplier."),
+    "REPLAY_TIME_POLICY": ("replay", "domtrack replay time policy."),
+    "REPLAY_THIRD_PARTY_DETECTION": (
+        True,
+        "Whether domtrack's third-party detector suppresses chat/support widget noise.",
+    ),
 }
 
 
@@ -326,3 +383,55 @@ MAILERS = {
         "BACKEND": "django.core.mail.backends.console.EmailBackend",
     },
 }
+
+
+# Artifact storage (spec 003, research R4): domtrack traces and related artifacts are
+# written through Django's STORAGES API. S3-compatible object storage is the default;
+# a developer/devops can switch the backend purely from settings (no code change) by
+# setting ARTIFACT_STORAGE_BACKEND=filesystem (see the commented alternative below).
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", "torob-artifacts")
+AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL")
+AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "ir-thr-ba1")
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
+AWS_S3_FILE_OVERWRITE = False
+AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", False)
+
+ARTIFACT_STORAGE_BACKEND = env("ARTIFACT_STORAGE_BACKEND", "s3")
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage"
+        if ARTIFACT_STORAGE_BACKEND == "s3"
+        else "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+# Local-filesystem alternative (select with ARTIFACT_STORAGE_BACKEND=filesystem):
+#     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage",
+#                 "OPTIONS": {"location": env("MEDIA_ROOT", str(BASE_DIR / "media"))}},
+
+
+# Django Tasks framework (Django 6). No Celery anywhere (research R2).
+TASKS = {
+    "default": {
+        "BACKEND": env(
+            "TASKS_BACKEND", "django.tasks.backends.immediate.ImmediateBackend"
+        ),
+    }
+}
+
+
+# Local domtrack REST API on the operator's machine (research R3/R7). Port guidance
+# lives in the quickstart because the default port can collide with the dev server.
+DOMTRACK_LOCAL_API_URL = env("DOMTRACK_LOCAL_API_URL", "http://localhost:8765")
+DOMTRACK_LOCAL_API_TIMEOUT_SECONDS = int(env("DOMTRACK_LOCAL_API_TIMEOUT_SECONDS", "600"))
+
+# Transparent crawler user-agent with a contact URL (Principle X).
+CRAWLER_USER_AGENT = env(
+    "CRAWLER_USER_AGENT",
+    "TorobPlanBot/1.0 (+https://example.com/bot; contact: support@example.com)",
+)
+CRAWLER_REQUEST_DELAY_SECONDS = float(env("CRAWLER_REQUEST_DELAY_SECONDS", "1.0"))
