@@ -1,10 +1,11 @@
 "use client";
 
 import { Button, Dropdown, Label } from "@heroui/react";
-import { Building2, ChevronDown, LogOut } from "lucide-react";
+import { Building2, ChevronDown, ClipboardCheck, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { strings } from "@/src/lib/i18n/strings";
+import { opsStrings, strings } from "@/src/lib/i18n/strings";
+import { identityRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
 
@@ -19,6 +20,10 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
     onNavigate?.();
     if (key === "companies") {
       router.push("/panel");
+      return;
+    }
+    if (key === "ops") {
+      router.push("/ops");
       return;
     }
     if (key === "logout") {
@@ -39,6 +44,12 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
             <Building2 className="size-4 shrink-0 text-muted" />
             <Label>{strings.myCompanies}</Label>
           </Dropdown.Item>
+          {identityRole(identity) === "admin" && (
+            <Dropdown.Item id="ops" textValue={opsStrings.console}>
+              <ClipboardCheck className="size-4 shrink-0 text-muted" />
+              <Label>{opsStrings.console}</Label>
+            </Dropdown.Item>
+          )}
           <Dropdown.Item id="logout" textValue={strings.logout} variant="danger">
             <LogOut className="size-4 shrink-0 text-danger" />
             <Label>{strings.logout}</Label>

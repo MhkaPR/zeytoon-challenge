@@ -35,3 +35,12 @@ def test_unknown_path_falls_back():
 @override_config(RETURN_URL_ALLOWLIST=["/"], DEFAULT_RETURN_PATH="/")
 def test_protocol_relative_falls_back():
     assert resolve_return_url("//evil.example.com") == "/"
+
+
+@override_config(
+    RETURN_URL_ALLOWLIST=["/", "/panel", "/ops"],
+    DEFAULT_RETURN_PATH="/",
+)
+def test_ops_console_paths_are_honored():
+    assert resolve_return_url("/ops") == "/ops"
+    assert resolve_return_url("/ops/links/1/tables") == "/ops/links/1/tables"

@@ -243,7 +243,7 @@ In the background, the system re-runs extraction for maintained sites on a perio
 - **FR-038**: Replay MUST be performed with domtrack's replay capability, recording the replayed page as a fresh trace and using domtrack's compare/diff capability to extract the differences against the previous trace; the system MUST NOT implement its own replay or diffing.
 - **FR-039**: The system MUST apply extracted differences to update the published data.
 - **FR-040**: The system MUST track a failure rate per link, derived from the replay failures domtrack reports, and MUST raise a notification identifying a specific link as needing an update when that failure rate rises past a configurable threshold.
-- **FR-041**: When a link's failure rate rises past the configured threshold, the system MUST notify the recipients on an admin-configurable recipient list, and MUST deliver each alert both in-app and by email. An admin MUST be able to add and remove recipients.
+- **FR-041**: When a link's failure rate rises past the configured threshold, the system MUST notify the recipients on an admin-configurable recipient list, and MUST deliver each alert in-app. An admin MUST be able to add and remove recipients. Email delivery is explicitly out of scope by project decision.
 - **FR-042**: The system MUST let the operator re-run the maintenance stages (capture, extract, map, clean, publish) for a link flagged as needing an update.
 
 **Cross-cutting**
@@ -266,7 +266,7 @@ In the background, the system re-runs extraction for maintained sites on a perio
 - **Extraction Recipe**: The saved mapping for a link: for each schema field, the source selector and the combination formula. Reused by every replay.
 - **Published Record**: A cleaned, filterable unit of data placed on the main site, carrying provenance to its site, link, trace, and recipe.
 - **Replay Run**: A scheduled domtrack replay of a link's trace that records the current page, diffs it against the previous trace via domtrack compare, and yields updates to published data plus a failure count.
-- **Failure Alert / Notification**: A message raised when a link's failure rate crosses the configured threshold, naming the link and prompting the operator to re-run its stages. Delivered in-app and by email to the admin-configurable recipient list.
+- **Failure Alert / Notification**: A message raised when a link's failure rate crosses the configured threshold, naming the link and prompting the operator to re-run its stages. Delivered in-app to the admin-configurable recipient list.
 
 ## domtrack Feature Reuse *(mandatory)*
 
@@ -320,6 +320,6 @@ This table is the contract for FR-000: every stage that has a domtrack equivalen
 - **Cleaning targets filterability** (consistent units, numbers, ranges, and categories) rather than editorial quality, and is automated first with human handling only for exceptions; it is the one data stage with no domtrack equivalent.
 - **Replay, compare, and diff run server-side on a configured period**; the operator is involved only when a link's failure rate crosses the threshold and it must be re-mapped.
 - **Labeling is an optional, admin-gated use of domtrack's labeling**, and it never gates any other stage.
-- **Failure alerts go to an admin-configurable recipient list** (FR-041), delivered both in-app and by email; an admin can add and remove recipients.
+- **Failure alerts go to an admin-configurable recipient list** (FR-041), delivered in-app only (email is out of scope by project decision); an admin can add and remove recipients.
 - **Payment/charging, public search ranking and results, the ticket system, and the end-user-facing crawl that serves views are owned elsewhere**; this feature consumes their states and produces clean published data.
 - **Operator identity and authentication are provided by the existing login feature**; this feature assumes an authenticated operator actor and does not re-specify authentication.

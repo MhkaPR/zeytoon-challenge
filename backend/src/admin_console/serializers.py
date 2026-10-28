@@ -107,6 +107,9 @@ class ApprovalQueueSerializer(serializers.Serializer):
 
 
 class VerificationDecisionInputSerializer(serializers.Serializer):
+    class Meta:
+        ref_name = "OpsVerificationDecisionInput"
+
     outcome = serializers.ChoiceField(choices=["approved", "not_approved"])
     note = serializers.CharField(required=False, allow_blank=True)
 

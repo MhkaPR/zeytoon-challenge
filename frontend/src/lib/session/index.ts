@@ -10,6 +10,7 @@ import {
   getSession,
   refreshAccessToken,
   type SessionIdentity,
+  type Role,
 } from "@/src/lib/api/auth";
 
 let accessToken: string | null = null;
@@ -39,4 +40,13 @@ export async function loadIdentity(): Promise<SessionIdentity> {
 
 export function isGuest(identity: SessionIdentity): boolean {
   return identity.authenticated !== true;
+}
+
+/**
+ * The effective role of an identity. The backend puts it both at the top level and inside
+ * ``user``; older payloads only carry ``user.role``, so fall back to that.
+ */
+export function identityRole(identity: SessionIdentity | null): Role {
+  if (!identity?.authenticated) return "guest";
+  return identity.user?.role ?? identity.role ?? "guest";
 }

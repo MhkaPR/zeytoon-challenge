@@ -20,6 +20,29 @@ duplicating their details.
   server.
 - Optional, for labeling only: an LLM provider API key in the environment.
 
+### Create the operator account
+
+The console is role-gated: only a user whose `User.role()` is `admin` (superuser or member
+of the `admin` group) may open `/ops`. Create one from the backend shell, then log in with
+the same phone number through the normal SMS OTP dialog:
+
+```bash
+python manage.py shell -c "
+from accounts.models import User, ensure_role_groups
+ensure_role_groups()
+user, _ = User.objects.get_or_create(phone_number='+989123456789', defaults={'username': '+989123456789'})
+user.is_staff = True
+user.is_superuser = True
+user.save()
+print(user.phone_number, user.role())
+"
+```
+
+After signing in, the header user menu shows an **ops console** item for admins. Opening
+`/ops` directly is supported: when signed out it shows the operator notice plus a login
+button, and after login the app returns you to `/ops` (the path is in
+`RETURN_URL_ALLOWLIST`). A signed-in non-operator is redirected to `/panel`.
+
 ## Setup
 
 ```bash
@@ -49,6 +72,51 @@ yarn dev                # open http://localhost:3000/ops
 
 Use the local SQLite/Redis defaults. The admin area is role-gated; log in with the operator
 account before opening `/ops`.
+
+## Operator Console README
+
+### `/ops` vs Django `/admin`
+
+- `/ops` is the operator console built in this feature (Next.js, Persian/RTL). It is the
+  only place operators approve companies and run the site-maintenance pipeline. Every API
+  call goes to `/api/v1/ops/` and requires the `admin` role; a signed-in non-operator is
+  redirected back to `/panel`.
+- `/admin` remains Django's built-in admin site for low-level reads of the registered
+  models (sites, links, captures, traces, recipes, replay runs, alerts, LLM ledger,
+  notifications and recipients). Do not treat `/admin` as the operator workflow.
+
+### Local `domtrack serve` prerequisite and port
+
+Capture, replay/compare, diff, HTML rebuild, table extraction, and labeling are all served
+by domtrack; the console never reimplements them. Capture requires a local domtrack service
+on the operator's machine:
+
+```bash
+domtrack serve --port 8787
+export DOMTRACK_LOCAL_API_URL=http://127.0.0.1:8787
+```
+
+Do not use port 8000, which is the Django dev server. If domtrack is unreachable, capture
+fails with `domtrack_unreachable`, the link does not advance, and the operator can retry or
+use the manual trace-upload fallback. Stored artifacts are domtrack's native trace files.
+
+### Artifact storage switch (`STORAGES`)
+
+The default `STORAGES["default"]` is S3-compatible through `django-storages`. Configure it
+with `AWS_STORAGE_BUCKET_NAME`, `AWS_S3_ENDPOINT_URL`, `AWS_S3_REGION_NAME`,
+`AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`. Only the artifact body lives in the store;
+the database keeps the UUID-based `storage_key`.
+
+For a developer machine without S3, switch `STORAGES["default"]` to Django's filesystem
+backend in `backend/src/config/settings.py` (the commented local alternative) and set a
+local `MEDIA_ROOT`. No pipeline code changes are needed: artifact reads/writes go through
+`admin_console/artifacts.py`.
+
+### Notifications
+
+Alerts are delivered **in-app only** by project decision. Recipients are admin-managed at
+`/api/v1/ops/notification-recipients`, and each alert writes one in-app delivery per active
+recipient. There is no email channel or SMTP configuration.
 
 ## Validation Scenarios
 
@@ -163,9 +231,8 @@ account before opening `/ops`.
 4. **Expected**: the corresponding published record is retired rather than retaining a stale
    value (FR-036).
 5. Force a link's failure rate past the configured threshold (domtrack reports the failures).
-6. **Expected**: one open `FailureAlert` names the link, an in-app notification appears, and
-   an email is sent to the configured recipient list — both delivered by the
-   `notifications` app; the alert is not repeated on every subsequent replay until it
+6. **Expected**: one open `FailureAlert` names the link and an in-app notification appears
+   for each active recipient; the alert is not repeated on every subsequent replay until it
    resolves (FR-040, FR-041, SC-013).
 7. Add and remove a notification recipient as an admin.
 8. **Expected**: both operations succeed; removed recipients are deactivated without
@@ -194,3 +261,50 @@ served by domtrack.
 Exercise approval, capture, extraction, mapping, publishing, and replay, then inspect the
 structured JSON logs: every event is structured, hot paths are sampled/aggregated rather
 than logged per item, and no log entry contains a phone number or trace content.
+
+## Validation Results (2026-10-29)
+
+Automated coverage was run locally against SQLite + Redis:
+
+```bash
+DJANGO_SETTINGS_MODULE=config.settings PYTHONPATH=backend/src \
+  .venv/bin/python -m pytest backend/src/admin_console/tests backend/src/notifications/tests -q
+# 121 passed
+
+cd frontend && npx vitest run tests/ops-*.test.tsx
+# 8 files, 26 tests passed
+
+DJANGO_SETTINGS_MODULE=config.settings PYTHONPATH=backend/src \
+  .venv/bin/python -m pytest backend/src -q
+# 229 passed, 6 failed — all 6 are pre-existing feature-002 company/OTP tests
+# (test_step_locking, test_registration, test_quickstart v6/v12,
+#  test_log_masking, test_contract_otp_verify), unrelated to this feature
+
+cd frontend && yarn test
+# 13 files passed, 40 tests passed; 2 pre-existing header/auth phone-display
+# failures and one pre-existing main-page suite import failure (missing FilterBox)
+```
+
+- **V1–V8 (API/domain level)**: passing. The feature suite covers approval authorization and
+  append-only decisions (`test_approval_*`), site discovery/manual/review, capture and trace
+  storage, extraction, labeling gates and ceiling, recipe save/restore and Excel formulas,
+  cleaning/publishing provenance, replay diff/scheduler/failure alerts, and notification
+  delivery.
+- **Operator UI**: the eight console test files cover the approval queue and duplicate
+  warning, sitemap/manual onboarding and keep/remove review, capture modes/fallback/blocked
+  advance, table and zero-table states, labeling settings, mapping restore and completeness,
+  cleaning exceptions/publishing, and replay/alerts/recipients.
+- **Manual domtrack `serve` capture/replay**: not executed in this environment (no local
+  Chrome/domtrack service). The same paths are exercised in backend tests through the
+  domtrack adapter, and the reuse guard test confirms every domtrack import is confined to
+  `admin_console/domtrack_client.py`.
+- **Full backend suite**: 229 passed and 6 failed; the six failures are pre-existing in
+  feature-002 company/OTP code and were not touched by this feature (no catalog test
+  directory exists, so the full `backend/src` tree replaces the task's catalog path).
+- **Frontend full suite**: every console test passes; the remaining failures are the
+  pre-existing header/auth phone rendering tests and a missing `FilterBox` import in
+  `tests/main-page.test.tsx`.
+- **Production build**: `tsc --noEmit` is clean. `next build` could not complete in this
+  sandbox because Turbopack's PostCSS worker cannot bind a local port (`EPERM`); the webpack
+  fallback reaches compilation and stops on a pre-existing server/client boundary in
+  `app/about/page.tsx`. Neither failure is introduced by this feature.

@@ -386,10 +386,10 @@ general-purpose **`notifications` app**; this path is a thin console facade over
 `notifications/interfaces.py` (or the notifications app's own admin endpoints), so other
 features reuse the same recipients and delivery machinery. `DELETE` deactivates rather than
 erases (`is_active=false`) so delivered-notification history is preserved. Alerts raised by
-replay are delivered on **both** the in-app and email channels.
+replay are delivered on the **in-app** channel (email is out of scope by project decision).
 
-**POST request**: `{ "email": "ops@example.com", "name": "Ops" }` → `201`.
-A duplicate active email returns `409` `code: "alerts_configured_recipient_exists"`.
+**POST request**: `{ "user_id": 42, "name": "Ops" }` → `201`.
+A duplicate active user returns `409`/`410` per the notifications contract.
 
 ## 9. Console settings and observability (FR-043..FR-045)
 

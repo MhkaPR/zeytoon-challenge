@@ -24,4 +24,5 @@ def test_session_returns_user_with_token(api_client, issued_code):
     response = api_client.get(URL, HTTP_AUTHORIZATION=f"Bearer {access}")
     assert response.status_code == 200
     assert response.data["authenticated"] is True
+    assert response.data["role"] == "regular"
     assert response.data["user"]["role"] == "regular"

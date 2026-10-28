@@ -256,7 +256,7 @@ CONSTANCE_CONFIG = {
         "Communication channels shown to a blocked user.",
     ),
     "RETURN_URL_ALLOWLIST": (
-        ["/", "/plans", "/compare", "/search"],
+        ["/", "/plans", "/compare", "/search", "/panel", "/ops"],
         "Allowed relative return targets after login.",
     ),
     "DEFAULT_RETURN_PATH": ("/", "Fallback page when the return target is invalid."),

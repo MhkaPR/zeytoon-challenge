@@ -68,7 +68,7 @@ session state machine (no advance without a stored trace), extraction determinis
 empty-table flagging, labeling gating + ceiling stop, recipe completeness, formula validity at
 the boundary, and restore-on-reopen, cleaning outcomes/exceptions, publishing through the
 `catalog` interface with provenance and removal handling, notification fan-out through the
-`notifications` app (in-app + email), replay/compare/diff application, failure-rate threshold
+`notifications` app (in-app only; email is out of scope by project decision), replay/compare/diff application, failure-rate threshold
 and one-shot alerting, artifact storage through a `STORAGES`-backed backend, constance-driven
 tuning, and log masking (SC-018). A dedicated import test asserts every `domtrack` import lives
 in `admin_console/domtrack_client.py` (SC-017). Frontend: Vitest + Testing Library for the
@@ -169,10 +169,10 @@ backend/
     │   └── migrations/
     ├── notifications/             # NEW general-purpose app (python manage.py startapp)
     │   ├── models.py              # Notification, NotificationRecipient,
-    │   │                          #   NotificationDelivery (in-app + email channels)
+    │   │                          #   NotificationDelivery (in-app channel)
     │   ├── interfaces.py          # NEW: notify(recipients, event, ...) entry point
     │   ├── services.py            # dispatch, recipient add/remove, delivery bookkeeping
-    │   ├── channels.py            # in-app + email channel implementations
+    │   ├── channels.py            # in-app channel implementation
     │   ├── api.py                 # admin endpoints: recipients, notification inbox
     │   ├── tasks.py               # django.tasks delivery jobs
     │   ├── migrations/
@@ -266,7 +266,7 @@ convenience:
   data consumed by catalog and search; `admin_console` publishes only through
   `catalog/interfaces.py`, never by touching `catalog` tables.
 - **`notifications` (new, general-purpose)** owns notification events, recipients, and
-  channels (in-app + email), because notifications are a platform capability used beyond this
+  channel (in-app; email is out of scope by project decision), because notifications are a platform capability used beyond this
   feature; `admin_console` raises alerts only through `notifications/interfaces.py`.
 
 Artifacts (domtrack traces and related files) are written through `admin_console/artifacts.py`

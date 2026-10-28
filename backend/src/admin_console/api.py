@@ -134,6 +134,16 @@ class VerificationDecisionView(AdminOnlyView):
 
 
 class SiteCreateView(AdminOnlyView):
+    @extend_schema(operation_id="ops_sites_list", responses={200: dict})
+    def get(self, request):
+        self.caller(request)
+        results = []
+        for site in Site.objects.select_related("company").all():
+            payload = _site_payload(site)
+            payload["links_count"] = site.links.count()
+            results.append(payload)
+        return Response({"results": results, "count": len(results)})
+
     @extend_schema(request=serializers.SiteCreateInput, responses={201: dict})
     def post(self, request):
         actor = self.caller(request)
@@ -145,7 +155,7 @@ class SiteCreateView(AdminOnlyView):
 
 
 class SiteDetailView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
+    @extend_schema(operation_id="ops_site_detail", responses={200: dict})
     def get(self, request, site_id):
         site = get_site_or_error(site_id)
         links = [_link_payload(link) for link in site.links.all()]
@@ -310,7 +320,9 @@ class LinkTablesView(AdminOnlyView):
         return Response(
             {
                 "link_id": link.pk,
+                "url": link.url,
                 "pipeline_stage": link.pipeline_stage,
+                "current_trace_id": link.current_trace_id,
                 "tables": services.tables_payload(link),
             }
         )

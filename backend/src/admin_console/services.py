@@ -413,9 +413,14 @@ def tables_payload(link):
         return []
     payload = []
     tables = ExtractedTable.objects.filter(link=link, trace=trace).prefetch_related(
-        "columns", "rows"
+        "columns__semantic_labels", "semantic_labels", "rows"
     )
     for table in tables:
+        table_labels = list(table.semantic_labels.all())
+        title = next((label.table_title for label in table_labels if label.table_title), "")
+        purpose = next(
+            (label.table_purpose for label in table_labels if label.table_purpose), ""
+        )
         payload.append(
             {
                 "id": table.pk,
@@ -424,6 +429,8 @@ def tables_payload(link):
                 "column_count": table.column_count,
                 "parent": table.parent,
                 "meta": table.meta,
+                "title": title,
+                "purpose": purpose,
                 "columns": [
                     {
                         "id": column.pk,
@@ -434,6 +441,11 @@ def tables_payload(link):
                         "slot": column.slot,
                         "coverage": column.coverage,
                         "row_count": column.row_count,
+                        "labels": [
+                            label.label
+                            for label in column.semantic_labels.all()
+                            if label.label
+                        ],
                     }
                     for column in table.columns.all()
                 ],

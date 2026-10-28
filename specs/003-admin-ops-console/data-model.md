@@ -378,7 +378,8 @@ raised once per crossing, not once per replay; the actual message is dispatched 
 - One `open` alert per link at a time; a repeat crossing after resolution creates a new
   alert (edge case: alert is not repeated every subsequent replay).
 - Every open alert raises one notification through the `notifications` app, which fans it out
-  to every active recipient over **both** the in-app and email channels (FR-041).
+  to every active recipient over the in-app channel (email is out of scope by project
+  decision) (FR-041).
 
 ## Notification / NotificationRecipient / NotificationDelivery (notifications app)
 
@@ -398,12 +399,11 @@ provider degradation, LLM ceiling breaches). Callers publish through
 | Notification: created_at | DateTimeField | Inherited. |
 | Delivery: notification | FK → Notification | Owning notification. |
 | Delivery: recipient | FK → NotificationRecipient | Recipient. |
-| Delivery: channel | CharField choices | `in_app` / `email` (pluggable; more channels can be added without changing callers). |
+| Delivery: channel | CharField choices | `in_app` (pluggable; more channels can be added without changing callers, but email is not implemented by decision). |
 | Delivery: state | CharField choices | `pending` / `sent` / `failed`. |
 | Delivery: sent_at / read_at | DateTimeField (null) | Delivery and read markers; `read_at` applies to the in-app channel. |
 | Delivery: error | CharField (blank) | Non-blocking delivery failure detail. |
-| Recipient: user | FK → `accounts.User` (null) | Set for in-app recipients who are platform users. |
-| Recipient: email | EmailField (indexed) | Email address for the email channel. |
+| Recipient: user | FK → `accounts.User` | The platform user who receives in-app notifications. |
 | Recipient: name | CharField (blank) | Optional display name. |
 | Recipient: is_active | BooleanField | Removed recipients are deactivated, preserving notification history. |
 | Recipient: created_by | FK → `accounts.User` (null) | Admin who added it. |
@@ -411,10 +411,10 @@ provider degradation, LLM ceiling breaches). Callers publish through
 **Validation rules**
 - Only admins can add, deactivate, or list recipients (FR-041).
 - Deactivating a recipient never rewrites previously delivered notifications.
-- Each notification produces one `NotificationDelivery` row per active recipient per channel;
-  in-app and email are both attempted (FR-041).
+- Each notification produces one `NotificationDelivery` row per active recipient on the
+  `in_app` channel (FR-041).
 - Delivery runs from a `django.tasks` task, so the producer (the replay run) is never blocked
-  by SMTP; a failed delivery is recorded and does not block the others.
+  by delivery; a failed delivery is recorded and does not block the others.
 - `dedup_key` prevents duplicate notifications when the same alert state is re-evaluated.
 
 ## LlmCostLedger

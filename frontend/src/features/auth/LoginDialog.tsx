@@ -73,7 +73,7 @@ export function LoginDialogProvider({ children }: { children: React.ReactNode })
                     close();
                     // Refresh the app-wide identity before navigating so the header swaps the
                     // login button for the user menu without waiting for a reload.
-                    refresh();
+                    void refresh();
                     router.replace(redirectTo || "/");
                   }}
                 />

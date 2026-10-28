@@ -351,7 +351,7 @@ models that hold the pipeline's state between stages.
   extracted tables — rejected by FR-038; (c) event-only alerting — rejected: produces
   repeat alerts, contradicting the edge case.
 
-## R15. Notifications (in-app + email) and recipient list
+## R15. Notifications (in-app only; email out of scope by project decision) and recipient list
 
 - **Decision**: Build a **new general-purpose `notifications` app** that owns
   `Notification` (a generic, typed event with structured payload: `event_type`, severity,

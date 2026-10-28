@@ -1,0 +1,104 @@
+"use client";
+
+import { Skeleton, Typography } from "@heroui/react";
+import { ClipboardCheck, Globe, RefreshCw, Settings } from "lucide-react";
+import NextLink from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+import { useSession } from "@/src/features/auth/SessionProvider";
+import { LoginButton } from "@/src/features/auth/LoginButton";
+import { opsStrings } from "@/src/lib/i18n/strings";
+import { identityRole } from "@/src/lib/session";
+
+const NAV = [
+  { href: "/ops", label: opsStrings.navApprovals, icon: ClipboardCheck },
+  { href: "/ops/sites", label: opsStrings.navSites, icon: Globe },
+  { href: "/ops/replay", label: opsStrings.navReplay, icon: RefreshCw },
+  { href: "/ops/settings", label: opsStrings.navSettings, icon: Settings },
+] as const;
+
+/** Operator-only shell: non-operators never see console data and are redirected. */
+export default function OpsLayout({ children }: { children: React.ReactNode }) {
+  const { identity } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const role = identityRole(identity);
+
+  useEffect(() => {
+    if (identity?.authenticated && role !== "admin") {
+      router.replace("/panel");
+    }
+  }, [identity, role, router]);
+
+  if (identity === null) {
+    return (
+      <main className="mx-auto w-full max-w-[1100px] flex-1 px-[16px] py-[40px]">
+        <Skeleton className="h-[200px] rounded-[var(--radius)]" />
+      </main>
+    );
+  }
+
+  if (!identity.authenticated) {
+    return (
+      <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-[16px] px-[16px] py-[40px]">
+        <Typography className="text-[20px] font-semibold" type="h2">
+          {opsStrings.console}
+        </Typography>
+        <Typography className="text-[14px]">{opsStrings.adminOnly}</Typography>
+        <div>
+          <LoginButton />
+        </div>
+      </main>
+    );
+  }
+
+  if (role !== "admin") {
+    return (
+      <main className="mx-auto w-full max-w-[1100px] flex-1 px-[16px] py-[40px]">
+        <Typography role="alert">{opsStrings.adminOnly}</Typography>
+      </main>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-[24px] px-[16px] py-[32px] sm:px-[24px] md:px-[32px]">
+      <header className="flex flex-col gap-[16px] border-b border-[var(--ds-border)] pb-[16px]">
+        <div className="flex flex-col gap-[4px]">
+          <Typography className="text-[24px] font-semibold sm:text-[30px]" type="h1">
+            {opsStrings.console}
+          </Typography>
+          <Typography className="text-[13px] text-muted">{opsStrings.consoleSubtitle}</Typography>
+        </div>
+        <nav aria-label={opsStrings.console}>
+          <ul className="flex flex-wrap gap-[8px]">
+            {NAV.map((item) => {
+              const Icon = item.icon;
+              const active =
+                item.href === "/ops"
+                  ? pathname === "/ops"
+                  : pathname?.startsWith(item.href);
+              return (
+                <li key={item.href}>
+                  <NextLink
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-[6px] rounded-[var(--radius)] px-[12px] py-[8px] text-[14px] font-medium transition-colors ${
+                      active
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted hover:bg-surface-secondary"
+                    }`}
+                    href={item.href}
+                  >
+                    <Icon aria-hidden className="size-4" />
+                    {item.label}
+                  </NextLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </header>
+      {children}
+    </div>
+  );
+}
