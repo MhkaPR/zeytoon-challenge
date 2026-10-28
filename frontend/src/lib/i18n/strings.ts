@@ -447,6 +447,13 @@ export const opsStrings = {
   modeInteractive: "تعاملی (پیش‌فرض)",
   modeFixed: "مدت ثابت",
   durationMs: "مدت (میلی‌ثانیه)",
+  captureWindow: "مدت ضبط (میلی‌ثانیه)",
+  captureWindowHint:
+    "ضبط پس از این مدت خودکار پایان می‌یابد و تریس ذخیره می‌شود. پنجره Chrome را قبل از پایان نبندید.",
+  captureInteractiveHint:
+    "ضبط تا وقتی خودتان تمام کنید ادامه دارد. پس از پایان کار، در پنجره Playwright Inspector دکمه Resume را بزنید تا تریس ذخیره شود.",
+  captureAborted:
+    "پنجره Chrome پیش از پایان ضبط بسته شد و تریسی ذخیره نشد. دوباره شروع کنید و پنجره را تا پایان باز نگه دارید یا مدت کوتاه‌تری انتخاب کنید.",
   startCapture: "شروع ضبط",
   starting: "در حال شروع…",
   captureStarted: "ضبط آغاز شد.",

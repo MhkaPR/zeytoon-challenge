@@ -38,14 +38,14 @@ def test_capture_start_for_kept_link(operator_client, kept_link, monkeypatch):
     assert body["local_path"] == "/tmp/op/trace.json"
 
 
-def test_interactive_capture_gets_a_recording_window(operator_client, kept_link, monkeypatch):
+def test_interactive_capture_has_no_fixed_window(operator_client, kept_link, monkeypatch):
     _mock_capture(monkeypatch)
     operator_client.post(
         f"/api/v1/ops/links/{kept_link.pk}/captures", {"mode": "interactive"}, format="json"
     )
     session = CaptureSession.objects.get(link=kept_link)
-    # domtrack's HTTP API requires duration_s; interactive mode uses the configured window.
-    assert session.duration_ms and session.duration_ms > 0
+    # Interactive capture pauses until the operator presses Resume (domtrack>=0.0.3).
+    assert session.duration_ms is None
 
 
 def test_operator_cannot_capture_two_links_at_once(
@@ -72,7 +72,7 @@ def test_operator_cannot_capture_two_links_at_once(
     assert second.json()["error"]["code"] == "capture_in_progress"
 
 
-def test_local_capture_always_sends_a_duration(monkeypatch):
+def test_local_interactive_capture_pauses_for_the_operator(monkeypatch):
     from admin_console import domtrack_client
 
     sent = {}
@@ -93,9 +93,35 @@ def test_local_capture_always_sends_a_duration(monkeypatch):
     domtrack_client.start_local_capture("https://example.com/plans", mode="interactive")
 
     assert sent["url"].endswith("/capture")
-    # domtrack's HTTP API rejects a capture without duration_s (422).
-    assert sent["payload"]["duration_s"] > 0
+    # domtrack>=0.0.3 pauses at page.pause() instead of using a fixed duration.
+    assert sent["payload"]["interactive"] is True
+    assert "duration_s" not in sent["payload"]
     assert sent["payload"]["headless"] is False
+
+
+def test_local_fixed_capture_sends_a_duration(monkeypatch):
+    from admin_console import domtrack_client
+
+    sent = {}
+
+    class _Response:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return {"json_path": "/tmp/x.json"}
+
+    def fake_post(url, json=None, timeout=None):
+        sent["payload"] = json
+        return _Response()
+
+    monkeypatch.setattr(domtrack_client.httpx, "post", fake_post)
+    domtrack_client.start_local_capture(
+        "https://example.com/plans", mode="fixed_duration", duration_ms=5000
+    )
+
+    assert sent["payload"]["duration_s"] == 5.0
+    assert sent["payload"]["headless"] is True
 
 
 def test_active_capture_endpoint_reports_the_running_session(

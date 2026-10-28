@@ -121,6 +121,11 @@ export function CapturePanel({
             <Input inputMode="numeric" />
           </TextField>
         )}
+        <Typography className="text-[11px] text-muted">
+          {mode === "fixed_duration"
+            ? opsStrings.captureWindowHint
+            : opsStrings.captureInteractiveHint}
+        </Typography>
 
         <div className="flex flex-wrap gap-[8px]">
           <Button

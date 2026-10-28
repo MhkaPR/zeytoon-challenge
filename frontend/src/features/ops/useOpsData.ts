@@ -23,6 +23,8 @@ export function opsErrorMessage(error: unknown): string {
         return opsStrings.adminOnly;
       case "domtrack_unreachable":
         return opsStrings.domtrackUnreachable;
+      case "capture_failed":
+        return opsStrings.captureAborted;
       default:
         return `${opsStrings.genericError} (${error.code})`;
     }

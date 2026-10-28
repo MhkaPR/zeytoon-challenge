@@ -328,7 +328,7 @@ CONSTANCE_CONFIG = {
     "CAPTURE_FIXED_DURATION_MS": (15000, "Default fixed-duration capture length in ms."),
     "CAPTURE_INTERACTIVE_DURATION_MS": (
         120000,
-        "Recording window for interactive captures (domtrack's HTTP API cannot pause for a human).",
+        "Fallback recording window used only when a pre-0.0.3 domtrack server rejects interactive pause.",
     ),
     "PUBLISH_AUTO_THRESHOLD": (0.0, "Cleaning confidence at/above which publication is automatic."),
     "TABLE_DISCOVERY_MIN_ROWS": (2, "Minimum rows for a domtrack table candidate."),
@@ -401,7 +401,7 @@ AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
 AWS_S3_FILE_OVERWRITE = False
 AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", False)
 
-ARTIFACT_STORAGE_BACKEND = env("ARTIFACT_STORAGE_BACKEND", "s3")
+ARTIFACT_STORAGE_BACKEND = env("ARTIFACT_STORAGE_BACKEND", "file")
 
 STORAGES = {
     "default": {

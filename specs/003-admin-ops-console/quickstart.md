@@ -167,12 +167,18 @@ recipient. There is no email channel or SMTP configuration.
 
 1. With the operator's local `domtrack serve` running, `POST /api/v1/ops/links/{id}/captures`
    with `{"mode":"interactive"}`.
-2. **Expected**: `201`; a Chrome window opens on the link and recording begins. domtrack's
-   HTTP API cannot wait for a human, so interactive mode records for
-   `CAPTURE_INTERACTIVE_DURATION_MS` (default 120 s); adjust the constant if you need a
-   longer window. Capture never starts when a link is added or reviewed — only this
-   button/endpoint starts it.
-3. End the recording; domtrack reports the trace path on the operator's system.
+2. **Expected**: `201`; a Chrome window opens on the link and recording begins. With
+   domtrack `>= 0.0.3`, interactive mode sends `interactive: true` and records until you
+   press **Resume** in the Playwright Inspector — there is no fixed recording window.
+   (`CAPTURE_INTERACTIVE_DURATION_MS` only applies as a fallback for older servers.)
+   Capture never starts when a link is added or reviewed — only this button/endpoint
+   starts it.
+3. End the recording with **Resume**; domtrack reports the trace path on the operator's
+   system.
+   Do **not** set `PWDEBUG=1` on `domtrack serve`: Playwright's inspector then pauses
+   before the first statement (`page.goto`), so Chrome sits on `about:blank` until you
+   press Resume. The console already requests a headed browser, so `PWDEBUG` is not
+   needed.
 4. `POST /api/v1/ops/captures/{id}/trace` with the file (or `{"local_path": ...}`).
 5. **Expected**: `201`; a `Trace` row exists linked to the link, the operator, and the
    capture time, with `is_valid_trace=true` and a UUID-based `storage_key`; the artifact in

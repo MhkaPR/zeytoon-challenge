@@ -214,12 +214,12 @@ def start_capture(link, operator, mode="interactive", duration_ms=None):
             "link_not_ready",
             "Only kept links can be captured.",
         )
-    if not duration_ms:
-        duration_ms = (
-            constants.capture_fixed_duration_ms()
-            if mode == "fixed_duration"
-            else constants.capture_interactive_duration_ms()
-        )
+    if mode == "fixed_duration" and not duration_ms:
+        duration_ms = constants.capture_fixed_duration_ms()
+    if mode != "fixed_duration":
+        # Interactive captures end when the operator presses Resume in the Playwright
+        # Inspector, so the session has no fixed recording window.
+        duration_ms = None
 
     # Only an explicit button press starts a capture; a link reaching the capture stage
     # never records on its own. One operator may record only one link at a time.
@@ -269,6 +269,20 @@ def start_capture(link, operator, mode="interactive", duration_ms=None):
         raise ApiError(
             "domtrack_unreachable",
             "The local domtrack service could not be reached.",
+            http_status=502,
+        ) from exc
+    except domtrack_client.DomtrackCaptureError as exc:
+        # domtrack was reachable, but the recording aborted (the usual cause is the
+        # operator closing the Chrome window before the recording window ended).
+        with transaction.atomic():
+            session.state = CaptureSession.State.FAILED
+            session.error = str(exc)[:512]
+            session.save(update_fields=["state", "error", "updated_at"])
+            events.capture_failed(link, session, "capture_failed")
+        raise ApiError(
+            "capture_failed",
+            "domtrack could not finish the recording. Keep the Chrome window open "
+            "until the recording window ends, or choose a shorter duration.",
             http_status=502,
         ) from exc
 

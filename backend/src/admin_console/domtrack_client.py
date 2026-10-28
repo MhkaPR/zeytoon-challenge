@@ -19,6 +19,10 @@ class DomtrackUnreachable(Exception):
     """The local domtrack REST API could not be reached (FR-017)."""
 
 
+class DomtrackCaptureError(Exception):
+    """domtrack was reachable but the recording itself failed (e.g. Chrome was closed)."""
+
+
 # ---------------------------------------------------------------------------
 # Local REST API (the operator's machine): capture + trace listing
 # ---------------------------------------------------------------------------
@@ -65,30 +69,55 @@ def start_local_capture(url, mode="interactive", duration_ms=None, selector=None
     Returns domtrack's capture result; raises :class:`DomtrackUnreachable` when the
     operator's local service is down (mapped to ``502 domtrack_unreachable``).
     """
-    if not duration_ms:
-        duration_ms = (
-            constants.capture_fixed_duration_ms()
-            if mode == "fixed_duration"
-            else constants.capture_interactive_duration_ms()
-        )
+    if mode == "fixed_duration" and not duration_ms:
+        duration_ms = constants.capture_fixed_duration_ms()
+    interactive = mode != "fixed_duration" and not duration_ms
     payload = {
         "url": url,
         "selector": selector,
-        "headless": mode == "fixed_duration",
-        # domtrack's HTTP API cannot pause for a human, so even interactive mode needs a
-        # recording window; the browser stays open for the operator during that window.
-        "duration_s": max(1.0, float(duration_ms) / 1000.0),
+        "headless": not interactive,
     }
+    if interactive:
+        # Mirrors ``domtrack capture <url>`` without ``--duration``: the recorder calls
+        # ``page.pause()`` and the operator presses Resume in the Playwright Inspector
+        # when they are done, so there is no fixed recording window.
+        payload["interactive"] = True
+    else:
+        payload["duration_s"] = max(1.0, float(duration_ms) / 1000.0)
+
+    # An interactive recording waits for the operator, so it must not inherit the
+    # fixed-duration read timeout. Keep the connect timeout short so a stopped
+    # ``domtrack serve`` still fails fast.
+    timeout = (
+        httpx.Timeout(connect=5.0, read=None, write=30.0, pool=5.0)
+        if interactive
+        else float(settings.DOMTRACK_LOCAL_API_TIMEOUT_SECONDS)
+    )
     try:
         response = httpx.post(
             f"{_local_base_url()}/capture",
             json=payload,
-            timeout=float(settings.DOMTRACK_LOCAL_API_TIMEOUT_SECONDS),
+            timeout=timeout,
         )
     except httpx.HTTPError as exc:
         raise DomtrackUnreachable(str(exc)) from exc
+    if interactive and response.status_code == 422 and "duration_s" in response.text:
+        # Older domtrack servers reject the interactive flag; fall back to a bounded
+        # recording window instead of failing the capture outright.
+        payload.pop("interactive", None)
+        payload["duration_s"] = max(
+            1.0, constants.capture_interactive_duration_ms() / 1000.0
+        )
+        try:
+            response = httpx.post(
+                f"{_local_base_url()}/capture",
+                json=payload,
+                timeout=float(settings.DOMTRACK_LOCAL_API_TIMEOUT_SECONDS),
+            )
+        except httpx.HTTPError as exc:
+            raise DomtrackUnreachable(str(exc)) from exc
     if response.status_code >= 400:
-        raise DomtrackUnreachable(
+        raise DomtrackCaptureError(
             f"local domtrack returned {response.status_code}: {response.text[:200]}"
         )
     return response.json()

@@ -219,36 +219,14 @@ wheels = [
 
 [[package]]
 name = "domtrack"
-version = "0.0.2"
-source = { url = "https://github.com/MhkaPR/domtrack/releases/download/v0.0.2/domtrack-0.0.2-py3-none-any.whl" }
+version = "0.0.3"
+source = { registry = "https://package-mirror.liara.ir/repository/pypi/simple" }
 dependencies = [
     { name = "playwright" },
 ]
 wheels = [
-    { url = "https://github.com/MhkaPR/domtrack/releases/download/v0.0.2/domtrack-0.0.2-py3-none-any.whl", hash = "sha256:557b1d16e4f2f51686bb0b60fef1dbf94f1e867a9981be546db9359a96a555b6" },
+    { url = "https://package-mirror.liara.ir/repository/pypi/packages/packages/3e/5b/b169c42f911972853e5ffc0a35ef7c3b698a4ec469c6cfd69810c7b4e62c/domtrack-0.0.3-py3-none-any.whl", hash = "sha256:5960fee164051c9abf0eef4fd6a7df2420027945893e1118570df62c6b1ba7b0" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.40" },
-    { name = "anthropic", marker = "extra == 'llm-anthropic'", specifier = ">=0.40" },
-    { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.110" },
-    { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.110" },
-    { name = "fastapi", marker = "extra == 'api-test'", specifier = ">=0.110" },
-    { name = "httpx", marker = "extra == 'api-test'", specifier = ">=0.27" },
-    { name = "openai", marker = "extra == 'all'", specifier = ">=1.0" },
-    { name = "openai", marker = "extra == 'llm'", specifier = ">=1.0" },
-    { name = "playwright", specifier = ">=1.40" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7" },
-    { name = "rich", marker = "extra == 'all'", specifier = ">=13" },
-    { name = "rich", marker = "extra == 'tables'", specifier = ">=13" },
-    { name = "tabulate", marker = "extra == 'all'", specifier = ">=0.9" },
-    { name = "tabulate", marker = "extra == 'tables'", specifier = ">=0.9" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'all'", specifier = ">=0.27" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.27" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'api-test'", specifier = ">=0.27" },
-]
-provides-extras = ["dev", "api", "api-test", "tables", "llm", "llm-anthropic", "all"]
 
 [[package]]
 name = "drf-spectacular"
@@ -1201,7 +1179,7 @@ requires-dist = [
     { name = "django-storages", specifier = ">=1.14" },
     { name = "djangorestframework", specifier = ">=3.18.3" },
     { name = "djangorestframework-simplejwt", specifier = ">=5.5.1" },
-    { name = "domtrack", url = "https://github.com/MhkaPR/domtrack/releases/download/v0.0.2/domtrack-0.0.2-py3-none-any.whl" },
+    { name = "domtrack", specifier = ">=0.0.3" },
     { name = "drf-spectacular", specifier = ">=0.28.0" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "formulas", specifier = ">=1.3.4" },

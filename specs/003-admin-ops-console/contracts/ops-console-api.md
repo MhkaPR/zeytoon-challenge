@@ -186,7 +186,10 @@ Start a capture for a kept link. The server calls the operator's **local domtrac
 (`POST {DOMTRACK_LOCAL_API_URL}/capture`), which opens a Chrome window on the link and
 starts recording. Capture starts only on this explicit call — adding or reviewing a link
 never records it. domtrack's HTTP API requires `duration_s`, so interactive mode uses
-`CAPTURE_INTERACTIVE_DURATION_MS` as its recording window.
+`duration_s` only for `fixed_duration`. Interactive mode sends `interactive: true` (headed)
+and records until the operator presses **Resume** in the Playwright Inspector, mirroring
+`domtrack capture <url>` without `--duration` (requires domtrack `>= 0.0.3`; older servers
+fall back to `CAPTURE_INTERACTIVE_DURATION_MS`).
 
 **Request**: `{ "mode": "interactive" }` (or `{ "mode": "fixed_duration", "duration_ms": 60000 }`,
 FR-013)
