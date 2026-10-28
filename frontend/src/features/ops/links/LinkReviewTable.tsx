@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Typography } from "@heroui/react";
+import NextLink from "next/link";
 import { useMemo, useState } from "react";
 
 import type { Link } from "@/src/lib/api/ops";
@@ -61,6 +62,7 @@ export function LinkReviewTable({
               <th className="py-[8px] font-medium">URL</th>
               <th className="py-[8px] font-medium">{opsStrings.status}</th>
               <th className="py-[8px] font-medium">{opsStrings.keep}</th>
+              <th className="py-[8px] font-medium">{opsStrings.action}</th>
             </tr>
           </thead>
           <tbody>
@@ -84,6 +86,18 @@ export function LinkReviewTable({
                     >
                       {isRemoved ? opsStrings.restore : opsStrings.remove}
                     </Button>
+                  </td>
+                  <td className="py-[10px]">
+                    {link.review_state === "kept" && !isRemoved ? (
+                      <NextLink
+                        className="rounded-[var(--radius)] bg-accent px-[10px] py-[6px] text-[12px] font-medium text-accent-foreground"
+                        href={`/ops/links/${link.id}/capture`}
+                      >
+                        {opsStrings.openCapture}
+                      </NextLink>
+                    ) : (
+                      <span className="text-[12px] text-muted">{opsStrings.none}</span>
+                    )}
                   </td>
                 </tr>
               );

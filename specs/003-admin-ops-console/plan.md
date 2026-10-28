@@ -121,7 +121,7 @@ operator frontend routes under `/ops`.
 | VIII. Quality and Testing | Every domain behavior (each stage and each gate) ships with an automated test; a domtrack-import test locks SC-017, and a formula-validation test locks Excel/spreadsheet compatibility so neither can regress. | PASS |
 | IX. Data Retention | Traces, recipes, replay runs, and alerts are retained for auditing (artifacts in object storage, metadata in Postgres); links are never hard-deleted (removal is a recorded state); traces remain the evidence for published data. | PASS |
 | X. Crawling Ethics | Sitemap/link fetching honors robots.txt, uses a transparent user-agent with contact URL, and applies per-domain rate limiting. | PASS |
-| XI. Authentication | Operator console reuses the existing JWT auth; every endpoint is operator (`is_admin`) gated and refuses owner access to decisions (FR-005). | PASS |
+| XI. Authentication | Operator console reuses the existing JWT auth; every endpoint is operator gated (`ops` group or admin, `is_operator()`) and refuses owner access to decisions (FR-005). | PASS |
 | XII. Prefer Established Libraries and Generators | `startapp` scaffolds `admin_console` and `notifications`; domtrack is used as-is (no reimplementation); `django-storages`/`boto3` provide S3 artifacts instead of hand-written storage code; constance, guardian, DRF, and Handsontable are established libraries; sitemap parsing uses stdlib where no library clearly adds value (research R5). | PASS |
 | XIII. Configurable Values | All tunables are django-constance constants except the LLM ceiling (model-backed per Principle II) and environment-specific values (settings/env), which now explicitly include the artifact storage backend and S3 endpoint/credentials; no hard-coded thresholds or inline storage config. | PASS |
 
@@ -159,7 +159,7 @@ backend/
     │   │                          #   email backend
     │   └── urls.py                # mount /api/v1/ops/ (operator console API)
     ├── utils/                     # unchanged (TimestampedModel, logging/masking reused)
-    ├── accounts/                  # unchanged (operator identity, is_admin() role check)
+    ├── accounts/                  # operator identity; ops/admin groups + is_operator()
     ├── companies/                 # unchanged; consumed only through interfaces.py
     │   └── interfaces.py          # CompaniesInterface.record_verification_decision (approval)
     ├── catalog/                   # EXISTING app; gains the published-record model

@@ -22,23 +22,29 @@ duplicating their details.
 
 ### Create the operator account
 
-The console is role-gated: only a user whose `User.role()` is `admin` (superuser or member
-of the `admin` group) may open `/ops`. Create one from the backend shell, then log in with
-the same phone number through the normal SMS OTP dialog:
+The console is role-gated. Membership in the `ops` group grants the console only;
+`admin` (or a superuser) is a superset that also grants Django `/admin`. A regular user is
+redirected to `/panel`. Create an operator from the backend shell, then log in with the same
+phone number through the normal SMS OTP dialog:
 
 ```bash
 python manage.py shell -c "
+from django.contrib.auth.models import Group
 from accounts.models import User, ensure_role_groups
 ensure_role_groups()
 user, _ = User.objects.get_or_create(phone_number='+989123456789', defaults={'username': '+989123456789'})
-user.is_staff = True
-user.is_superuser = True
+user.groups.add(Group.objects.get(name='ops'))
 user.save()
 print(user.phone_number, user.role())
 "
 ```
 
-After signing in, the header user menu shows an **ops console** item for admins. Opening
+Use the `admin` group (plus `is_staff=True`) when the same person must also open
+`/admin`. `python manage.py createsuperuser --phone_number ...` is the fastest way to make
+an admin.
+
+After signing in, the header user menu shows an **ops console** item for `ops`/`admin`.
+Opening
 `/ops` directly is supported: when signed out it shows the operator notice plus a login
 button, and after login the app returns you to `/ops` (the path is in
 `RETURN_URL_ALLOWLIST`). A signed-in non-operator is redirected to `/panel`.
@@ -79,8 +85,8 @@ account before opening `/ops`.
 
 - `/ops` is the operator console built in this feature (Next.js, Persian/RTL). It is the
   only place operators approve companies and run the site-maintenance pipeline. Every API
-  call goes to `/api/v1/ops/` and requires the `admin` role; a signed-in non-operator is
-  redirected back to `/panel`.
+  call goes to `/api/v1/ops/` and requires the `ops` or `admin` role; a signed-in
+  non-operator is redirected back to `/panel`.
 - `/admin` remains Django's built-in admin site for low-level reads of the registered
   models (sites, links, captures, traces, recipes, replay runs, alerts, LLM ledger,
   notifications and recipients). Do not treat `/admin` as the operator workflow.
@@ -92,13 +98,18 @@ by domtrack; the console never reimplements them. Capture requires a local domtr
 on the operator's machine:
 
 ```bash
-domtrack serve --port 8787
-export DOMTRACK_LOCAL_API_URL=http://127.0.0.1:8787
+domtrack serve --port 8765 --trace-dir /absolute/path/to/domtrack-traces
+export DOMTRACK_LOCAL_API_URL=http://127.0.0.1:8765
 ```
 
-Do not use port 8000, which is the Django dev server. If domtrack is unreachable, capture
-fails with `domtrack_unreachable`, the link does not advance, and the operator can retry or
-use the manual trace-upload fallback. Stored artifacts are domtrack's native trace files.
+`--port 8765` matches the backend default (`DOMTRACK_LOCAL_API_URL`); do not use port 8000,
+which is the Django dev server. Always pass an **absolute** `--trace-dir`: domtrack reports
+the trace path back to the console, and a relative directory would resolve against the
+Django process's working directory when the operator loads it. The capture screen probes
+`GET /api/v1/ops/domtrack/health` and shows the configured URL, so a port mismatch is
+visible before starting. If domtrack is unreachable, capture fails with
+`domtrack_unreachable`, the link does not advance, and the operator can retry or use the
+manual trace-upload fallback. Stored artifacts are domtrack's native trace files.
 
 ### Artifact storage switch (`STORAGES`)
 
@@ -142,7 +153,9 @@ recipient. There is no email channel or SMTP configuration.
    domain. Onboarding the same company again returns `409` (one site per company).
 3. `POST /api/v1/ops/sites/{id}/discover-links`.
 4. **Expected**: when a sitemap exists, candidate links are stored (`source="sitemap"`);
-   when none exists, `has_sitemap=false` and `discovered=0`.
+   when none exists, `has_sitemap=false` and `discovered=0`. Discovery honours
+   `robots.txt` `Sitemap:` directives, follows sitemap indexes, and accepts sitemaps with
+   or without the sitemaps XML namespace (e.g. `limoo.host` → `sitemap_index.xml`).
 5. For the no-sitemap case, `POST /api/v1/ops/sites/{id}/links` with two URLs.
 6. **Expected**: `201` with `source="manual"` candidates.
 7. `POST /api/v1/ops/sites/{id}/links/review` keeping some and removing others.
@@ -154,7 +167,11 @@ recipient. There is no email channel or SMTP configuration.
 
 1. With the operator's local `domtrack serve` running, `POST /api/v1/ops/links/{id}/captures`
    with `{"mode":"interactive"}`.
-2. **Expected**: `201`; a Chrome window opens on the link and recording begins.
+2. **Expected**: `201`; a Chrome window opens on the link and recording begins. domtrack's
+   HTTP API cannot wait for a human, so interactive mode records for
+   `CAPTURE_INTERACTIVE_DURATION_MS` (default 120 s); adjust the constant if you need a
+   longer window. Capture never starts when a link is added or reviewed — only this
+   button/endpoint starts it.
 3. End the recording; domtrack reports the trace path on the operator's system.
 4. `POST /api/v1/ops/captures/{id}/trace` with the file (or `{"local_path": ...}`).
 5. **Expected**: `201`; a `Trace` row exists linked to the link, the operator, and the
@@ -164,6 +181,10 @@ recipient. There is no email channel or SMTP configuration.
 7. **Expected**: `502 domtrack_unreachable`; the link does not advance.
 8. Attempt extraction on a link with no stored trace.
 9. **Expected**: `409 trace_required` (no advance without a trace, FR-014).
+10. Start a second capture for another link before the first is stored.
+11. **Expected**: `409 capture_in_progress`; one operator records one link at a time.
+12. `GET /api/v1/ops/domtrack/health` reports `reachable` and the configured `base_url`;
+    `GET /api/v1/ops/captures/active` returns the in-flight capture.
 
 ### V4 — Table extraction determinism — proves FR-018..FR-020, SC-008
 

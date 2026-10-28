@@ -1,6 +1,8 @@
 "use client";
 
 import { Skeleton, Typography } from "@heroui/react";
+import { ArrowRight } from "lucide-react";
+import NextLink from "next/link";
 import { use, useState } from "react";
 
 import { LinkReviewTable } from "@/src/features/ops/links/LinkReviewTable";
@@ -41,6 +43,13 @@ export default function OpsSiteLinksPage({
 
   return (
     <main className="flex flex-col gap-[20px]">
+      <NextLink
+        className="flex w-fit items-center gap-[6px] text-[13px] font-medium text-muted hover:text-foreground"
+        href={`/ops/sites/${id}`}
+      >
+        <ArrowRight aria-hidden className="size-4" />
+        {opsStrings.backToSite}
+      </NextLink>
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
           {opsStrings.linksTitle}

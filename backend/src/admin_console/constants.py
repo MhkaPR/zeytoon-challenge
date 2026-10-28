@@ -69,6 +69,10 @@ def capture_fixed_duration_ms():
     return int(config.CAPTURE_FIXED_DURATION_MS)
 
 
+def capture_interactive_duration_ms():
+    return int(config.CAPTURE_INTERACTIVE_DURATION_MS)
+
+
 def publish_auto_threshold():
     return float(config.PUBLISH_AUTO_THRESHOLD)
 

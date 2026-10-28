@@ -98,6 +98,17 @@ def test_relative_locs_are_made_absolute():
     assert links == ["https://example.com/rel"]
 
 
+def test_sitemap_without_namespace_is_parsed():
+    body = (
+        '<?xml version="1.0"?>'
+        "<urlset><url><loc>https://example.com/a</loc></url>"
+        "<url><loc>https://example.com/b</loc></url></urlset>"
+    )
+    fetcher = _FakeFetcher({"https://example.com/sitemap.xml": body})
+    links = discovery.discover_links("https://example.com/sitemap.xml", fetcher=fetcher)
+    assert links == ["https://example.com/a", "https://example.com/b"]
+
+
 def test_transparent_user_agent_is_configured():
     from django.conf import settings
 

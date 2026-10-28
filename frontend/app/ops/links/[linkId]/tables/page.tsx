@@ -53,7 +53,7 @@ export default function OpsTablesPage({
           {opsStrings.tablesTitle}
         </Typography>
         <Typography className="text-[13px] text-muted">{opsStrings.tablesIntro}</Typography>
-        <LinkStageNav active="tables" linkId={id} />
+        <LinkStageNav active="tables" linkId={id} siteId={data?.site_id} />
       </div>
 
       {notice && (

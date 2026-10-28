@@ -10,8 +10,11 @@ import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { AuthApiError } from "@/src/lib/api/auth";
 import {
   failCapture,
+  getActiveCapture,
+  getDomtrackHealth,
   getTables,
   startCapture,
+  uploadLocalTrace,
   uploadTrace,
   type CaptureSession,
 } from "@/src/lib/api/ops";
@@ -35,6 +38,8 @@ export default function OpsCapturePage({
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const health = useOpsData(getDomtrackHealth, "domtrack-health");
+  const active = useOpsData(getActiveCapture, `active-capture-${id}`);
 
   function fail(err: unknown) {
     setErrorCode(err instanceof AuthApiError ? err.code : null);
@@ -51,6 +56,7 @@ export default function OpsCapturePage({
       setCapture(response.capture);
       setNotice(opsStrings.captureStarted);
       reload();
+      active.reload();
     } catch (err) {
       fail(err);
     } finally {
@@ -67,6 +73,28 @@ export default function OpsCapturePage({
       setCapture(response.capture);
       setNotice(opsStrings.traceStored);
       reload();
+      active.reload();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadLocal() {
+    if (!capture?.local_path) return;
+    setBusy(true);
+    setFailure(null);
+    try {
+      const response = await uploadLocalTrace(
+        getAccessToken(),
+        capture.id,
+        capture.local_path,
+      );
+      setCapture(response.capture);
+      setNotice(opsStrings.traceStored);
+      reload();
+      active.reload();
     } catch (err) {
       fail(err);
     } finally {
@@ -103,7 +131,7 @@ export default function OpsCapturePage({
         <Typography className="text-[12px] text-muted" dir="ltr">
           {data?.url ?? ""}
         </Typography>
-        <LinkStageNav active="capture" linkId={id} />
+        <LinkStageNav active="capture" linkId={id} siteId={data?.site_id} />
       </div>
 
       {notice && (
@@ -126,8 +154,12 @@ export default function OpsCapturePage({
           busy={busy}
           capture={capture}
           errorCode={errorCode}
+          activeCapture={active.data?.capture ?? null}
+          domtrack={health.data}
           onContinue={() => router.push(`/ops/links/${id}/tables`)}
           onFail={markFailed}
+          onLoadLocal={loadLocal}
+          onRecheck={health.reload}
           onStart={start}
           onUpload={upload}
           stage={data.pipeline_stage}

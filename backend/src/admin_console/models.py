@@ -152,6 +152,11 @@ class CaptureSession(TimestampedModel):
                 fields=("link",),
                 condition=models.Q(state__in=("pending", "recording", "awaiting_upload")),
                 name="uniq_nonterminal_capture_session_per_link",
+            ),
+            models.UniqueConstraint(
+                fields=("operator",),
+                condition=models.Q(state__in=("pending", "recording", "awaiting_upload")),
+                name="uniq_nonterminal_capture_session_per_operator",
             )
         ]
 

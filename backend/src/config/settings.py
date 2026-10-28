@@ -326,6 +326,10 @@ CONSTANCE_CONFIG = {
         "Capture modes the console accepts (FR-013).",
     ),
     "CAPTURE_FIXED_DURATION_MS": (15000, "Default fixed-duration capture length in ms."),
+    "CAPTURE_INTERACTIVE_DURATION_MS": (
+        120000,
+        "Recording window for interactive captures (domtrack's HTTP API cannot pause for a human).",
+    ),
     "PUBLISH_AUTO_THRESHOLD": (0.0, "Cleaning confidence at/above which publication is automatic."),
     "TABLE_DISCOVERY_MIN_ROWS": (2, "Minimum rows for a domtrack table candidate."),
     "TABLE_DISCOVERY_MIN_COLS": (2, "Minimum columns for a domtrack table candidate."),

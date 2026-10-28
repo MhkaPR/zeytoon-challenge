@@ -30,11 +30,11 @@ class AuthenticatedView(APIView):
 
 
 class AdminOnlyView(AuthenticatedView):
-    """Base view requiring the operator/admin role (FR-001, FR-005)."""
+    """Base view requiring an operator role (``ops`` group or admin, FR-001, FR-005)."""
 
     def caller(self, request):
         user = super().caller(request)
-        if not user.is_admin():
+        if not user.is_operator():
             raise ApiError(
                 "admin_required",
                 "This action is restricted to operators.",
@@ -58,6 +58,7 @@ def _site_payload(site):
 def _link_payload(link):
     return {
         "id": link.pk,
+        "site_id": link.site_id,
         "url": link.url,
         "source": link.source,
         "review_state": link.review_state,
@@ -231,6 +232,32 @@ class CaptureStartView(AdminOnlyView):
         )
 
 
+class ActiveCaptureView(AdminOnlyView):
+    """The caller's in-flight capture, so the UI can prevent a second recording."""
+
+    @extend_schema(responses={200: dict})
+    def get(self, request):
+        actor = self.caller(request)
+        session = services.active_capture_for(actor)
+        return Response(
+            {
+                "capture": _capture_payload(session) if session else None,
+                "link_url": session.link.url if session else None,
+            }
+        )
+
+
+class DomtrackHealthView(AdminOnlyView):
+    """Probe the operator's local ``domtrack serve`` instance."""
+
+    @extend_schema(responses={200: dict})
+    def get(self, request):
+        self.caller(request)
+        from admin_console import domtrack_client
+
+        return Response(domtrack_client.local_health())
+
+
 class TraceUploadView(AdminOnlyView):
     @extend_schema(request=None, responses={201: dict})
     def post(self, request, capture_session_id):
@@ -320,6 +347,7 @@ class LinkTablesView(AdminOnlyView):
         return Response(
             {
                 "link_id": link.pk,
+                "site_id": link.site_id,
                 "url": link.url,
                 "pipeline_stage": link.pipeline_stage,
                 "current_trace_id": link.current_trace_id,

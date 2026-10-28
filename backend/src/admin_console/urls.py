@@ -39,6 +39,12 @@ urlpatterns = [
         name="capture-start",
     ),
     path(
+        "captures/active",
+        api.ActiveCaptureView.as_view(),
+        name="capture-active",
+    ),
+    path("domtrack/health", api.DomtrackHealthView.as_view(), name="domtrack-health"),
+    path(
         "captures/<int:capture_session_id>/trace",
         api.TraceUploadView.as_view(),
         name="capture-trace",

@@ -5,6 +5,8 @@ send the transparent project user-agent with a contact URL and honor the site's 
 delay.
 """
 
+import gzip
+import logging
 import time
 import urllib.parse
 import urllib.robotparser
@@ -16,6 +18,7 @@ from django.conf import settings
 from admin_console import constants
 
 _NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+logger = logging.getLogger(__name__)
 
 
 class _Fetcher:
@@ -78,25 +81,58 @@ def _normalize(base_url, loc):
     return urllib.parse.urljoin(base_url, (loc or "").strip())
 
 
+def _local_name(tag):
+    return str(tag).rsplit("}", 1)[-1]
+
+
+def _child_text(node, name):
+    for child in node:
+        if _local_name(child.tag) == name:
+            return (child.text or "").strip()
+    return ""
+
+
 def _parse_sitemap(text, base_url):
-    """Return ``(child_sitemaps, page_locs)`` parsed from a sitemap/robots body."""
+    """Return ``(child_sitemaps, page_locs)`` from a sitemap body.
+
+    Real-world sitemaps are inconsistent about the XML namespace: the spec encourages
+    ``xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"``, but many generators (and
+    hand-written files) omit it. Matching on the local tag name handles both.
+    """
     child_sitemaps, page_locs = [], []
     try:
         root = ET.fromstring(text)
     except ET.ParseError:
         return child_sitemaps, page_locs
-    tag = root.tag.split("}")[-1]
+    tag = _local_name(root.tag)
     if tag == "sitemapindex":
-        for sitemap in root.findall("sm:sitemap", _NS) or root.findall("sitemap"):
-            loc = sitemap.findtext("sm:loc", namespaces=_NS)
+        for sitemap in root:
+            if _local_name(sitemap.tag) != "sitemap":
+                continue
+            loc = _child_text(sitemap, "loc")
             if loc:
                 child_sitemaps.append(_normalize(base_url, loc))
     elif tag == "urlset":
-        for url in root.findall("sm:url", _NS) or root.findall("url"):
-            loc = url.findtext("sm:loc", namespaces=_NS)
+        for url in root:
+            if _local_name(url.tag) != "url":
+                continue
+            loc = _child_text(url, "loc")
             if loc:
                 page_locs.append(_normalize(base_url, loc))
     return child_sitemaps, page_locs
+
+
+def _response_text(response):
+    """Decode a sitemap body, transparently handling an unlabelled gzip file."""
+    body = getattr(response, "content", b"") or b""
+    if not body:
+        return response.text
+    if body[:2] == b"\x1f\x8b":
+        try:
+            body = gzip.decompress(body)
+        except OSError:
+            pass
+    return body.decode(getattr(response, "encoding", None) or "utf-8", errors="replace")
 
 
 def discover_sitemaps(domain, fetcher=None):
@@ -111,8 +147,11 @@ def discover_sitemaps(domain, fetcher=None):
     parser = fetcher.robots_for(parts.scheme, parts.netloc)
     for line in getattr(parser, "site_maps", lambda: [])() or []:
         candidates.append(_normalize(base, line))
-    if not candidates:
-        candidates.append(f"{base}/sitemap.xml")
+    # Always keep the conventional URL as a fallback: a stale robots.txt directive must
+    # not hide a perfectly good /sitemap.xml.
+    fallback = f"{base}/sitemap.xml"
+    if fallback not in candidates:
+        candidates.append(fallback)
     return base, candidates
 
 
@@ -123,11 +162,17 @@ def discover_links(sitemap_url, fetcher=None, _depth=0):
     links = []
     try:
         response = fetcher.get(sitemap_url)
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        logger.warning("sitemap.fetch_failed url=%s error=%s", sitemap_url, exc)
         return links
     if response.status_code != 200:
+        logger.warning(
+            "sitemap.unexpected_status url=%s status=%s", sitemap_url, response.status_code
+        )
         return links
-    children, page_locs = _parse_sitemap(response.text, sitemap_url)
+    children, page_locs = _parse_sitemap(_response_text(response), sitemap_url)
+    if not children and not page_locs:
+        logger.warning("sitemap.unparsed url=%s", sitemap_url)
     links.extend(page_locs)
     if _depth < max_depth:
         for child in children:

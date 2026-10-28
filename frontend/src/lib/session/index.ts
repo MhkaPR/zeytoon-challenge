@@ -50,3 +50,8 @@ export function identityRole(identity: SessionIdentity | null): Role {
   if (!identity?.authenticated) return "guest";
   return identity.user?.role ?? identity.role ?? "guest";
 }
+
+/** ``ops`` and ``admin`` may use the operator console; admins are a superset. */
+export function isOperatorRole(role: Role): boolean {
+  return role === "admin" || role === "ops";
+}

@@ -38,6 +38,79 @@ def test_capture_start_for_kept_link(operator_client, kept_link, monkeypatch):
     assert body["local_path"] == "/tmp/op/trace.json"
 
 
+def test_interactive_capture_gets_a_recording_window(operator_client, kept_link, monkeypatch):
+    _mock_capture(monkeypatch)
+    operator_client.post(
+        f"/api/v1/ops/links/{kept_link.pk}/captures", {"mode": "interactive"}, format="json"
+    )
+    session = CaptureSession.objects.get(link=kept_link)
+    # domtrack's HTTP API requires duration_s; interactive mode uses the configured window.
+    assert session.duration_ms and session.duration_ms > 0
+
+
+def test_operator_cannot_capture_two_links_at_once(
+    operator_client, site, kept_link, monkeypatch
+):
+    _mock_capture(monkeypatch)
+    first = operator_client.post(
+        f"/api/v1/ops/links/{kept_link.pk}/captures", {"mode": "interactive"}, format="json"
+    )
+    assert first.status_code == 201
+
+    second_link = Link.objects.create(
+        site=site,
+        url="https://example.com/second",
+        url_hash="second-hash",
+        source=Link.Source.SITEMAP,
+        review_state=Link.ReviewState.KEPT,
+        pipeline_stage=Link.PipelineStage.CAPTURE,
+    )
+    second = operator_client.post(
+        f"/api/v1/ops/links/{second_link.pk}/captures", {"mode": "interactive"}, format="json"
+    )
+    assert second.status_code == 409
+    assert second.json()["error"]["code"] == "capture_in_progress"
+
+
+def test_local_capture_always_sends_a_duration(monkeypatch):
+    from admin_console import domtrack_client
+
+    sent = {}
+
+    class _Response:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return {"json_path": "/tmp/x.json"}
+
+    def fake_post(url, json=None, timeout=None):
+        sent["url"] = url
+        sent["payload"] = json
+        return _Response()
+
+    monkeypatch.setattr(domtrack_client.httpx, "post", fake_post)
+    domtrack_client.start_local_capture("https://example.com/plans", mode="interactive")
+
+    assert sent["url"].endswith("/capture")
+    # domtrack's HTTP API rejects a capture without duration_s (422).
+    assert sent["payload"]["duration_s"] > 0
+    assert sent["payload"]["headless"] is False
+
+
+def test_active_capture_endpoint_reports_the_running_session(
+    operator_client, kept_link, monkeypatch
+):
+    _mock_capture(monkeypatch)
+    start = operator_client.post(
+        f"/api/v1/ops/links/{kept_link.pk}/captures", {"mode": "interactive"}, format="json"
+    )
+    response = operator_client.get("/api/v1/ops/captures/active")
+    assert response.status_code == 200
+    assert response.json()["capture"]["id"] == start.json()["capture"]["id"]
+    assert response.json()["link_url"] == kept_link.url
+
+
 def test_capture_start_for_non_kept_link_is_400(operator_client, site, monkeypatch):
     _mock_capture(monkeypatch)
     candidate = Link.objects.create(

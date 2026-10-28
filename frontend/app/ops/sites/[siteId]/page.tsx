@@ -1,10 +1,12 @@
 "use client";
 
 import { Skeleton, Typography } from "@heroui/react";
+import { ArrowRight } from "lucide-react";
 import NextLink from "next/link";
 import { use } from "react";
 import { useState } from "react";
 
+import { LinkList } from "@/src/features/ops/links/LinkList";
 import { SiteOnboarding } from "@/src/features/ops/sites/SiteOnboarding";
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { addManualLinks, discoverLinks, getSite } from "@/src/lib/api/ops";
@@ -37,8 +39,34 @@ export default function OpsSitePage({ params }: { params: Promise<{ siteId: stri
     }
   }
 
+  async function discover() {
+    setBusy(true);
+    setFailure(null);
+    setNotice(null);
+    try {
+      const result = await discoverLinks(getAccessToken(), id);
+      setNotice(
+        result.has_sitemap
+          ? `${opsStrings.discoverDone} (${result.discovered})`
+          : opsStrings.sitemapNone,
+      );
+      reload();
+    } catch (err) {
+      setFailure(opsErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="flex flex-col gap-[20px]">
+      <NextLink
+        className="flex w-fit items-center gap-[6px] text-[13px] font-medium text-muted hover:text-foreground"
+        href="/ops/sites"
+      >
+        <ArrowRight aria-hidden className="size-4" />
+        {opsStrings.backToSites}
+      </NextLink>
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
           {opsStrings.siteTitle}
@@ -66,20 +94,16 @@ export default function OpsSitePage({ params }: { params: Promise<{ siteId: stri
           <SiteOnboarding
             busy={busy}
             linksCount={data.links.length}
-            onDiscover={() =>
-              run(
-                () => discoverLinks(getAccessToken(), id),
-                opsStrings.discoverDone,
-              )
-            }
+            onDiscover={discover}
             onManualAdd={(urls) =>
               run(
                 () => addManualLinks(getAccessToken(), id, urls),
-                opsStrings.linksSaved,
+                opsStrings.linksAdded,
               )
             }
             site={data.site}
           />
+          <LinkList links={data.links} />
           <div className="flex flex-wrap gap-[8px]">
             <NextLink
               className="rounded-[var(--radius)] bg-accent px-[14px] py-[8px] text-[14px] font-medium text-accent-foreground"

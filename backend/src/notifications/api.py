@@ -31,7 +31,7 @@ class _AdminOnlyView(APIView):
             raise ApiError(
                 "not_authenticated", "Authentication is required.", http_status=401
             )
-        if not user.is_admin():
+        if not user.is_operator():
             raise ApiError(
                 "admin_required",
                 "This action is restricted to operators.",

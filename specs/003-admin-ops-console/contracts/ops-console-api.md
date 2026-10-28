@@ -21,9 +21,11 @@ exactly one append-only `VerificationDecision` record per decision (FR-002, FR-0
 
 - Authentication: `Authorization: Bearer <access_token>` on every endpoint here (JSON Web
   Token auth from the `accounts` feature, Principle XI). Unauthenticated requests get `401`.
-- Authorization: every endpoint requires the operator/admin role (`is_admin()`); a
-  non-operator caller gets `403` with `code: "admin_required"` (FR-001, FR-005). A company
-  owner can never reach a decision or maintenance endpoint (FR-005, SC-004).
+- Authorization: every endpoint requires an operator role — membership in the `ops` group
+  or the `admin` group (a superuser is an admin). `ops` grants only this console; `admin`
+  additionally grants Django `/admin`. A non-operator caller gets `403` with
+  `code: "admin_required"` (FR-001, FR-005). A company owner can never reach a decision or
+  maintenance endpoint (FR-005, SC-004).
 - CSRF: state-changing requests MUST include `X-CSRFToken` matching the CSRF cookie.
 - Masking: no response or log includes a full company phone number, and no response or log
   includes trace content (FR-044, SC-018).
@@ -45,6 +47,7 @@ exactly one append-only `VerificationDecision` record per decision (FR-002, FR-0
 
 Error codes used by this contract: `admin_required`, `not_authenticated`, `not_found`,
 `invalid_field`, `domtrack_unreachable`, `link_not_ready`, `trace_required`,
+`capture_in_progress`,
 `no_tables_found`, `recipe_incomplete`, `labeling_disabled`, `llm_ceiling_exceeded`,
 `site_suspended`, `alerts_configured_recipient_exists`.
 
@@ -181,7 +184,9 @@ remaining recorded (FR-010, SC-006). A review that keeps no links leaves the sit
 
 Start a capture for a kept link. The server calls the operator's **local domtrack REST API**
 (`POST {DOMTRACK_LOCAL_API_URL}/capture`), which opens a Chrome window on the link and
-starts recording.
+starts recording. Capture starts only on this explicit call — adding or reviewing a link
+never records it. domtrack's HTTP API requires `duration_s`, so interactive mode uses
+`CAPTURE_INTERACTIVE_DURATION_MS` as its recording window.
 
 **Request**: `{ "mode": "interactive" }` (or `{ "mode": "fixed_duration", "duration_ms": 60000 }`,
 FR-013)
@@ -192,7 +197,19 @@ FR-013)
 |--------|---------|------|
 | 201 | Capture session started | `{ "capture_session": { "id", "state": "recording", "mode": "interactive" } }` |
 | 400 | Link is not `kept`/ready | error `code: "link_not_ready"` |
+| 409 | The operator already has a capture in flight | error `code: "capture_in_progress"`; one operator records one link at a time |
 | 502 | Local domtrack unreachable | error `code: "domtrack_unreachable"`; the link does **not** advance (FR-017) |
+
+### GET /api/v1/ops/captures/active
+
+Return `{ "capture": null | { ... }, "link_url": string | null }` for the caller's
+in-flight capture, so the UI can disable a second recording.
+
+### GET /api/v1/ops/domtrack/health
+
+Probe the operator's local service and return
+`{ "reachable": boolean, "base_url": string, "name", "version", "trace_dir" }` (or `error`
+when unreachable). Side-effect free.
 
 ### POST /api/v1/ops/captures/{capture_session_id}/trace
 

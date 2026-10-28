@@ -4,12 +4,12 @@ import { Skeleton, Typography } from "@heroui/react";
 import { ClipboardCheck, Globe, RefreshCw, Settings } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 
 import { useSession } from "@/src/features/auth/SessionProvider";
 import { LoginButton } from "@/src/features/auth/LoginButton";
 import { opsStrings } from "@/src/lib/i18n/strings";
-import { identityRole } from "@/src/lib/session";
+import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 const NAV = [
   { href: "/ops", label: opsStrings.navApprovals, icon: ClipboardCheck },
@@ -18,18 +18,37 @@ const NAV = [
   { href: "/ops/settings", label: opsStrings.navSettings, icon: Settings },
 ] as const;
 
-/** Operator-only shell: non-operators never see console data and are redirected. */
+/**
+ * Operator-only shell. ``usePathname`` is dynamic, so the shell lives inside a Suspense
+ * boundary; otherwise Next's cacheComponents prerender fails for dynamic routes such as
+ * ``/ops/sites/[siteId]``.
+ */
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto w-full max-w-[1100px] flex-1 px-[16px] py-[40px]">
+          <Skeleton className="h-[200px] rounded-[var(--radius)]" />
+        </main>
+      }
+    >
+      <OpsShell>{children}</OpsShell>
+    </Suspense>
+  );
+}
+
+function OpsShell({ children }: { children: React.ReactNode }) {
   const { identity } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const role = identityRole(identity);
+  const isOperator = isOperatorRole(role);
 
   useEffect(() => {
-    if (identity?.authenticated && role !== "admin") {
+    if (identity?.authenticated && !isOperator) {
       router.replace("/panel");
     }
-  }, [identity, role, router]);
+  }, [identity, isOperator, router]);
 
   if (identity === null) {
     return (
@@ -53,7 +72,7 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (role !== "admin") {
+  if (!isOperator) {
     return (
       <main className="mx-auto w-full max-w-[1100px] flex-1 px-[16px] py-[40px]">
         <Typography role="alert">{opsStrings.adminOnly}</Typography>

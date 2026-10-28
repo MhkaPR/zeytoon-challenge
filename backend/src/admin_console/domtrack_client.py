@@ -12,6 +12,8 @@ import os
 import httpx
 from django.conf import settings
 
+from admin_console import constants
+
 
 class DomtrackUnreachable(Exception):
     """The local domtrack REST API could not be reached (FR-017)."""
@@ -26,19 +28,57 @@ def _local_base_url():
     return str(settings.DOMTRACK_LOCAL_API_URL).rstrip("/")
 
 
+def local_health():
+    """Probe the operator's ``domtrack serve`` without raising (used by the console)."""
+    base = _local_base_url()
+    try:
+        response = httpx.get(
+            f"{base}/health",
+            timeout=min(5.0, float(settings.DOMTRACK_LOCAL_API_TIMEOUT_SECONDS)),
+        )
+    except httpx.HTTPError as exc:
+        return {
+            "reachable": False,
+            "base_url": base,
+            "error": str(exc)[:200],
+        }
+    if response.status_code >= 400:
+        return {
+            "reachable": False,
+            "base_url": base,
+            "status": response.status_code,
+            "error": response.text[:200],
+        }
+    body = response.json()
+    return {
+        "reachable": True,
+        "base_url": base,
+        "name": body.get("name"),
+        "version": body.get("version"),
+        "trace_dir": body.get("trace_dir"),
+    }
+
+
 def start_local_capture(url, mode="interactive", duration_ms=None, selector=None):
     """Trigger ``domtrack capture`` through the local REST API (FR-012, FR-013).
 
     Returns domtrack's capture result; raises :class:`DomtrackUnreachable` when the
     operator's local service is down (mapped to ``502 domtrack_unreachable``).
     """
+    if not duration_ms:
+        duration_ms = (
+            constants.capture_fixed_duration_ms()
+            if mode == "fixed_duration"
+            else constants.capture_interactive_duration_ms()
+        )
     payload = {
         "url": url,
         "selector": selector,
         "headless": mode == "fixed_duration",
+        # domtrack's HTTP API cannot pause for a human, so even interactive mode needs a
+        # recording window; the browser stays open for the operator during that window.
+        "duration_s": max(1.0, float(duration_ms) / 1000.0),
     }
-    if mode == "fixed_duration":
-        payload["duration_s"] = max(1.0, float(duration_ms or 0) / 1000.0)
     try:
         response = httpx.post(
             f"{_local_base_url()}/capture",

@@ -6,7 +6,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 
 import { opsStrings, strings } from "@/src/lib/i18n/strings";
-import { identityRole } from "@/src/lib/session";
+import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
 
@@ -37,7 +37,7 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
         <Building2 className="size-4 shrink-0 text-muted" />
         {strings.myCompanies}
       </NextLink>
-      {identityRole(identity) === "admin" && (
+      {isOperatorRole(identityRole(identity)) && (
         <NextLink
           className="flex items-center gap-[8px] rounded-[var(--radius)] px-[12px] py-[10px] text-[15px] font-medium text-foreground transition-colors hover:bg-surface-secondary"
           href="/ops"

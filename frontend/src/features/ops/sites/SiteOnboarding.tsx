@@ -71,16 +71,31 @@ export function SiteOnboarding({
 
         <Separator />
 
-        <Typography className="text-[13px] text-muted">
-          {site.has_sitemap ? opsStrings.sitemapFound : opsStrings.sitemapMissing}
-        </Typography>
-
-        {site.has_sitemap && (
-          <Button isDisabled={busy} onPress={onDiscover} variant="secondary">
-            <RefreshCw aria-hidden className="size-4" />
-            {busy ? opsStrings.discovering : opsStrings.discoverLinks}
-          </Button>
+        {site.has_sitemap ? (
+          <div className="flex flex-col gap-[2px]">
+            <Typography className="text-[13px] text-success">
+              {opsStrings.sitemapFound}
+            </Typography>
+            <Typography className="text-[12px] text-muted" dir="ltr">
+              {opsStrings.sitemapUrl}: {site.sitemap_url || opsStrings.none}
+            </Typography>
+          </div>
+        ) : (
+          <Typography className="text-[13px] text-muted">
+            {opsStrings.sitemapMissing}
+          </Typography>
         )}
+        {!site.has_sitemap && (
+          <Typography className="text-[12px] text-muted">
+            {opsStrings.discoverHint}
+          </Typography>
+        )}
+
+        {/* Always available: a new site has no sitemap flag yet, so discovery must run first. */}
+        <Button isDisabled={busy} onPress={onDiscover} variant="secondary">
+          <RefreshCw aria-hidden className="size-4" />
+          {busy ? opsStrings.discovering : opsStrings.discoverLinks}
+        </Button>
       </Card>
 
       <Card className="flex flex-col gap-[12px] p-[20px]" variant="secondary">

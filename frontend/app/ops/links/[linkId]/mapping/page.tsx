@@ -52,7 +52,7 @@ export default function OpsMappingPage({
           {opsStrings.mappingTitle}
         </Typography>
         <Typography className="text-[13px] text-muted">{opsStrings.mappingIntro}</Typography>
-        <LinkStageNav active="mapping" linkId={id} />
+        <LinkStageNav active="mapping" linkId={id} siteId={recipeState.data?.recipe?.site_id} />
       </div>
 
       {notice && (

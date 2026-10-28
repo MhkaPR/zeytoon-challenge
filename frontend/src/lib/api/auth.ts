@@ -8,7 +8,7 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-export type Role = "guest" | "regular" | "admin";
+export type Role = "guest" | "regular" | "ops" | "admin";
 
 export interface SessionIdentity {
   authenticated: boolean;

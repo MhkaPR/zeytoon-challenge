@@ -2,7 +2,7 @@
 
 import re
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from datetime import timedelta
 
@@ -214,17 +214,46 @@ def start_capture(link, operator, mode="interactive", duration_ms=None):
             "link_not_ready",
             "Only kept links can be captured.",
         )
-    if mode == "fixed_duration" and not duration_ms:
-        duration_ms = constants.capture_fixed_duration_ms()
-
-    with transaction.atomic():
-        session = CaptureSession.objects.create(
-            link=link,
-            operator=operator,
-            mode=mode,
-            duration_ms=duration_ms,
-            state=CaptureSession.State.PENDING,
+    if not duration_ms:
+        duration_ms = (
+            constants.capture_fixed_duration_ms()
+            if mode == "fixed_duration"
+            else constants.capture_interactive_duration_ms()
         )
+
+    # Only an explicit button press starts a capture; a link reaching the capture stage
+    # never records on its own. One operator may record only one link at a time.
+    try:
+        with transaction.atomic():
+            existing = (
+                CaptureSession.objects.select_for_update()
+                .filter(
+                    operator=operator,
+                    state__in=CaptureSession.NON_TERMINAL,
+                )
+                .first()
+            )
+            if existing is not None:
+                raise ApiError(
+                    "capture_in_progress",
+                    "You already have a capture in progress; finish it first.",
+                    http_status=409,
+                    fields={"capture_id": existing.pk, "link_id": existing.link_id},
+                )
+            session = CaptureSession.objects.create(
+                link=link,
+                operator=operator,
+                mode=mode,
+                duration_ms=duration_ms,
+                state=CaptureSession.State.PENDING,
+            )
+    except IntegrityError as exc:
+        # Two concurrent presses: the per-operator constraint wins the race.
+        raise ApiError(
+            "capture_in_progress",
+            "You already have a capture in progress; finish it first.",
+            http_status=409,
+        ) from exc
     try:
         result = domtrack_client.start_local_capture(
             link.url, mode=mode, duration_ms=duration_ms
@@ -253,6 +282,17 @@ def start_capture(link, operator, mode="interactive", duration_ms=None):
     return session, result
 
 
+def active_capture_for(operator):
+    """The operator's unfinished capture, if any (one at a time, FR-012)."""
+    return (
+        CaptureSession.objects.filter(
+            operator=operator, state__in=CaptureSession.NON_TERMINAL
+        )
+        .select_related("link")
+        .first()
+    )
+
+
 def _sha256(data):
     import hashlib
 
@@ -276,9 +316,16 @@ def store_trace(capture_session, file_or_path, operator):
         tmp.close()
         local_path = tmp.name
     else:
-        local_path = str(file_or_path)
-        with open(local_path, "rb") as handle:
-            data = handle.read()
+        local_path = os.path.abspath(os.path.expanduser(str(file_or_path)))
+        try:
+            with open(local_path, "rb") as handle:
+                data = handle.read()
+        except OSError as exc:
+            raise ApiError(
+                "invalid_field",
+                "The domtrack trace path could not be read on this machine.",
+                fields={"local_path": local_path, "error": str(exc)[:200]},
+            ) from exc
 
     try:
         raw, is_valid = domtrack_client.load_trace(local_path)
@@ -639,6 +686,8 @@ def recipe_payload(recipe):
         return None
     return {
         "id": recipe.pk,
+        "link_id": recipe.link_id,
+        "site_id": recipe.link.site_id,
         "plan_type": recipe.plan_type,
         "version": recipe.version,
         "is_complete": recipe.is_complete,

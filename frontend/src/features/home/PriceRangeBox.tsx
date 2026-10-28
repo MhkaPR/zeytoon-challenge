@@ -78,7 +78,10 @@ export function PriceRangeBox({
           </span>
         </Button>
         <Popover.Content className="w-[300px]" placement="bottom end">
-          <Popover.Dialog className="flex flex-col gap-[16px]">
+          <Popover.Dialog
+            aria-label={strings.priceRangeLabel}
+            className="flex flex-col gap-[16px]"
+          >
             <Popover.Heading>{strings.priceRangeLabel}</Popover.Heading>
           <div className="flex flex-row items-end gap-[8px]">
             <NumberField

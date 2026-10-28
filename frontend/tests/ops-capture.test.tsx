@@ -28,8 +28,10 @@ function props(overrides: Partial<React.ComponentProps<typeof CapturePanel>> = {
     traceStored: false,
     onStart: vi.fn(),
     onUpload: vi.fn(),
+    onLoadLocal: vi.fn(),
     onFail: vi.fn(),
     onContinue: vi.fn(),
+    onRecheck: vi.fn(),
     ...overrides,
   };
 }
@@ -63,7 +65,7 @@ describe("capture panel", () => {
     expect(screen.getByText(opsStrings.manualUploadTitle)).toBeInTheDocument();
     await user.upload(screen.getByLabelText(opsStrings.uploadTrace), file);
     await user.click(
-      screen.getByRole("button", { name: new RegExp(opsStrings.uploadTrace) }),
+      screen.getByRole("button", { name: opsStrings.uploadTrace }),
     );
     expect(onUpload).toHaveBeenCalledWith(file);
   });
@@ -74,5 +76,26 @@ describe("capture panel", () => {
     expect(
       screen.getByRole("button", { name: opsStrings.advanceBlocked }),
     ).toBeDisabled();
+  });
+
+  it("disables starting a second capture while one is in progress", () => {
+    render(<CapturePanel {...props({ activeCapture: capture })} />);
+
+    expect(screen.getByText(opsStrings.captureInProgress)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: new RegExp(opsStrings.startCapture) }),
+    ).toBeDisabled();
+  });
+
+  it("loads the trace from domtrack's local path", async () => {
+    const onLoadLocal = vi.fn();
+    const user = userEvent.setup();
+    render(<CapturePanel {...props({ capture, onLoadLocal })} />);
+
+    await user.click(
+      screen.getByRole("button", { name: new RegExp(opsStrings.loadLocalTrace) }),
+    );
+
+    expect(onLoadLocal).toHaveBeenCalled();
   });
 });

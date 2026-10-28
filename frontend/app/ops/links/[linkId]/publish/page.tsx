@@ -55,7 +55,7 @@ export default function OpsPublishPage({
           {opsStrings.publishingTitle}
         </Typography>
         <Typography className="text-[13px] text-muted">{opsStrings.publishingIntro}</Typography>
-        <LinkStageNav active="publish" linkId={id} />
+        <LinkStageNav active="publish" linkId={id} siteId={data?.recipe?.site_id} />
       </div>
 
       {notice && (

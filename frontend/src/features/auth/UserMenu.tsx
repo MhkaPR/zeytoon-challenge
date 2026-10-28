@@ -5,7 +5,7 @@ import { Building2, ChevronDown, ClipboardCheck, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { opsStrings, strings } from "@/src/lib/i18n/strings";
-import { identityRole } from "@/src/lib/session";
+import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
 
@@ -44,7 +44,7 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
             <Building2 className="size-4 shrink-0 text-muted" />
             <Label>{strings.myCompanies}</Label>
           </Dropdown.Item>
-          {identityRole(identity) === "admin" && (
+          {isOperatorRole(identityRole(identity)) && (
             <Dropdown.Item id="ops" textValue={opsStrings.console}>
               <ClipboardCheck className="size-4 shrink-0 text-muted" />
               <Label>{opsStrings.console}</Label>

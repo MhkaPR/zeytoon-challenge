@@ -1,7 +1,9 @@
 """User model for phone-based authentication.
 
-Roles are Django ``Group``s (``regular`` / ``admin``) managed with django-guardian; there is
-no ad-hoc role column. Object-level permissions are handled by django-guardian.
+Roles are Django ``Group``s (``regular`` / ``ops`` / ``admin``) managed with
+django-guardian; there is no ad-hoc role column. ``ops`` operators work in the ``/ops``
+console, while ``admin`` adds Django-admin access. Object-level permissions are handled by
+django-guardian.
 """
 
 from django.contrib.auth.models import AbstractUser, Group
@@ -22,6 +24,7 @@ class User(AbstractUser, TimestampedModel):
         BLOCKED = "blocked", "Blocked"
 
     REGULAR_GROUP = "regular"
+    OPS_GROUP = "ops"
     ADMIN_GROUP = "admin"
 
     phone_number = models.CharField(max_length=32, unique=True)
@@ -73,22 +76,28 @@ class User(AbstractUser, TimestampedModel):
     def role(self):
         """Return the user's role based on group membership.
 
-        ``admin`` wins over ``regular``; a user in neither group is treated as ``regular``.
-        A Django superuser (e.g. one made with ``createsuperuser``) is always an admin, so
-        the account created by the management command is immediately usable as an operator.
+        ``admin`` wins over ``ops``, which wins over ``regular``. A user in none of the
+        groups is treated as ``regular``. A Django superuser (e.g. one made with
+        ``createsuperuser``) is always an admin.
         """
         if self.is_superuser:
             return self.ADMIN_GROUP
         group_names = set(self.groups.values_list("name", flat=True))
         if self.ADMIN_GROUP in group_names:
             return self.ADMIN_GROUP
+        if self.OPS_GROUP in group_names:
+            return self.OPS_GROUP
         return self.REGULAR_GROUP
 
     def is_admin(self):
         return self.role() == self.ADMIN_GROUP
 
+    def is_operator(self):
+        """Operators are the ``ops`` group plus admins (admins are a superset)."""
+        return self.role() in (self.ADMIN_GROUP, self.OPS_GROUP)
+
 
 def ensure_role_groups():
-    """Create the ``regular`` and ``admin`` groups if they do not exist."""
-    Group.objects.get_or_create(name=User.REGULAR_GROUP)
-    Group.objects.get_or_create(name=User.ADMIN_GROUP)
+    """Create the ``regular``, ``ops``, and ``admin`` groups if they do not exist."""
+    for name in (User.REGULAR_GROUP, User.OPS_GROUP, User.ADMIN_GROUP):
+        Group.objects.get_or_create(name=name)

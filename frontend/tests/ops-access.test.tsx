@@ -75,4 +75,17 @@ describe("ops access role", () => {
     expect(screen.getByText("console data")).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });
+
+  it("renders the console for the ops group", () => {
+    session.current = { authenticated: true, role: "ops" };
+
+    render(
+      <OpsLayout>
+        <div>console data</div>
+      </OpsLayout>,
+    );
+
+    expect(screen.getByText("console data")).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
 });

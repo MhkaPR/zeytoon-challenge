@@ -130,6 +130,8 @@ export interface RecipeBinding {
 
 export interface Recipe {
   id: number;
+  link_id: number;
+  site_id: number;
   plan_type: string;
   version: number;
   is_complete: boolean;
@@ -225,7 +227,7 @@ export function getSite(token: string | null, siteId: number) {
 }
 
 export function discoverLinks(token: string | null, siteId: number) {
-  return request<{ discovered: number; source: string }>(
+  return request<{ has_sitemap: boolean; sitemap_url: string; discovered: number }>(
     `/api/v1/ops/sites/${siteId}/discover-links`,
     token,
     { method: "POST" },
@@ -283,6 +285,39 @@ export function uploadTrace(token: string | null, captureSessionId: number, file
   );
 }
 
+export function uploadLocalTrace(
+  token: string | null,
+  captureSessionId: number,
+  localPath: string,
+) {
+  return request<{ trace: Record<string, unknown>; capture: CaptureSession }>(
+    `/api/v1/ops/captures/${captureSessionId}/trace`,
+    token,
+    { method: "POST", body: JSON.stringify({ local_path: localPath }) },
+  );
+}
+
+export interface DomtrackHealth {
+  reachable: boolean;
+  base_url: string;
+  name?: string | null;
+  version?: string | null;
+  trace_dir?: string | null;
+  status?: number;
+  error?: string;
+}
+
+export function getDomtrackHealth(token: string | null) {
+  return request<DomtrackHealth>("/api/v1/ops/domtrack/health", token);
+}
+
+export function getActiveCapture(token: string | null) {
+  return request<{ capture: CaptureSession | null; link_url: string | null }>(
+    "/api/v1/ops/captures/active",
+    token,
+  );
+}
+
 export function failCapture(token: string | null, captureSessionId: number, error: string) {
   return request<Record<string, unknown>>(
     `/api/v1/ops/captures/${captureSessionId}/fail`,
@@ -303,6 +338,7 @@ export function extractTables(token: string | null, linkId: number) {
 export function getTables(token: string | null, linkId: number) {
   return request<{
     link_id: number;
+    site_id: number;
     url: string;
     pipeline_stage: string;
     current_trace_id: number | null;
