@@ -7,8 +7,8 @@
 
 import { AuthApiError, type ApiErrorBody } from "./auth";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Empty base = same origin (Next proxies ``/api/*`` to the backend in development).
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 export type VerificationStatus = "pending" | "verified" | "rejected";
 export type ChargeStatus = "charged" | "not_charged";

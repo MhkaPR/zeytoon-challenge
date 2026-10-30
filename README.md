@@ -145,8 +145,11 @@ yarn install
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The app talks to the backend via
-`NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:8000`).
+Open [http://localhost:3000](http://localhost:3000). By default the app calls the API on its
+own origin (`/api/v1/...`) and Next proxies those requests to the backend, so the httpOnly
+refresh cookie is first-party and the session survives a page reload. Set
+`NEXT_PUBLIC_API_BASE_URL` to an absolute backend origin only for a split-host deployment
+(then the proxy is disabled and the browser calls that origin directly).
 
 ### 3. Full stack with Docker
 
@@ -230,7 +233,7 @@ can change thresholds without a redeploy.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `NEXT_PUBLIC_API_BASE_URL` | Backend base URL | `http://localhost:8000` |
+| `NEXT_PUBLIC_API_BASE_URL` | Absolute backend base URL; when unset the frontend uses a same-origin `/api/*` proxy (see below) | unset (proxy to `http://localhost:8000`) |
 
 ---
 
