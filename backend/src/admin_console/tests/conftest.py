@@ -1,5 +1,7 @@
 """Shared pytest fixtures for the admin console tests."""
 
+from types import SimpleNamespace
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -19,7 +21,6 @@ def api_client():
 
 @pytest.fixture(autouse=True)
 def _clear_throttle_cache():
-    """Keep DRF throttle counters out of the shared Redis cache between tests."""
     cache.clear()
     yield
     cache.clear()
@@ -27,7 +28,6 @@ def _clear_throttle_cache():
 
 @pytest.fixture(autouse=True)
 def _artifact_storage(tmp_path, settings):
-    """Route artifact writes to a throwaway filesystem backend (no S3 in tests)."""
     settings.STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -108,6 +108,7 @@ def site(approved_company):
     return Site.objects.create(
         company=approved_company,
         domain=approved_company.domain,
+        maintenance_state=Site.MaintenanceState.ACTIVE,
     )
 
 
@@ -119,26 +120,24 @@ def kept_link(site):
         site=site,
         url="https://example.com/plans",
         url_hash="kept-hash",
-        source=Link.Source.SITEMAP,
+        source=Link.Source.ADAPTIVE_CRAWL,
         review_state=Link.ReviewState.KEPT,
-        pipeline_stage=Link.PipelineStage.CAPTURE,
+        pipeline_stage=Link.PipelineStage.REFILTERED,
     )
 
 
 @pytest.fixture
-def traced_link(kept_link, operator):
-    """A kept link with a stored, valid trace (for extraction/labeling tests)."""
+def traced_link(kept_link):
     from django.utils import timezone
 
     from admin_console import artifacts
-    from admin_console.models import Trace
-    from admin_console.tests.factories import make_trace_bytes
+    from admin_console.models import Link, Trace
+    from admin_console.tests import factories
 
-    data = make_trace_bytes(url=kept_link.url)
+    data = factories.make_trace_bytes(url=kept_link.url)
     key, backend, size, digest = artifacts.save_trace(data)
     trace = Trace.objects.create(
         link=kept_link,
-        captured_by=operator,
         captured_at=timezone.now(),
         storage_key=key,
         storage_backend=backend,
@@ -147,51 +146,215 @@ def traced_link(kept_link, operator):
         is_valid_trace=True,
     )
     kept_link.current_trace = trace
-    kept_link.save(update_fields=["current_trace", "updated_at"])
+    kept_link.pipeline_stage = Link.PipelineStage.CAPTURED
+    kept_link.save()
     return kept_link
 
 
+# ---------------------------------------------------------------------------
+# External-stage doubles (no network, no browser, no LLM): every stage under
+# test is driven through its adapter's ``default_*`` instance, so tests replace
+# those methods and inspect exactly what the stage received.
+# ---------------------------------------------------------------------------
+
+
 @pytest.fixture
-def published_link(operator_client, traced_link):
-    """A link with extracted tables, a complete recipe, and published catalog rows."""
-    from admin_console.models import Link
+def stub_llm(monkeypatch):
+    """A scripted LLM double for refilter/classification/plan extraction."""
+    from admin_console import llm as llm_mod
 
-    site = traced_link.site
-    site.maintenance_state = site.MaintenanceState.ACTIVE
-    site.save(update_fields=["maintenance_state", "updated_at"])
+    stub = SimpleNamespace(
+        refilter_response={"is_plans_page": True, "plan_type": "hosting", "confidence": 0.9},
+        classifications=[],
+        plans=[],
+        exhausted_stages=set(),
+        refilter_calls=[],
+        classification_calls=[],
+        plan_calls=[],
+    )
 
-    operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/extractions")
-    tables = operator_client.get(f"/api/v1/ops/links/{traced_link.pk}/tables").json()[
-        "tables"
-    ]
-    table = tables[0]
-    column = dict(table["columns"][0])
-    required = (
-        "plan_name",
-        "storage_amount",
-        "storage_unit",
-        "ram_amount",
-        "cpu_cores",
-        "bandwidth_amount",
-        "price_amount",
-        "billing_period",
+    def _raise_if_exhausted(stage, link=None):
+        if stage in stub.exhausted_stages:
+            # Mirror the real client: parking the link and notifying are side effects
+            # of the budget guard, so a scripted exhaustion behaves like the real one.
+            llm_mod.default_budget.exhausted(stage, link=link)
+            raise llm_mod.LlmBudgetExhausted(stage)
+
+    def refilter_page(url, headings, important_section, *, idempotency_key=None, link=None):
+        stub.refilter_calls.append(
+            {"url": url, "headings": headings, "important_section": important_section}
+        )
+        _raise_if_exhausted("refilter", link)
+        response = stub.refilter_response
+        if callable(response):
+            response = response(url, headings, important_section)
+        return response if isinstance(response, llm_mod.RefilterVerdict) else llm_mod.RefilterVerdict(**response)
+
+    def classify_tables(table_contexts, *, idempotency_key=None, link=None):
+        stub.classification_calls.append(table_contexts)
+        _raise_if_exhausted("classification", link)
+        return [
+            item
+            if isinstance(item, llm_mod.TableClassificationOut)
+            else llm_mod.TableClassificationOut(**item)
+            for item in stub.classifications
+        ]
+
+    def extract_plans(table_context, plan_type, field_keys, *, idempotency_key=None,
+                      link=None, table=None):
+        stub.plan_calls.append(
+            {
+                "table": table_context,
+                "plan_type": plan_type,
+                "field_keys": set(field_keys),
+                "link_id": getattr(link, "pk", None),
+                "table_id": getattr(table, "pk", None),
+            }
+        )
+        _raise_if_exhausted("schema_extraction", link)
+        response = stub.plans
+        if callable(response):
+            response = response(table_context, plan_type)
+        return [
+            item if isinstance(item, llm_mod.PlanRecordOut) else llm_mod.PlanRecordOut(**item)
+            for item in response
+        ]
+
+    monkeypatch.setattr(llm_mod.default_client, "refilter_page", refilter_page)
+    monkeypatch.setattr(llm_mod.default_client, "classify_tables", classify_tables)
+    monkeypatch.setattr(llm_mod.default_client, "extract_plans", extract_plans)
+    return stub
+
+
+@pytest.fixture
+def stub_page_html(monkeypatch):
+    """Replace the refilter fetch with in-memory HTML; returns a setter."""
+    from admin_console import refilter as refilter_mod
+
+    state = SimpleNamespace(html="<main><h1>Plans</h1><p>Cheap hosting plans</p></main>",
+                            fetched=[])
+
+    def fetch_html(url, timeout=None):
+        state.fetched.append(url)
+        return state.html
+
+    monkeypatch.setattr(refilter_mod.default_summarizer, "fetch_html", fetch_html)
+    return state
+
+
+@pytest.fixture
+def stub_domtrack(monkeypatch):
+    """A domtrack double for capture/extract/label/compare; no browser or disk."""
+    from admin_console import domtrack_client, tests
+
+    stub = SimpleNamespace(
+        capture_bytes=tests.factories.make_trace_bytes(),
+        capture_error=None,
+        table_result=tests.factories.domtrack_table_result(),
+        labels={"tables": []},
+        compare_result=None,
+        compare_error=None,
+        capture_calls=[],
+        extract_calls=[],
+        label_calls=[],
+        compare_calls=[],
     )
-    bindings = [
-        {
-            "schema_field_key": key,
-            "source_table_id": table["id"],
-            "source_column_id": column["id"],
-            "selector": column["path"],
-            "formula": "",
-        }
-        for key in required
-    ]
-    operator_client.put(
-        f"/api/v1/ops/links/{traced_link.pk}/recipe",
-        {"plan_type": "hosting", "bindings": bindings},
-        format="json",
-    )
-    operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/publish")
-    traced_link.refresh_from_db()
-    assert traced_link.pipeline_stage == Link.PipelineStage.PUBLISHED
+
+    def capture_headless(url, duration_ms, nav_timeout_ms=None):
+        stub.capture_calls.append({"url": url, "duration_ms": duration_ms})
+        if stub.capture_error is not None:
+            raise stub.capture_error
+        return stub.capture_bytes
+
+    def extract_tables(path, min_rows=2, min_cols=2, dedupe=True):
+        stub.extract_calls.append(path)
+        return stub.table_result
+
+    def label_tables(tables, label_config):
+        stub.label_calls.append(tables)
+        return stub.labels
+
+    def compare_replay(before_path, replay_config=None, recording=None):
+        stub.compare_calls.append(before_path)
+        if stub.compare_error is not None:
+            raise stub.compare_error
+        return stub.compare_result
+
+    monkeypatch.setattr(domtrack_client.default_client, "capture_headless", capture_headless)
+    monkeypatch.setattr(domtrack_client.default_client, "extract_tables", extract_tables)
+    monkeypatch.setattr(domtrack_client.default_client, "label_tables", label_tables)
+    monkeypatch.setattr(domtrack_client.default_client, "compare_replay", compare_replay)
+    return stub
+
+
+@pytest.fixture
+def stub_discovery(monkeypatch):
+    """A crawl4ai double returning a fixed harvest; returns the stub for assertions."""
+    from admin_console import discovery
+
+    stub = SimpleNamespace(urls=[], calls=[])
+
+    def crawl_candidate_links(domain, query, bounds=None):
+        stub.calls.append({"domain": domain, "query": query, "bounds": bounds})
+        return list(stub.urls)
+
+    monkeypatch.setattr(discovery.default_discoverer, "crawl_candidate_links", crawl_candidate_links)
+    return stub
+
+
+@pytest.fixture
+def notification_recipient(db, operator):
+    from notifications import services as notification_services
+
+    return notification_services.add_recipient(user=operator, name="Ops inbox")
+
+
+@pytest.fixture
+def no_retry_sleep(monkeypatch):
+    """Skip retry backoff so resilience tests stay fast."""
+    from admin_console import services
+
+    monkeypatch.setattr(services, "_sleep", lambda seconds: None)
+
+
+@pytest.fixture
+def extracted_link(traced_link, stub_domtrack):
+    """A link whose current trace has been extracted (one canned table)."""
+    from admin_console import services
+
+    services.extract_link_tables(traced_link)
     return traced_link
+
+
+@pytest.fixture
+def classified_link(extracted_link, stub_llm):
+    """A link whose first extracted table is classified as a hosting plans table."""
+    from admin_console import services
+
+    stub_llm.classifications = [
+        {"table_index": 0, "is_plans_table": True, "plan_type": "hosting", "confidence": 0.92}
+    ]
+    services.classify_link_tables(extracted_link)
+    return extracted_link
+
+
+HOSTING_PLAN_VALUES = {
+    "plan_name": "Starter",
+    "storage_amount": 10,
+    "storage_unit": "GB",
+    "ram_amount": 1,
+    "cpu_cores": 1,
+    "bandwidth_amount": 100,
+    "price_amount": 50000,
+    "billing_period": "monthly",
+}
+
+
+@pytest.fixture
+def planned_link(classified_link, stub_llm):
+    """A link with one normalized hosting plan record."""
+    from admin_console import services
+
+    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 0.8}]
+    services.extract_link_plans(classified_link)
+    return classified_link

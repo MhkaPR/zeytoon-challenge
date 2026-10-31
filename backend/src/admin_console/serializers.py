@@ -40,32 +40,31 @@ class SiteCreateInput(BaseModel):
     company_id: int
 
 
+class DiscoverLinksInput(BaseModel):
+    query: str | None = None
+    max_pages: int | None = None
+    max_depth: int | None = None
+
+
 class ManualLinksInput(BaseModel):
     urls: list[str] = Field(default_factory=list)
 
 
-class LinkReviewInput(BaseModel):
-    keep_ids: list[int] = Field(default_factory=list)
-    remove_ids: list[int] = Field(default_factory=list)
+class RefilterOverrideInput(BaseModel):
+    refilter_state: str = Field(pattern="^(kept|dropped)$")
+    reason: str = ""
 
 
 class CaptureStartInput(BaseModel):
-    mode: str = Field(default="interactive")
     duration_ms: int | None = None
 
 
-class RecipeBindingInput(BaseModel):
-    schema_field_key: str
-    source_table_id: int | None = None
-    source_column_id: int | None = None
-    selector: str = ""
-    formula: str = ""
-    aggregation: str = ""
+class ClassifyInput(BaseModel):
+    table_ids: list[int] = Field(default_factory=list)
 
 
-class RecipeSaveInput(BaseModel):
-    plan_type: str
-    bindings: list[RecipeBindingInput] = Field(default_factory=list)
+class PlansInput(BaseModel):
+    classification_ids: list[int] = Field(default_factory=list)
 
 
 class ReplayRunInput(BaseModel):
@@ -73,17 +72,12 @@ class ReplayRunInput(BaseModel):
     site_id: int | None = None
 
 
-class RecipientInput(BaseModel):
-    user_id: int
-    name: str | None = None
-
-
 class SettingsUpdateInput(BaseModel):
     values: dict = Field(default_factory=dict)
 
 
-class LlmCostCeilingInput(BaseModel):
-    ceiling_amount: float | None = None
+class TokenBudgetInput(BaseModel):
+    token_budget: int | None = None
     period: str = "monthly"
 
 

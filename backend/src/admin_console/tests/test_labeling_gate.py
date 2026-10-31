@@ -1,58 +1,48 @@
-"""Labeling gate tests (US5, FR-021..FR-023, SC-016)."""
-
-from unittest.mock import patch
+"""US8 — labeling is optional, admin-gated, and never blocks the pipeline (FR-032..FR-035)."""
 
 import pytest
-from constance.test import override_config
+from constance import config
 
+from admin_console import services
 from admin_console.models import SemanticLabel
-from admin_console.services import extract_tables_for_link, label_tables_for_link
 
 pytestmark = pytest.mark.django_db
 
 
-def _fake_labeled(tables, config):
-    return {
-        "tables_returned": len(tables),
-        "tables": [
-            {
-                "meta": {"title": f"Table {i}", "purpose": "plans"},
-                "columns": [
-                    {"semantic_label": f"label-{c['id']}"} for c in table["columns"]
-                ],
-            }
-            for i, table in enumerate(tables)
-        ],
-    }
+@pytest.fixture
+def labeling_enabled():
+    previous = config.LABELING_ENABLED
+    config.LABELING_ENABLED = True
+    yield
+    config.LABELING_ENABLED = previous
 
 
-def test_labeling_disabled_by_default_returns_403(operator_client, traced_link):
-    extract_tables_for_link(traced_link)
-    response = operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/labeling")
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "labeling_disabled"
+def test_labeling_is_disabled_by_default(extracted_link):
+    assert config.LABELING_ENABLED is False
+    with pytest.raises(PermissionError, match="labeling_disabled"):
+        services.label_link_tables(extracted_link)
     assert SemanticLabel.objects.count() == 0
 
 
-@override_config(LABELING_ENABLED=True)
-def test_enabled_labeling_persists_labels(traced_link):
-    extract_tables_for_link(traced_link)
-    with patch(
-        "admin_console.domtrack_client.label_tables", side_effect=_fake_labeled
-    ):
-        result = label_tables_for_link(traced_link)
-    assert result["labeled"] is True
-    assert SemanticLabel.objects.count() > 0
+def test_disabled_labeling_endpoint_returns_403(operator_client, extracted_link):
+    response = operator_client.post(f"/api/v1/ops/links/{extracted_link.pk}/labeling")
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "labeling_disabled"
 
 
-@override_config(LABELING_ENABLED=True)
-def test_pipeline_works_identically_with_and_without_labels(traced_link):
-    extract_tables_for_link(traced_link)
-    before = traced_link.pipeline_stage
-    with patch(
-        "admin_console.domtrack_client.label_tables", side_effect=_fake_labeled
-    ):
-        label_tables_for_link(traced_link)
-    traced_link.refresh_from_db()
-    # Labeling never changes the pipeline stage (FR-023).
-    assert traced_link.pipeline_stage == before
+def test_enabled_labeling_writes_labels_without_touching_the_pipeline(
+    extracted_link, stub_domtrack, labeling_enabled
+):
+    stage_before = extracted_link.pipeline_stage
+    stub_domtrack.labels = {
+        "tables": [{"columns": [{"id": "col-0", "label": "فضای ذخیره‌سازی"}]}]
+    }
+
+    labels = services.label_link_tables(extracted_link)
+
+    assert len(labels) == 1
+    assert labels[0]["column_id"] == "col-0"
+    assert labels[0]["label"] == "فضای ذخیره‌سازی"
+    assert SemanticLabel.objects.filter(label="فضای ذخیره‌سازی").exists()
+    extracted_link.refresh_from_db()
+    assert extracted_link.pipeline_stage == stage_before

@@ -18,5 +18,13 @@ class CatalogInterface:
     def retire_published_record(**kwargs):
         return services.retire_published_record(**kwargs)
 
+    @staticmethod
+    def published_natural_keys(**kwargs):
+        return services.published_natural_keys(**kwargs)
+
+    @staticmethod
+    def published_count(**kwargs):
+        return services.published_count(**kwargs)
+
 
 __all__ = ["CatalogInterface"]

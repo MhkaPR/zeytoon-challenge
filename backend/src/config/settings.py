@@ -284,7 +284,7 @@ CONSTANCE_CONFIG = {
         "You have no companies yet. Register a new company to get started.",
         "Copy for the company panel empty state.",
     ),
-    # Admin Console — Company Approval & Site Data Maintenance (spec 003)
+    # Admin Console — Company Approval & Automated Site Data Pipeline (spec 003)
     "REPLAY_PERIOD_HOURS": (24, "Hours between scheduled replays for one link."),
     "REPLAY_BATCH_SIZE": (50, "Maximum links selected per scheduled replay cycle."),
     "FAILURE_RATE_THRESHOLD": (
@@ -297,40 +297,50 @@ CONSTANCE_CONFIG = {
     "LABELING_MODEL": ("", "LLM model used for labeling (empty = provider default)."),
     "LABELING_LANGUAGE": ("fa", "Language requested for generated labels."),
     "LABELING_BATCH_SIZE": (10, "Tables labeled per LLM call."),
-    "SITEMAP_FETCH_TIMEOUT_SECONDS": (15, "Timeout for sitemap/robots requests."),
-    "SITEMAP_MAX_INDEX_DEPTH": (3, "Maximum sitemap-index nesting to follow."),
+    # Adaptive link discovery (crawl4ai statistical strategy; no embeddings/LLM).
+    "LINK_CRAWL_QUERY_FA": (
+        "پلن هاست و سرور و قیمت",
+        "Persian host/server-plans query passed to the adaptive crawler.",
+    ),
+    "LINK_CRAWL_QUERY_EN": (
+        "hosting server plans pricing",
+        "English host/server-plans query passed to the adaptive crawler.",
+    ),
+    "LINK_CRAWL_MAX_PAGES": (60, "Maximum pages the adaptive crawler visits per run."),
+    "LINK_CRAWL_MAX_DEPTH": (3, "Maximum crawl depth from the seed domain."),
+    "LINK_CRAWL_TOP_K": (10, "Top-k links the statistical strategy keeps per frontier step."),
+    "LINK_DENY_EXTENSIONS": (
+        [
+            "js", "css", "txt", "json", "xml", "pdf", "doc", "docx", "xls", "xlsx",
+            "ppt", "pptx", "zip", "rar", "7z", "gz", "tar", "png", "jpg", "jpeg",
+            "gif", "svg", "webp", "ico", "mp4", "mp3", "wav", "woff", "woff2",
+            "ttf", "eot", "csv", "rss", "atom",
+        ],
+        "File extensions excluded by the deterministic link policy.",
+    ),
+    "LINK_DENY_SEGMENTS": (
+        [
+            "blog", "docs", "support", "help", "login", "signup", "register", "auth",
+            "cart", "checkout", "privacy", "terms", "legal", "about", "contact",
+            "careers", "jobs", "news", "faq", "ticket", "tickets",
+        ],
+        "Non-content path segments excluded by the deterministic link policy.",
+    ),
     "LINK_DISCOVERY_MAX_LINKS": (500, "Maximum candidate links stored per discovery run."),
-    "CLEANING_RULES": ({}, "Per-field cleaning rules keyed by plan schema field."),
-    "CLEANING_UNIT_FAMILIES": (
-        {
-            "data_size": {
-                "base": "MB",
-                "units": {"KB": 0.001, "MB": 1, "GB": 1000, "TB": 1000000},
-                "aliases": {"K": "KB", "G": "GB", "T": "TB", "گیگ": "GB", "گیگابایت": "GB", "ترابایت": "TB", "مگابایت": "MB"},
-            },
-            "currency": {
-                "base": "IRR",
-                "units": {"IRR": 1, "TOMAN": 10},
-                "aliases": {"ریال": "IRR", "تومان": "TOMAN", "تومن": "TOMAN"},
-            },
-            "rate": {
-                "base": "per_second",
-                "units": {"per_second": 1, "per_minute": 1 / 60},
-                "aliases": {"PERSEC": "per_second", "PERSECOND": "per_second", "PERMIN": "per_minute", "PERMINUTE": "per_minute"},
-            },
-        },
-        "Unit-family conversion tables used by the cleaning engine.",
+    # LLM link refilter (recall-biased).
+    "REFILTER_PROVIDER": ("openai", "LLM provider key used by the link refilter."),
+    "REFILTER_MODEL": ("", "LLM model used by the link refilter (empty = provider default)."),
+    "REFILTER_DROP_CONFIDENCE": (
+        0.75,
+        "Confidence above which a non-plans verdict drops the link (recall-biased).",
     ),
-    "CAPTURE_MODES_ALLOWED": (
-        ["interactive", "fixed_duration"],
-        "Capture modes the console accepts (FR-013).",
-    ),
-    "CAPTURE_FIXED_DURATION_MS": (15000, "Default fixed-duration capture length in ms."),
-    "CAPTURE_INTERACTIVE_DURATION_MS": (
-        120000,
-        "Fallback recording window used only when a pre-0.0.3 domtrack server rejects interactive pause.",
-    ),
-    "PUBLISH_AUTO_THRESHOLD": (0.0, "Cleaning confidence at/above which publication is automatic."),
+    # Server-side headless capture.
+    "CAPTURE_FIXED_DURATION_MS": (15000, "Fixed-duration headless capture length in ms."),
+    "CAPTURE_NAV_TIMEOUT_MS": (30000, "Navigation timeout for a headless capture."),
+    # Resilience.
+    "RETRY_MAX_ATTEMPTS": (3, "Maximum attempts before a link is dead-lettered."),
+    "RETRY_BACKOFF_SECONDS": (5, "Base backoff between retries, in seconds."),
+    "PUBLISH_AUTO_THRESHOLD": (0.0, "Extraction confidence at/above which publication is automatic."),
     "TABLE_DISCOVERY_MIN_ROWS": (2, "Minimum rows for a domtrack table candidate."),
     "TABLE_DISCOVERY_MIN_COLS": (2, "Minimum columns for a domtrack table candidate."),
     "TABLE_DISCOVERY_DEDUPE": (True, "Whether domtrack de-duplicates discovered tables."),
@@ -428,10 +438,10 @@ TASKS = {
 }
 
 
-# Local domtrack REST API on the operator's machine (research R3/R7). Port guidance
-# lives in the quickstart because the default port can collide with the dev server.
-DOMTRACK_LOCAL_API_URL = env("DOMTRACK_LOCAL_API_URL", "http://localhost:8765")
-DOMTRACK_LOCAL_API_TIMEOUT_SECONDS = int(env("DOMTRACK_LOCAL_API_TIMEOUT_SECONDS", "600"))
+# domtrack and crawl4ai run server-side; a headless Chromium must be available to the
+# worker (research R3). No operator-machine endpoint exists.
+OPENAI_BASE_URL = env("OPENAI_BASE_URL", "")
+OPENAI_API_KEY = env("OPENAI_API_KEY", "")
 
 # Transparent crawler user-agent with a contact URL (Principle X).
 CRAWLER_USER_AGENT = env(

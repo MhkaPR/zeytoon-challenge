@@ -1,10 +1,11 @@
 """Admin console domain models (spec 003 data-model.md).
 
-All models inherit :class:`utils.models.TimestampedModel`. This module owns the site
-maintenance pipeline: Site, Link, CaptureSession, Trace metadata, extracted tables,
-SemanticLabel, ExtractionRecipe/RecipeFieldBinding, ReplayRun, FailureAlert, and
-LlmCostLedger. Company verification itself stays in ``companies`` and is reached only
-through ``companies.interfaces``.
+All models inherit :class:`utils.models.TimestampedModel`. This module owns the
+automated site-maintenance pipeline: Site, Link, CaptureSession, Trace metadata,
+extracted tables, TableClassification, PlanRecord, SemanticLabel, ReplayRun,
+ChangeRecord, FailureAlert, and the LlmCostLedger (token budget + spend). Company
+verification itself stays in ``companies`` and is reached only through
+``companies.interfaces``.
 """
 
 from django.conf import settings
@@ -14,7 +15,10 @@ from utils.models import TimestampedModel
 
 
 class Site(TimestampedModel):
-    """The single crawl target for an approved company (FR-007)."""
+    """The single crawl target for an approved company (FR-007).
+
+    The domain is the adaptive-crawl seed; there is no sitemap state.
+    """
 
     class MaintenanceState(models.TextChoices):
         ONBOARDING = "onboarding", "Onboarding"
@@ -27,8 +31,7 @@ class Site(TimestampedModel):
         related_name="ops_site",
     )
     domain = models.CharField(max_length=255, db_index=True)
-    has_sitemap = models.BooleanField(default=False)
-    sitemap_url = models.URLField(blank=True, default="")
+    crawl_query = models.CharField(max_length=512, blank=True, default="")
     maintenance_state = models.CharField(
         max_length=16,
         choices=MaintenanceState.choices,
@@ -46,38 +49,44 @@ class Site(TimestampedModel):
 
 
 class Link(TimestampedModel):
-    """A page address within a site, with review state and pipeline stage."""
+    """A page address within a site: discovery state, refilter verdict, stage."""
 
     class Source(models.TextChoices):
-        SITEMAP = "sitemap", "Sitemap"
+        ADAPTIVE_CRAWL = "adaptive_crawl", "Adaptive crawl"
         MANUAL = "manual", "Manual"
 
     class ReviewState(models.TextChoices):
         CANDIDATE = "candidate", "Candidate"
         KEPT = "kept", "Kept"
-        REMOVED = "removed", "Removed"
+        DROPPED = "dropped", "Dropped"
+        FLAGGED = "flagged", "Flagged"
 
     class PipelineStage(models.TextChoices):
-        REVIEW = "review", "Review"
-        CAPTURE = "capture", "Capture"
+        DISCOVERED = "discovered", "Discovered"
+        REFILTERED = "refiltered", "Refiltered"
+        CAPTURED = "captured", "Captured"
         EXTRACTED = "extracted", "Extracted"
-        MAPPED = "mapped", "Mapped"
-        CLEANED = "cleaned", "Cleaned"
+        CLASSIFIED = "classified", "Classified"
+        PLANS_EXTRACTED = "plans_extracted", "Plans extracted"
         PUBLISHED = "published", "Published"
+        AWAITING_LLM_BUDGET = "awaiting_llm_budget", "Awaiting LLM budget"
         FLAGGED = "flagged", "Flagged"
-        FAILED = "failed", "Failed"
+        DEAD_LETTERED = "dead_lettered", "Dead-lettered"
 
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name="links")
     url = models.URLField(db_index=True)
     url_hash = models.CharField(max_length=64, db_index=True)
     source = models.CharField(
-        max_length=16, choices=Source.choices, default=Source.SITEMAP
+        max_length=16, choices=Source.choices, default=Source.ADAPTIVE_CRAWL
     )
     review_state = models.CharField(
         max_length=16, choices=ReviewState.choices, default=ReviewState.CANDIDATE
     )
+    refilter_plan_type = models.CharField(max_length=64, blank=True, default="")
+    refilter_confidence = models.FloatField(null=True, blank=True)
+    refilter_flag = models.BooleanField(default=False)
     pipeline_stage = models.CharField(
-        max_length=16, choices=PipelineStage.choices, default=PipelineStage.REVIEW
+        max_length=32, choices=PipelineStage.choices, default=PipelineStage.DISCOVERED
     )
     current_trace = models.ForeignKey(
         "admin_console.Trace",
@@ -87,6 +96,8 @@ class Link(TimestampedModel):
         related_name="current_for_links",
     )
     failure_rate = models.FloatField(default=0.0)
+    retry_count = models.PositiveIntegerField(default=0)
+    last_error = models.CharField(max_length=512, blank=True, default="")
     is_active = models.BooleanField(default=True, db_index=True)
     last_replay_at = models.DateTimeField(null=True, blank=True)
 
@@ -104,36 +115,28 @@ class Link(TimestampedModel):
 
 
 class CaptureSession(TimestampedModel):
-    """One operator-driven capture attempt (FR-012..FR-017)."""
+    """One server-side headless capture attempt (FR-016..FR-018)."""
 
     class Mode(models.TextChoices):
-        INTERACTIVE = "interactive", "Interactive"
-        FIXED_DURATION = "fixed_duration", "Fixed duration"
+        HEADLESS_FIXED = "headless_fixed", "Headless fixed"
 
     class State(models.TextChoices):
         PENDING = "pending", "Pending"
         RECORDING = "recording", "Recording"
-        AWAITING_UPLOAD = "awaiting_upload", "Awaiting upload"
         STORED = "stored", "Stored"
         FAILED = "failed", "Failed"
 
-    NON_TERMINAL = (State.PENDING, State.RECORDING, State.AWAITING_UPLOAD)
+    NON_TERMINAL = (State.PENDING, State.RECORDING)
 
     link = models.ForeignKey(
         Link, on_delete=models.CASCADE, related_name="capture_sessions"
     )
-    operator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="capture_sessions",
-    )
     mode = models.CharField(
-        max_length=16, choices=Mode.choices, default=Mode.INTERACTIVE
+        max_length=16, choices=Mode.choices, default=Mode.HEADLESS_FIXED
     )
     state = models.CharField(
         max_length=16, choices=State.choices, default=State.PENDING
     )
-    local_path = models.CharField(max_length=1024, blank=True, default="")
     duration_ms = models.PositiveIntegerField(null=True, blank=True)
     error = models.CharField(max_length=512, blank=True, default="")
     trace = models.ForeignKey(
@@ -150,14 +153,9 @@ class CaptureSession(TimestampedModel):
         constraints = [
             models.UniqueConstraint(
                 fields=("link",),
-                condition=models.Q(state__in=("pending", "recording", "awaiting_upload")),
+                condition=models.Q(state__in=("pending", "recording")),
                 name="uniq_nonterminal_capture_session_per_link",
             ),
-            models.UniqueConstraint(
-                fields=("operator",),
-                condition=models.Q(state__in=("pending", "recording", "awaiting_upload")),
-                name="uniq_nonterminal_capture_session_per_operator",
-            )
         ]
 
     def __str__(self):
@@ -165,14 +163,15 @@ class CaptureSession(TimestampedModel):
 
 
 class Trace(TimestampedModel):
-    """Metadata for a domtrack trace stored as an artifact (FR-000a, FR-016).
+    """Metadata for a domtrack trace stored as an artifact (FR-000a, FR-019).
 
     The trace body is never stored in a database column; only the storage key, backend
-    alias, byte size, and hash are kept.
+    alias, byte size, and hash are kept. Capture is server-side, so no operator is
+    recorded.
     """
 
     class Origin(models.TextChoices):
-        OPERATOR_CAPTURE = "operator_capture", "Operator capture"
+        SERVER_CAPTURE = "server_capture", "Server capture"
         REPLAY_RECORDING = "replay_recording", "Replay recording"
 
     link = models.ForeignKey(Link, on_delete=models.CASCADE, related_name="traces")
@@ -183,18 +182,11 @@ class Trace(TimestampedModel):
         blank=True,
         related_name="traces",
     )
-    captured_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="captured_traces",
-    )
     captured_at = models.DateTimeField()
     origin = models.CharField(
         max_length=32,
         choices=Origin.choices,
-        default=Origin.OPERATOR_CAPTURE,
+        default=Origin.SERVER_CAPTURE,
     )
     storage_key = models.CharField(max_length=512, unique=True)
     storage_backend = models.CharField(max_length=64, default="default")
@@ -211,7 +203,7 @@ class Trace(TimestampedModel):
 
 
 class ExtractedTable(TimestampedModel):
-    """A table document domtrack discovered in a trace (FR-018)."""
+    """A table document domtrack discovered in a trace (FR-020)."""
 
     trace = models.ForeignKey(
         Trace, on_delete=models.CASCADE, related_name="extracted_tables"
@@ -235,7 +227,7 @@ class ExtractedTable(TimestampedModel):
 
 
 class ExtractedTableColumn(TimestampedModel):
-    """A column of an extracted table; ``path`` is domtrack's selector (FR-028)."""
+    """A column of an extracted table; ``path`` is domtrack's selector (diagnostics)."""
 
     table = models.ForeignKey(
         ExtractedTable, on_delete=models.CASCADE, related_name="columns"
@@ -257,7 +249,7 @@ class ExtractedTableColumn(TimestampedModel):
 
 
 class ExtractedTableRow(TimestampedModel):
-    """A row of an extracted table; ``cells`` maps column_id -> value (FR-018)."""
+    """A row of an extracted table; ``cells`` maps column_id -> value (FR-020)."""
 
     table = models.ForeignKey(
         ExtractedTable, on_delete=models.CASCADE, related_name="rows"
@@ -276,8 +268,66 @@ class ExtractedTableRow(TimestampedModel):
         ]
 
 
+class TableClassification(TimestampedModel):
+    """The LLM verdict for an extracted table (FR-023..FR-025)."""
+
+    table = models.OneToOneField(
+        ExtractedTable, on_delete=models.CASCADE, related_name="classification"
+    )
+    is_plans_table = models.BooleanField(default=False)
+    plan_type = models.CharField(max_length=64, blank=True, default="")
+    confidence = models.FloatField(default=0.0)
+    provider = models.CharField(max_length=64, blank=True, default="")
+    model = models.CharField(max_length=128, blank=True, default="")
+    prompt_version = models.CharField(max_length=64, blank=True, default="v1")
+
+    class Meta:
+        db_table = "admin_console_table_classification"
+        ordering = ("-confidence", "id")
+
+    def __str__(self):
+        kind = self.plan_type if self.is_plans_table else "not-plans"
+        return f"table {self.table_id}: {kind} ({self.confidence:.2f})"
+
+
+class PlanRecord(TimestampedModel):
+    """A normalized plan extracted from a plans table (FR-026..FR-031).
+
+    ``values`` is keyed by schema field key; it contains data only — no selectors and
+    no formulas.
+    """
+
+    link = models.ForeignKey(Link, on_delete=models.CASCADE, related_name="plan_records")
+    table = models.ForeignKey(
+        ExtractedTable, on_delete=models.CASCADE, related_name="plan_records"
+    )
+    classification = models.ForeignKey(
+        TableClassification,
+        on_delete=models.CASCADE,
+        related_name="plan_records",
+    )
+    plan_type = models.CharField(max_length=64)
+    natural_key = models.CharField(max_length=512, db_index=True)
+    values = models.JSONField(default=dict, blank=True)
+    confidence = models.FloatField(null=True, blank=True)
+    prompt_version = models.CharField(max_length=64, blank=True, default="v1")
+
+    class Meta:
+        db_table = "admin_console_plan_record"
+        ordering = ("id",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("link", "natural_key"),
+                name="uniq_plan_record_link_key",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.plan_type}:{self.natural_key}"
+
+
 class SemanticLabel(TimestampedModel):
-    """An LLM semantic label for an extracted table/column (FR-021..FR-024)."""
+    """An optional LLM semantic label for a table/column (FR-032..FR-034)."""
 
     table = models.ForeignKey(
         ExtractedTable, on_delete=models.CASCADE, related_name="semantic_labels"
@@ -289,11 +339,10 @@ class SemanticLabel(TimestampedModel):
         blank=True,
         related_name="semantic_labels",
     )
-    table_title = models.CharField(max_length=512, blank=True, default="")
-    table_purpose = models.TextField(blank=True, default="")
     label = models.CharField(max_length=512, blank=True, default="")
     provider = models.CharField(max_length=64, blank=True, default="")
     model = models.CharField(max_length=128, blank=True, default="")
+    language = models.CharField(max_length=16, blank=True, default="fa")
 
     class Meta:
         db_table = "admin_console_semantic_label"
@@ -303,82 +352,22 @@ class SemanticLabel(TimestampedModel):
         return self.label or f"label {self.pk}"
 
 
-class ExtractionRecipe(TimestampedModel):
-    """The extraction recipe for a link: schema field bindings (FR-025..FR-031)."""
-
-    link = models.ForeignKey(
-        Link, on_delete=models.CASCADE, related_name="recipes"
-    )
-    plan_type = models.CharField(max_length=64)
-    version = models.PositiveIntegerField(default=1)
-    is_current = models.BooleanField(default=True, db_index=True)
-    is_complete = models.BooleanField(default=False)
-
-    class Meta:
-        db_table = "admin_console_extraction_recipe"
-        ordering = ("-version",)
-
-    def __str__(self):
-        return f"recipe {self.link_id} v{self.version} ({self.plan_type})"
-
-
-class RecipeFieldBinding(TimestampedModel):
-    """A binding from one plan-schema field to a source column + formula (FR-028)."""
-
-    recipe = models.ForeignKey(
-        ExtractionRecipe, on_delete=models.CASCADE, related_name="bindings"
-    )
-    schema_field_key = models.CharField(max_length=64)
-    source_table = models.ForeignKey(
-        ExtractedTable, on_delete=models.CASCADE, null=True, blank=True
-    )
-    source_column = models.ForeignKey(
-        ExtractedTableColumn,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="recipe_bindings",
-    )
-    selector = models.CharField(max_length=1024, blank=True, default="")
-    formula = models.CharField(max_length=1024, blank=True, default="")
-    aggregation = models.CharField(max_length=32, blank=True, default="")
-
-    class Meta:
-        db_table = "admin_console_recipe_binding"
-        ordering = ("id",)
-        constraints = [
-            models.UniqueConstraint(
-                fields=("recipe", "schema_field_key"),
-                name="uniq_recipe_field_key",
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.schema_field_key} -> {self.selector}"
-
-
 class ReplayRun(TimestampedModel):
-    """A scheduled domtrack replay of a link (FR-037..FR-039)."""
+    """A scheduled domtrack compare (replay + record + diff) of a link (FR-039..FR-043)."""
 
     class State(models.TextChoices):
         SCHEDULED = "scheduled", "Scheduled"
         RUNNING = "running", "Running"
         SUCCEEDED = "succeeded", "Succeeded"
         FAILED = "failed", "Failed"
+        AWAITING_LLM_BUDGET = "awaiting_llm_budget", "Awaiting LLM budget"
 
     link = models.ForeignKey(Link, on_delete=models.CASCADE, related_name="replay_runs")
-    recipe = models.ForeignKey(
-        ExtractionRecipe,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="replay_runs",
-    )
     scheduled_for = models.DateTimeField(null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     state = models.CharField(
-        max_length=16, choices=State.choices, default=State.SCHEDULED
+        max_length=24, choices=State.choices, default=State.SCHEDULED
     )
     before_trace = models.ForeignKey(
         Trace,
@@ -395,7 +384,7 @@ class ReplayRun(TimestampedModel):
         related_name="replay_runs_after",
     )
     diff_summary = models.JSONField(default=dict, blank=True)
-    diff_applied = models.BooleanField(default=False)
+    reextracted = models.BooleanField(default=False)
     stats_applied = models.PositiveIntegerField(default=0)
     stats_skipped = models.PositiveIntegerField(default=0)
     stats_failed = models.PositiveIntegerField(default=0)
@@ -409,8 +398,37 @@ class ReplayRun(TimestampedModel):
         return f"replay {self.pk} ({self.state})"
 
 
+class ChangeRecord(TimestampedModel):
+    """One detected change in a replay, classified content vs structural (FR-041)."""
+
+    class Kind(models.TextChoices):
+        CONTENT = "content", "Content"
+        STRUCTURAL = "structural", "Structural"
+
+    replay_run = models.ForeignKey(
+        ReplayRun, on_delete=models.CASCADE, related_name="changes"
+    )
+    change_kind = models.CharField(max_length=16, choices=Kind.choices)
+    touches_plans_table = models.BooleanField(default=False)
+    classification = models.ForeignKey(
+        TableClassification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="changes",
+    )
+    summary = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "admin_console_change_record"
+        ordering = ("id",)
+
+    def __str__(self):
+        return f"{self.change_kind} (plans={self.touches_plans_table})"
+
+
 class FailureAlert(TimestampedModel):
-    """A link-state alert raised when a link's failure rate crosses threshold (FR-040)."""
+    """A link-state alert raised when a link's failure rate crosses threshold (FR-044)."""
 
     class State(models.TextChoices):
         OPEN = "open", "Open"
@@ -436,7 +454,7 @@ class FailureAlert(TimestampedModel):
 
 
 class LlmCostLedger(TimestampedModel):
-    """Model-backed LLM cost ceiling and spend rows (Principle II, FR-024)."""
+    """Model-backed LLM token budget and spend rows (Principle II, FR-047..FR-050)."""
 
     class Scope(models.TextChoices):
         GLOBAL = "global", "Global"
@@ -446,10 +464,14 @@ class LlmCostLedger(TimestampedModel):
         MONTHLY = "monthly", "Monthly"
         TOTAL = "total", "Total"
 
+    class Stage(models.TextChoices):
+        REFILTER = "refilter", "Refilter"
+        CLASSIFICATION = "classification", "Classification"
+        SCHEMA_EXTRACTION = "schema_extraction", "Schema extraction"
+        LABELING = "labeling", "Labeling"
+
     scope = models.CharField(max_length=128, default=Scope.GLOBAL, db_index=True)
-    ceiling_amount = models.DecimalField(
-        max_digits=14, decimal_places=4, null=True, blank=True
-    )
+    token_budget = models.BigIntegerField(null=True, blank=True)
     period = models.CharField(
         max_length=16, choices=Period.choices, default=Period.MONTHLY
     )
@@ -458,23 +480,35 @@ class LlmCostLedger(TimestampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="llm_cost_ceilings",
+        related_name="llm_token_budgets",
     )
     timestamp = models.DateTimeField(null=True, blank=True)
+    tokens_used = models.BigIntegerField(default=0)
     amount = models.DecimalField(
         max_digits=14, decimal_places=4, null=True, blank=True
     )
-    label_run_ref = models.ForeignKey(
+    stage = models.CharField(
+        max_length=32, choices=Stage.choices, blank=True, default=""
+    )
+    link_ref = models.ForeignKey(
         Link,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="llm_cost_rows",
+        related_name="llm_spend_rows",
     )
+    table_ref = models.ForeignKey(
+        ExtractedTable,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="llm_spend_rows",
+    )
+    idempotency_key = models.CharField(max_length=255, unique=True)
 
     class Meta:
         db_table = "admin_console_llm_cost_ledger"
         ordering = ("-created_at",)
 
     def __str__(self):
-        return f"llm cost {self.scope} ({self.period})"
+        return f"llm spend {self.stage} ({self.tokens_used} tokens)"

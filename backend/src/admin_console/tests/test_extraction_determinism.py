@@ -1,37 +1,29 @@
-"""Extraction determinism test (US4, FR-019, SC-008)."""
+"""US5 — extraction is deterministic and replaces the previous result (FR-021, SC-010)."""
 
 import pytest
 
-from admin_console.models import ExtractedTable
-from admin_console.services import extract_tables_for_link
+from admin_console import services
+from admin_console.models import ExtractedTable, ExtractedTableRow
 
 pytestmark = pytest.mark.django_db
 
 
-def _snapshot(link):
-    tables = []
-    for table in ExtractedTable.objects.filter(link=link).order_by("table_index"):
-        tables.append(
-            {
-                "columns": [
-                    (c.column_id, c.path, c.atype, c.coverage)
-                    for c in table.columns.all()
-                ],
-                "rows": [
-                    (r.row_index, tuple(sorted(r.cells.items())))
-                    for r in table.rows.all()
-                ],
-            }
-        )
-    return tables
+def _rows_snapshot(link):
+    return [
+        (table.table_index, row.row_index, tuple(sorted(row.cells.items())))
+        for table in link.extracted_tables.all()
+        for row in table.rows.all()
+    ]
 
 
-def test_extracting_twice_replaces_and_is_identical(traced_link):
-    extract_tables_for_link(traced_link)
-    first = _snapshot(traced_link)
-    assert first
-    extract_tables_for_link(traced_link)
-    second = _snapshot(traced_link)
-    assert first == second
-    # No duplicate accumulation from a re-run.
-    assert ExtractedTable.objects.filter(link=traced_link).count() == len(first)
+def test_re_extraction_replaces_and_matches(traced_link):
+    services.extract_link_tables(traced_link)
+    first_ids = list(ExtractedTable.objects.filter(link=traced_link).values_list("id", flat=True))
+    first = _rows_snapshot(traced_link)
+
+    services.extract_link_tables(traced_link)
+
+    second_ids = list(ExtractedTable.objects.filter(link=traced_link).values_list("id", flat=True))
+    assert set(first_ids).isdisjoint(second_ids)
+    assert _rows_snapshot(traced_link) == first
+    assert ExtractedTableRow.objects.filter(table__link=traced_link).count() > 0

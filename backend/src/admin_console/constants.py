@@ -1,17 +1,19 @@
 """Runtime-tunable constants for the admin console (Principle XIII).
 
 Every value is a database-backed django-constance constant declared in
-``config/settings.py``; services read them through ``constance.config`` so operators can
-adjust behavior at runtime without a code change (FR-043, SC-015).
+``config/settings.py``; services read them through this module so operators can adjust
+behavior at runtime without a code change (FR-054, SC-018).
 """
 
 from constance import config
+from django.conf import settings
 
 
 def _list(value):
     return list(value or [])
 
 
+# -- replay / alerting -------------------------------------------------------
 def replay_period_hours():
     return int(config.REPLAY_PERIOD_HOURS)
 
@@ -28,6 +30,7 @@ def failure_rate_window_runs():
     return int(config.FAILURE_RATE_WINDOW_RUNS)
 
 
+# -- labeling ----------------------------------------------------------------
 def labeling_enabled():
     return bool(config.LABELING_ENABLED)
 
@@ -38,45 +41,75 @@ def labeling_config():
         "model": str(config.LABELING_MODEL) or None,
         "language": str(config.LABELING_LANGUAGE),
         "batch_size": int(config.LABELING_BATCH_SIZE),
+        "base_url": settings.OPENAI_BASE_URL or None,
     }
 
 
-def sitemap_fetch_timeout_seconds():
-    return int(config.SITEMAP_FETCH_TIMEOUT_SECONDS)
+# -- link discovery ----------------------------------------------------------
+def link_crawl_queries():
+    return [str(config.LINK_CRAWL_QUERY_FA), str(config.LINK_CRAWL_QUERY_EN)]
 
 
-def sitemap_max_index_depth():
-    return int(config.SITEMAP_MAX_INDEX_DEPTH)
+def link_crawl_max_pages():
+    return int(config.LINK_CRAWL_MAX_PAGES)
+
+
+def link_crawl_max_depth():
+    return int(config.LINK_CRAWL_MAX_DEPTH)
+
+
+def link_crawl_top_k():
+    return int(config.LINK_CRAWL_TOP_K)
+
+
+def link_deny_extensions():
+    return [str(e) for e in _list(config.LINK_DENY_EXTENSIONS)]
+
+
+def link_deny_segments():
+    return [str(s) for s in _list(config.LINK_DENY_SEGMENTS)]
 
 
 def link_discovery_max_links():
     return int(config.LINK_DISCOVERY_MAX_LINKS)
 
 
-def cleaning_rules():
-    return dict(config.CLEANING_RULES or {})
+# -- refilter ----------------------------------------------------------------
+def refilter_provider():
+    return str(config.REFILTER_PROVIDER)
 
 
-def cleaning_unit_families():
-    return dict(config.CLEANING_UNIT_FAMILIES or {})
+def refilter_model():
+    return str(config.REFILTER_MODEL) or None
 
 
-def capture_modes_allowed():
-    return _list(config.CAPTURE_MODES_ALLOWED)
+def refilter_drop_confidence():
+    return float(config.REFILTER_DROP_CONFIDENCE)
 
 
+# -- capture -----------------------------------------------------------------
 def capture_fixed_duration_ms():
     return int(config.CAPTURE_FIXED_DURATION_MS)
 
 
-def capture_interactive_duration_ms():
-    return int(config.CAPTURE_INTERACTIVE_DURATION_MS)
+def capture_nav_timeout_ms():
+    return int(config.CAPTURE_NAV_TIMEOUT_MS)
+
+
+# -- resilience --------------------------------------------------------------
+def retry_max_attempts():
+    return int(config.RETRY_MAX_ATTEMPTS)
+
+
+def retry_backoff_seconds():
+    return float(config.RETRY_BACKOFF_SECONDS)
 
 
 def publish_auto_threshold():
     return float(config.PUBLISH_AUTO_THRESHOLD)
 
 
+# -- tables / replay ---------------------------------------------------------
 def table_discovery_config():
     return {
         "min_rows": int(config.TABLE_DISCOVERY_MIN_ROWS),

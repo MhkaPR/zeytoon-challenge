@@ -1,62 +1,133 @@
-"""Scheduled replay orchestration (FR-037..FR-039, research R14).
+"""Scheduled replay and change detection (FR-039..FR-043).
 
-One replay cycle per link: materialize the stored *before* trace, hand it to domtrack's
-``compare_replay`` (replay + record-during-replay + diff in a single library call), store
-the *after* recording via the artifact store, record a :class:`ReplayRun` with domtrack's
-own stats/failures/diff summary, re-extract + re-map + re-publish from the fresh recording
-(so a removed item is retired rather than left stale, FR-036/FR-039), and recompute the
-link's failure rate from domtrack's reported failures over the trailing window (FR-040).
-
-Nothing here re-derives a domtrack capability — replay, record, diff, and failure
-reporting all come from the library (SC-017).
+One ``domtrack compare`` call replays the previous trace, records the replayed page, and
+diffs the two (FR-040). Every detected change is classified **content** or
+**structural**; a change touching a plans table triggers LLM re-extraction, and a
+structural change re-runs table discovery + classification first (FR-042). A change that
+does not touch a plans table runs no LLM work (FR-043).
 """
 
-import tempfile
+import os
 
+from django.db import transaction
 from django.utils import timezone
 
-from accounts.exceptions import ApiError
-from admin_console import artifacts, constants, domtrack_client, events
-from admin_console.models import Link, ReplayRun, Trace
+from admin_console import artifacts, constants, domtrack_client, events, services
+from admin_console.models import (
+    ChangeRecord,
+    Link,
+    ReplayRun,
+    TableClassification,
+    Trace,
+)
 
 
-def _before_trace_path(link):
-    trace = link.current_trace
-    if trace is None:
-        raise ApiError(
-            "trace_required",
-            "A stored trace is required before replay.",
-            http_status=409,
+def execute_replay_run(link, actor=None):
+    from admin_console import llm
+
+    before_trace = link.current_trace
+    run = ReplayRun.objects.create(
+        link=link,
+        state=ReplayRun.State.RUNNING,
+        started_at=timezone.now(),
+        before_trace=before_trace,
+    )
+    if before_trace is None:
+        _fail(run, link, ["no_before_trace"])
+        return run
+
+    before_path = services._materialize(before_trace)
+    try:
+        result = domtrack_client.compare_replay(
+            before_path,
+            replay_config=constants.replay_config(),
+            recording={"output_dir": os.path.dirname(before_path)},
         )
-    return trace, artifacts.materialize(trace.storage_key, backend=trace.storage_backend)
+    except llm.LlmBudgetExhausted:
+        run.state = ReplayRun.State.AWAITING_LLM_BUDGET
+        run.save(update_fields=["state", "updated_at"])
+        return run
+    except Exception as exc:  # noqa: BLE001 - recorded as a replay failure
+        _fail(run, link, [str(exc)[:200]])
+        return run
+    finally:
+        _cleanup(before_path)
+
+    try:
+        after_trace = _store_after_trace(link, result.after_path)
+    except Exception as exc:  # noqa: BLE001
+        _fail(run, link, [f"after_trace:{exc}"[:200]])
+        return run
+
+    run.after_trace = after_trace
+    changes = _classify_changes(link, result.diff)
+    plans_touched = any(change["touches_plans_table"] for change in changes)
+    structural = any(
+        change["change_kind"] == ChangeRecord.Kind.STRUCTURAL for change in changes
+    )
+
+    reextracted = False
+    if plans_touched:
+        try:
+            if structural:
+                services.extract_link_tables(link)
+                services.classify_link_tables(link)
+            services.extract_link_plans(link)
+            services.publish_link_plans(link)
+            services.retire_missing_plans(
+                link,
+                set(link.plan_records.values_list("natural_key", flat=True)),
+            )
+            reextracted = True
+        except llm.LlmBudgetExhausted:
+            run.state = ReplayRun.State.AWAITING_LLM_BUDGET
+            run.save(update_fields=["state", "updated_at"])
+            return run
+        except Exception as exc:  # noqa: BLE001
+            _fail(run, link, [f"reextract:{exc}"[:200]])
+            return run
+
+    with transaction.atomic():
+        ChangeRecord.objects.filter(replay_run=run).delete()
+        for change in changes:
+            ChangeRecord.objects.create(
+                replay_run=run,
+                change_kind=change["change_kind"],
+                touches_plans_table=change["touches_plans_table"],
+                classification=_resolve_classification(link, change),
+                summary=change["summary"],
+            )
+
+    summary = dict(getattr(result, "summary", {}) or {})
+    run.diff_summary = summary
+    run.reextracted = reextracted
+    run.stats_applied = int(summary.get("added", 0)) + int(summary.get("changed", 0))
+    run.stats_skipped = 0 if reextracted else int(summary.get("changed", 0))
+    run.stats_failed = 0
+    run.failures = []
+    run.state = ReplayRun.State.SUCCEEDED
+    run.finished_at = timezone.now()
+    run.save()
+    link.last_replay_at = run.finished_at
+    link.save(update_fields=["last_replay_at", "updated_at"])
+    services.recompute_failure_rate(link)
+    events.replay_completed(run, len(changes), reextracted)
+    return run
 
 
-def _summarize(compare_result):
-    """Flatten domtrack's compare result into JSON-safe fields (library shapes only)."""
-    stats = compare_result.stats
-    failures = [
-        {
-            "selector": getattr(failure, "selector", None),
-            "reason": getattr(failure, "reason", None),
-        }
-        for failure in (getattr(stats, "failures", []) or [])
-    ]
-    return {
-        "diff_summary": dict(compare_result.diff.summary or {}),
-        "stats_applied": int(getattr(stats, "applied", 0) or 0),
-        "stats_skipped": int(getattr(stats, "skipped", 0) or 0),
-        "stats_failed": int(getattr(stats, "failed", 0) or 0),
-        "failures": failures,
-    }
+def _cleanup(path):
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 
-def _store_after_trace(link, after_path, capture_session=None):
+def _store_after_trace(link, after_path):
     with open(after_path, "rb") as handle:
-        after_bytes = handle.read()
-    key, backend, size, digest = artifacts.save_trace(after_bytes)
+        data = handle.read()
+    key, backend, size, digest = artifacts.save_trace(data)
     return Trace.objects.create(
         link=link,
-        capture_session=capture_session,
         captured_at=timezone.now(),
         origin=Trace.Origin.REPLAY_RECORDING,
         storage_key=key,
@@ -67,89 +138,71 @@ def _store_after_trace(link, after_path, capture_session=None):
     )
 
 
-def _recompute_failure_rate(link):
-    """Derive the link failure rate from domtrack's reported failures (FR-040, R14)."""
-    window = max(1, constants.failure_rate_window_runs())
-    runs = list(ReplayRun.objects.filter(link=link).order_by("-created_at")[:window])
-    if not runs:
-        rate = 0.0
-    else:
-        applied = sum(run.stats_applied for run in runs)
-        failed = sum(run.stats_failed for run in runs)
-        total = applied + failed
-        rate = (failed / total) if total else 0.0
-    link.failure_rate = rate
-    link.save(update_fields=["failure_rate", "updated_at"])
-    return rate
+def _classify_changes(link, diff):
+    """Turn a domtrack diff into content/structural change descriptors (FR-041)."""
+    changes = []
+    for path, _entry in getattr(diff, "added", []) or []:
+        changes.append(_change(link, path, ChangeRecord.Kind.STRUCTURAL))
+    for path, _entry in getattr(diff, "removed", []) or []:
+        changes.append(_change(link, path, ChangeRecord.Kind.STRUCTURAL))
+    for change in getattr(diff, "changed", []) or []:
+        if getattr(change, "text_changed", False):
+            changes.append(
+                _change(link, getattr(change, "path", ""), ChangeRecord.Kind.CONTENT)
+            )
+    return changes
 
 
-def execute_replay_run(link, scheduled_for=None):
-    """Run one replay cycle for ``link`` and apply its diff (FR-037..FR-039)."""
-    from admin_console.services import (
-        evaluate_failure_alert,
-        extract_tables_for_link,
-        get_current_recipe,
-        publish_link_data,
-    )
-
-    recipe = get_current_recipe(link)
-    before_trace, before_path = _before_trace_path(link)
-    run = ReplayRun.objects.create(
-        link=link,
-        recipe=recipe,
-        scheduled_for=scheduled_for or timezone.now(),
-        started_at=timezone.now(),
-        state=ReplayRun.State.RUNNING,
-        before_trace=before_trace,
-    )
-
-    try:
-        output_dir = tempfile.mkdtemp(prefix="ops-replay-")
-        compare_result = domtrack_client.compare_replay(
-            before_path,
-            constants.replay_config(),
-            {"output_dir": output_dir},
-        )
-        after_trace = _store_after_trace(link, compare_result.after_path)
-
-        # Adopt the fresh recording, re-extract from it, and re-publish the recipe's data.
-        link.current_trace = after_trace
-        link.save(update_fields=["current_trace", "updated_at"])
-        extract_tables_for_link(link)
-        publish_link_data(link)
-
-        summary = _summarize(compare_result)
-        run.after_trace = after_trace
-        run.diff_summary = summary["diff_summary"]
-        run.stats_applied = summary["stats_applied"]
-        run.stats_skipped = summary["stats_skipped"]
-        run.stats_failed = summary["stats_failed"]
-        run.failures = summary["failures"]
-        run.diff_applied = True
-        run.state = ReplayRun.State.SUCCEEDED
-        run.finished_at = timezone.now()
-        run.save()
-    except Exception as exc:  # noqa: BLE001 - record failure, never crash the batch
-        run.state = ReplayRun.State.FAILED
-        run.finished_at = timezone.now()
-        run.diff_summary = {"error": str(exc)[:500]}
-        run.save()
-        raise
-    finally:
-        link.last_replay_at = timezone.now()
-        link.save(update_fields=["last_replay_at", "updated_at"])
-
-    rate = _recompute_failure_rate(link)
-    stale_seconds = 0.0
-    if link.current_trace and link.current_trace.captured_at:
-        stale_seconds = (timezone.now() - link.current_trace.captured_at).total_seconds()
-    events.replay_run_completed(link, rate, stale_seconds, run.state)
-    evaluate_failure_alert(link)
-    link.refresh_from_db()
+def _change(link, path, kind):
+    classification = _classification_for_path(link, path)
     return {
-        "replay_run_id": run.pk,
-        "state": run.state,
-        "failure_rate": rate,
-        "diff_applied": run.diff_applied,
-        "diff_summary": run.diff_summary,
+        "change_kind": kind,
+        "touches_plans_table": classification is not None,
+        "classification": classification,
+        "summary": {"path": path},
     }
+
+
+def _resolve_classification(link, change):
+    """Keep only a live classification reference after a structural re-extraction.
+
+    Classifications captured before re-extraction can be deleted together with their
+    tables, so re-resolve from the (possibly new) tables before writing the record.
+    """
+    classification = change["classification"]
+    if classification is None:
+        return None
+    if TableClassification.objects.filter(pk=classification.pk).exists():
+        return classification
+    return _classification_for_path(link, change["summary"].get("path", ""))
+
+
+def _classification_for_path(link, path):
+    """Match a diff path to a plans-table classification, if any (best effort)."""
+    if not path:
+        return None
+    normalized = str(path).lower()
+    for table in link.extracted_tables.all():
+        classification = getattr(table, "classification", None)
+        if classification is None or not classification.is_plans_table:
+            continue
+        tokens = {table.parent.lower()} if table.parent else set()
+        for column in table.columns.all():
+            tokens.update(token for token in str(column.path).lower().replace(">", " ").split())
+        tokens = {token for token in tokens if token}
+        if any(token and token in normalized for token in tokens):
+            return classification
+    return None
+
+
+def _fail(run, link, failures):
+    run.state = ReplayRun.State.FAILED
+    run.failures = failures
+    run.diff_summary = {"error": failures[0] if failures else "unknown"}
+    run.finished_at = timezone.now()
+    run.save()
+    link.last_replay_at = run.finished_at
+    link.save(update_fields=["last_replay_at", "updated_at"])
+    services.recompute_failure_rate(link)
+    events.stage_failed(link, "replay", "; ".join(str(f) for f in failures)[:200])
+    return run

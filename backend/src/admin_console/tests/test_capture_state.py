@@ -1,70 +1,69 @@
-"""Capture session state-machine tests (US3, FR-014)."""
+"""US4 — capture session state machine (FR-053)."""
 
 import pytest
 from django.db import IntegrityError, transaction
 
-from admin_console.models import CaptureSession, Link, Trace
-from admin_console.tests.factories import make_trace_bytes
+from admin_console import services
+from admin_console.models import CaptureSession, Link
 
 pytestmark = pytest.mark.django_db
 
 
-def test_link_cannot_pass_capture_without_a_trace(kept_link):
-    kept_link.pipeline_stage = Link.PipelineStage.CAPTURE
-    kept_link.current_trace = None
-    kept_link.save()
-    assert kept_link.current_trace is None
-    # No trace ⇒ the link may not be advanced to extraction.
-    assert kept_link.pipeline_stage == Link.PipelineStage.CAPTURE
-
-
-def test_awaiting_upload_is_distinct_from_failed(operator, kept_link):
-    awaiting = CaptureSession.objects.create(
-        link=kept_link,
-        operator=operator,
-        state=CaptureSession.State.AWAITING_UPLOAD,
-        local_path="/tmp/x.json",
-    )
-    failed = CaptureSession.objects.create(
-        link=kept_link, operator=operator, state=CaptureSession.State.FAILED, error="boom"
-    )
-    assert awaiting.state != failed.state
-    assert awaiting.state == CaptureSession.State.AWAITING_UPLOAD
-    assert failed.error == "boom"
-
-
-def test_store_trace_creates_trace_and_marks_session(operator, kept_link):
-    from admin_console import services
-
-    session = CaptureSession.objects.create(
-        link=kept_link, operator=operator, state=CaptureSession.State.AWAITING_UPLOAD
-    )
-    import tempfile
-
-    tmp = tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False)
-    tmp.write(make_trace_bytes())
-    tmp.close()
-    trace = services.store_trace(session, tmp.name, operator)
-    session.refresh_from_db()
+def test_successful_capture_ends_in_stored(kept_link, stub_domtrack):
+    session = services.start_capture(kept_link)
     assert session.state == CaptureSession.State.STORED
-    assert session.trace_id == trace.pk
-    assert trace.origin == Trace.Origin.OPERATOR_CAPTURE
-    assert trace.byte_size > 0
-    assert len(trace.content_sha256) == 64
+    assert session.trace_id is not None
 
 
-def test_only_one_non_terminal_session_per_link(operator, kept_link):
+def test_a_second_session_while_recording_is_refused(kept_link, stub_domtrack):
     CaptureSession.objects.create(
-        link=kept_link, operator=operator, state=CaptureSession.State.RECORDING
+        link=kept_link,
+        mode=CaptureSession.Mode.HEADLESS_FIXED,
+        state=CaptureSession.State.RECORDING,
+        duration_ms=1000,
     )
+
+    with pytest.raises(RuntimeError, match="capture_in_progress"):
+        services.start_capture(kept_link)
+
+
+def test_only_one_non_terminal_session_per_link_is_allowed(kept_link):
+    CaptureSession.objects.create(
+        link=kept_link,
+        mode=CaptureSession.Mode.HEADLESS_FIXED,
+        state=CaptureSession.State.RECORDING,
+        duration_ms=1000,
+    )
+
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             CaptureSession.objects.create(
                 link=kept_link,
-                operator=operator,
-                state=CaptureSession.State.AWAITING_UPLOAD,
+                mode=CaptureSession.Mode.HEADLESS_FIXED,
+                state=CaptureSession.State.PENDING,
+                duration_ms=1000,
             )
-    # A terminal session does not conflict.
+
+
+def test_terminal_sessions_do_not_block_a_new_capture(kept_link, stub_domtrack):
     CaptureSession.objects.create(
-        link=kept_link, operator=operator, state=CaptureSession.State.FAILED, error="x"
+        link=kept_link,
+        mode=CaptureSession.Mode.HEADLESS_FIXED,
+        state=CaptureSession.State.FAILED,
+        duration_ms=1000,
     )
+    session = services.start_capture(kept_link)
+    assert session.state == CaptureSession.State.STORED
+
+
+def test_fail_capture_marks_failed(kept_link):
+    session = CaptureSession.objects.create(
+        link=kept_link,
+        mode=CaptureSession.Mode.HEADLESS_FIXED,
+        state=CaptureSession.State.RECORDING,
+        duration_ms=1000,
+    )
+    services.fail_capture(session, "navigation_timeout")
+    session.refresh_from_db()
+    assert session.state == CaptureSession.State.FAILED
+    assert session.error == "navigation_timeout"

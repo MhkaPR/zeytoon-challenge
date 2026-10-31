@@ -1,145 +1,79 @@
-"""Publishing tests (US7, FR-030, FR-034..FR-036, SC-009)."""
+"""US9 — publishing through the catalog interface with provenance (FR-030, FR-036..FR-038)."""
 
 import pytest
 
-from admin_console.models import Link
+from admin_console import services
+from admin_console.models import Link, PlanRecord
+from admin_console.tests.conftest import HOSTING_PLAN_VALUES
 from catalog.models import PublishedRecord
 
 pytestmark = pytest.mark.django_db
 
 
-def _publish_ready_link(operator_client, traced_link):
-    """Extract tables, save a complete hosting recipe, and return the link + tables."""
-    operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/extractions")
-    tables = operator_client.get(f"/api/v1/ops/links/{traced_link.pk}/tables").json()[
-        "tables"
-    ]
-    table = tables[0]
-    column = dict(table["columns"][0])
-    required = (
-        "plan_name",
-        "storage_amount",
-        "storage_unit",
-        "ram_amount",
-        "cpu_cores",
-        "bandwidth_amount",
-        "price_amount",
-        "billing_period",
-    )
-    bindings = [
-        {
-            "schema_field_key": key,
-            "source_table_id": table["id"],
-            "source_column_id": column["id"],
-            "selector": column["path"],
-            "formula": "",
-        }
-        for key in required
-    ]
-    response = operator_client.put(
-        f"/api/v1/ops/links/{traced_link.pk}/recipe",
-        {"plan_type": "hosting", "bindings": bindings},
-        format="json",
-    )
-    assert response.status_code == 200
-    traced_link.refresh_from_db()
-    return traced_link, table, column
+def test_publish_writes_a_record_with_provenance(planned_link):
+    published = services.publish_link_plans(planned_link)
 
-
-def test_publish_writes_catalog_records_with_provenance(
-    operator_client, traced_link
-):
-    link, table, column = _publish_ready_link(operator_client, traced_link)
-    response = operator_client.post(f"/api/v1/ops/links/{link.pk}/publish")
-    assert response.status_code == 200
-    assert response.json()["published"] == table["row_count"]
-
-    link.refresh_from_db()
-    assert link.pipeline_stage == Link.PipelineStage.PUBLISHED
-
-    records = PublishedRecord.objects.filter(site=link.site_id, link=link.pk)
-    assert records.count() == table["row_count"]
-    record = records.first()
-    recipe = link.recipes.get(is_current=True)
-    assert record.trace == link.current_trace_id
-    assert record.recipe == recipe.pk
-    assert record.source == "admin_console"
+    assert published == 1
+    record = PublishedRecord.objects.get(source="admin_console", site=planned_link.site_id)
+    assert record.link == planned_link.pk
+    assert record.trace == planned_link.current_trace_id
+    assert record.classification is not None
     assert record.plan_type == "hosting"
+    assert record.values["plan_name"] == "Starter"
     assert record.is_published is True
-    assert record.values.get("plan_name")
+    planned_link.refresh_from_db()
+    assert planned_link.pipeline_stage == Link.PipelineStage.PUBLISHED
 
 
-def test_publish_upserts_by_source_site_natural_key(operator_client, traced_link):
-    link, table, _column = _publish_ready_link(operator_client, traced_link)
-    operator_client.post(f"/api/v1/ops/links/{link.pk}/publish")
-    first_count = PublishedRecord.objects.filter(site=link.site_id).count()
-    # Re-publishing updates the same rows rather than duplicating (FR-035).
-    operator_client.post(f"/api/v1/ops/links/{link.pk}/publish")
-    assert PublishedRecord.objects.filter(site=link.site_id).count() == first_count
+def test_publish_upserts_by_source_site_natural_key(planned_link, stub_llm):
+    services.publish_link_plans(planned_link)
+    updated = dict(HOSTING_PLAN_VALUES, price_amount=99000)
+    stub_llm.plans = [{"values": updated, "confidence": 0.9}]
+    services.extract_link_plans(planned_link)
+
+    services.publish_link_plans(planned_link)
+
+    records = PublishedRecord.objects.filter(source="admin_console", site=planned_link.site_id)
+    assert records.count() == 1
+    assert records.first().values["price_amount"] == 99000
 
 
-def test_removed_item_is_retired_not_stale(operator_client, traced_link):
-    from catalog.interfaces import CatalogInterface
+def test_incomplete_plan_is_not_published(classified_link):
+    table = classified_link.extracted_tables.get()
+    PlanRecord.objects.create(
+        link=classified_link,
+        table=table,
+        classification=table.classification,
+        plan_type="hosting",
+        natural_key="hosting:broken:0",
+        values={"plan_name": "Broken"},  # required fields missing
+        confidence=0.5,
+    )
 
-    link, table, _column = _publish_ready_link(operator_client, traced_link)
-    operator_client.post(f"/api/v1/ops/links/{link.pk}/publish")
-    record = PublishedRecord.objects.filter(site=link.site_id).first()
+    published = services.publish_link_plans(classified_link)
 
-    CatalogInterface.retire_published_record(site=link.site_id, natural_key=record.natural_key)
-    record.refresh_from_db()
+    assert published == 0
+    assert PublishedRecord.objects.count() == 0
+
+
+def test_removal_retires_the_published_record(planned_link):
+    services.publish_link_plans(planned_link)
+
+    retired = services.retire_missing_plans(planned_link, current_keys=set())
+
+    assert retired == 1
+    record = PublishedRecord.objects.get(source="admin_console", site=planned_link.site_id)
     assert record.is_published is False
     assert record.retired_at is not None
 
 
-def test_publish_without_complete_recipe_is_409(operator_client, traced_link):
-    response = operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/publish")
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "recipe_incomplete"
-    assert PublishedRecord.objects.count() == 0
+def test_kept_plan_is_not_retired(planned_link):
+    services.publish_link_plans(planned_link)
+    keys = set(planned_link.plan_records.values_list("natural_key", flat=True))
 
+    retired = services.retire_missing_plans(planned_link, current_keys=keys)
 
-def test_publish_with_unconnected_required_field_is_409(operator_client, traced_link):
-    operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/extractions")
-    tables = operator_client.get(f"/api/v1/ops/links/{traced_link.pk}/tables").json()[
-        "tables"
-    ]
-    column = dict(tables[0]["columns"][0])
-    # Only one required field connected: the recipe stays incomplete.
-    operator_client.put(
-        f"/api/v1/ops/links/{traced_link.pk}/recipe",
-        {
-            "plan_type": "hosting",
-            "bindings": [
-                {
-                    "schema_field_key": "plan_name",
-                    "source_table_id": tables[0]["id"],
-                    "source_column_id": column["id"],
-                    "formula": "",
-                }
-            ],
-        },
-        format="json",
-    )
-    response = operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/publish")
-    assert response.status_code == 409
-    assert PublishedRecord.objects.count() == 0
-
-
-def test_catalog_never_imports_admin_console():
-    import ast
-    import pathlib
-
-    catalog_root = pathlib.Path("backend/src/catalog")
-    for path in catalog_root.rglob("*.py"):
-        tree = ast.parse(path.read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                names = [alias.name for alias in node.names]
-            elif isinstance(node, ast.ImportFrom):
-                names = [node.module or ""]
-            else:
-                continue
-            for name in names:
-                assert not name.startswith("admin_console"), (
-                    f"catalog imports admin_console in {path}"
-                )
+    assert retired == 0
+    assert PublishedRecord.objects.get(
+        source="admin_console", site=planned_link.site_id
+    ).is_published is True

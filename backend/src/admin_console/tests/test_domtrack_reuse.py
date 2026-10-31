@@ -1,15 +1,9 @@
-"""domtrack-reuse guard (FR-000, SC-017).
-
-Every ``import domtrack`` / ``from domtrack ...`` in the backend must live in the single
-adapter module; nothing else may reach into the library.
-"""
+"""SC-020 — third-party captures stay behind their single adapter module."""
 
 import ast
 import pathlib
 
 import pytest
-
-ADAPTER = pathlib.Path("backend/src/admin_console/domtrack_client.py")
 
 
 def _backend_root():
@@ -19,22 +13,45 @@ def _backend_root():
     pytest.skip("backend source root not found")
 
 
-def test_domtrack_imports_only_in_the_adapter_module():
-    root = _backend_root()
-    offenders = []
-    for path in root.rglob("*.py"):
-        if path == ADAPTER:
+def _imports(path):
+    tree = ast.parse(path.read_text())
+    names = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            names.append(node.module or "")
+    return names
+
+
+def _sources():
+    for path in _backend_root().rglob("*.py"):
+        if "test" in path.name or "migrations" in path.parts:
             continue
-        if path.name == "test_domtrack_reuse.py":
-            continue
-        tree = ast.parse(path.read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                modules = [alias.name for alias in node.names]
-            elif isinstance(node, ast.ImportFrom):
-                modules = [node.module or ""]
-            else:
-                continue
-            if any(m == "domtrack" or m.startswith("domtrack.") for m in modules):
-                offenders.append(str(path))
-    assert offenders == [], f"domtrack imported outside the adapter: {offenders}"
+        yield path
+
+
+def test_domtrack_is_imported_only_by_its_adapter():
+    offenders = [
+        path for path in _sources()
+        if any(name == "domtrack" or name.startswith("domtrack.") for name in _imports(path))
+        and path.name != "domtrack_client.py"
+    ]
+    assert offenders == []
+
+
+def test_crawl4ai_is_imported_only_by_discovery():
+    offenders = [
+        path for path in _sources()
+        if any(name == "crawl4ai" or name.startswith("crawl4ai.") for name in _imports(path))
+        and path.name != "discovery.py"
+    ]
+    assert offenders == []
+
+
+def test_no_module_shells_out_to_a_local_domtrack_server():
+    offenders = [
+        path for path in _sources()
+        if "DOMTRACK_LOCAL_API_URL" in path.read_text()
+    ]
+    assert offenders == []

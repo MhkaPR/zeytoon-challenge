@@ -7,11 +7,21 @@ from rest_framework.views import APIView
 
 from accounts import selectors as account_selectors
 from accounts.exceptions import ApiError
-from admin_console import events, serializers, services
-from admin_console.models import CaptureSession, Link, Site
+from admin_console import domtrack_client, events, llm, serializers, services
+from admin_console.models import CaptureSession, FailureAlert, Link, Site
 from admin_console.serializers import (
     ApprovalQueueSerializer,
+    CaptureStartInput,
+    ClassifyInput,
     ConsoleErrorSerializer,
+    DiscoverLinksInput,
+    ManualLinksInput,
+    PlansInput,
+    RefilterOverrideInput,
+    ReplayRunInput,
+    SiteCreateInput,
+    TokenBudgetInput,
+    VerificationDecisionInput,
     VerificationDecisionInputSerializer,
     parse_input,
 )
@@ -29,7 +39,7 @@ class AuthenticatedView(APIView):
         return user
 
 
-class AdminOnlyView(AuthenticatedView):
+class OperatorOnlyView(AuthenticatedView):
     """Base view requiring an operator role (``ops`` group or admin, FR-001, FR-005)."""
 
     def caller(self, request):
@@ -48,8 +58,7 @@ def _site_payload(site):
         "id": site.pk,
         "company_id": site.company_id,
         "domain": site.domain,
-        "has_sitemap": site.has_sitemap,
-        "sitemap_url": site.sitemap_url,
+        "crawl_query": site.crawl_query,
         "maintenance_state": site.maintenance_state,
         "onboarded_at": site.onboarded_at.isoformat() if site.onboarded_at else None,
     }
@@ -62,6 +71,9 @@ def _link_payload(link):
         "url": link.url,
         "source": link.source,
         "review_state": link.review_state,
+        "refilter_plan_type": link.refilter_plan_type,
+        "refilter_confidence": link.refilter_confidence,
+        "refilter_flag": link.refilter_flag,
         "pipeline_stage": link.pipeline_stage,
         "failure_rate": link.failure_rate,
         "current_trace_id": link.current_trace_id,
@@ -82,126 +94,176 @@ def get_link_or_error(link_id):
     return link
 
 
+def _stage_error(exc):
+    """Map a stage exception onto the console error contract."""
+    if isinstance(exc, llm.LlmBudgetExhausted):
+        return ApiError(
+            "awaiting_llm_budget",
+            "The LLM token budget is exhausted; the work will resume when it is restored.",
+            http_status=202,
+        )
+    if isinstance(exc, PermissionError):
+        return ApiError("labeling_disabled", str(exc), http_status=403)
+    if isinstance(exc, domtrack_client.DomtrackCaptureError):
+        return ApiError(
+            "dead_lettered",
+            "Capture failed after retries; the link did not advance.",
+            http_status=502,
+        )
+    if isinstance(exc, RuntimeError) and str(exc) == "capture_in_progress":
+        return ApiError("capture_in_progress", "A capture is already in flight.", http_status=409)
+    message = str(exc)
+    if message in ("trace_required", "no_tables_found", "plans_required"):
+        return ApiError(message, "The link is not ready for this stage.", http_status=409)
+    if message == "link_not_ready":
+        return ApiError("link_not_ready", "The link is not ready for this stage.", http_status=400)
+    return ApiError("invalid_field", message[:200], http_status=400)
+
+
 # ---------------------------------------------------------------------------
 # US1 — approval queue (FR-001..FR-006)
 # ---------------------------------------------------------------------------
 
 
-class ApprovalQueueView(AdminOnlyView):
+class ApprovalQueueView(OperatorOnlyView):
     @extend_schema(responses={200: ApprovalQueueSerializer})
     def get(self, request):
-        actor = self.caller(request)
+        self.caller(request)
         results = services.approval_queue()
-        events.approval_queue_read(len(results), actor=actor)
         return Response({"results": results, "count": len(results)})
 
 
-class VerificationDecisionView(AdminOnlyView):
+class VerificationDecisionView(OperatorOnlyView):
     @extend_schema(
         request=VerificationDecisionInputSerializer,
         responses={201: dict, 400: ConsoleErrorSerializer, 403: ConsoleErrorSerializer},
     )
     def post(self, request, company_id):
         actor = self.caller(request)
-        payload = parse_input(VerificationDecisionInputSerializer, request.data)
+        payload = parse_input(VerificationDecisionInput, request.data)
         company, decision, site = services.record_decision(
-            company_id,
-            actor,
-            payload["outcome"],
-            note=payload.get("note", ""),
+            company_id, actor, payload.outcome, note=payload.note or ""
         )
         return Response(
             {
-                "company": {
-                    "id": company.pk,
-                    "verification_status": company.verification_status,
-                    "verified": company.is_verified,
-                },
+                "company": {"id": company.pk, "verification_status": company.verification_status},
                 "decision": {
                     "outcome": decision.outcome,
-                    "actor_id": decision.actor_id,
-                    "decided_at": decision.decided_at.isoformat(),
-                    "note": decision.note,
+                    "actor_id": getattr(decision, "actor_id", actor.pk),
+                    "decided_at": getattr(decision, "decided_at", None)
+                    and decision.decided_at.isoformat(),
+                    "note": getattr(decision, "note", ""),
                 },
-                "site": _site_payload(site) if site is not None else None,
+                "site": _site_payload(site) if site else None,
             },
             status=status.HTTP_201_CREATED,
         )
 
 
 # ---------------------------------------------------------------------------
-# US2 — site onboarding and link review (FR-007..FR-011)
+# US2 — automated link discovery (FR-007..FR-011)
 # ---------------------------------------------------------------------------
 
 
-class SiteCreateView(AdminOnlyView):
-    @extend_schema(operation_id="ops_sites_list", responses={200: dict})
-    def get(self, request):
-        self.caller(request)
-        results = []
-        for site in Site.objects.select_related("company").all():
-            payload = _site_payload(site)
-            payload["links_count"] = site.links.count()
-            results.append(payload)
-        return Response({"results": results, "count": len(results)})
-
-    @extend_schema(request=serializers.SiteCreateInput, responses={201: dict})
+class SiteCreateView(OperatorOnlyView):
+    @extend_schema(request=SiteCreateInput, responses={201: dict, 409: ConsoleErrorSerializer})
     def post(self, request):
         actor = self.caller(request)
-        payload = parse_input(serializers.SiteCreateInput, request.data)
-        site = services.onboard_site(payload.company_id, actor)
+        payload = parse_input(SiteCreateInput, request.data)
+        if Site.objects.filter(company_id=payload.company_id).exists():
+            raise ApiError(
+                "invalid_field",
+                "The company already has a site.",
+                http_status=409,
+                fields={"company_id": "already onboarded"},
+            )
+        site = services.onboard_site(payload.company_id, actor=actor)
+        return Response({"site": _site_payload(site)}, status=status.HTTP_201_CREATED)
+
+
+class SiteDetailView(OperatorOnlyView):
+    def get(self, request, site_id):
+        self.caller(request)
+        return Response({"site": _site_payload(get_site_or_error(site_id))})
+
+
+class DiscoverLinksView(OperatorOnlyView):
+    @extend_schema(request=DiscoverLinksInput, responses={200: dict, 502: ConsoleErrorSerializer})
+    def post(self, request, site_id):
+        self.caller(request)
+        site = get_site_or_error(site_id)
+        payload = parse_input(DiscoverLinksInput, request.data) if request.data else None
+        bounds = {}
+        if payload is not None:
+            bounds = {
+                "query": payload.query,
+                "max_pages": payload.max_pages,
+                "max_depth": payload.max_depth,
+            }
+        try:
+            result = services.discover_and_store_links(site, bounds=bounds)
+        except Exception as exc:  # noqa: BLE001 - crawl/network failure
+            raise ApiError("crawl_failed", str(exc)[:200], http_status=502) from exc
         return Response(
-            {"site": _site_payload(site)}, status=status.HTTP_201_CREATED
+            {
+                "site": _site_payload(site),
+                "discovered": result["discovered"],
+                "after_policy": result["after_policy"],
+                "candidates": [_link_payload(link) for link in result["links"]],
+            }
         )
 
 
-class SiteDetailView(AdminOnlyView):
-    @extend_schema(operation_id="ops_site_detail", responses={200: dict})
+class SiteLinksView(OperatorOnlyView):
     def get(self, request, site_id):
+        self.caller(request)
         site = get_site_or_error(site_id)
-        links = [_link_payload(link) for link in site.links.all()]
-        return Response({"site": _site_payload(site), "links": links})
+        qs = site.links.all()
+        review_state = request.query_params.get("review_state")
+        if review_state:
+            qs = qs.filter(review_state=review_state)
+        return Response({"results": [_link_payload(link) for link in qs], "count": qs.count()})
 
-
-class DiscoverLinksView(AdminOnlyView):
-    @extend_schema(request=None, responses={200: dict})
     def post(self, request, site_id):
         actor = self.caller(request)
         site = get_site_or_error(site_id)
-        result = services.discover_and_store_links(site, actor)
-        return Response(result)
-
-
-class SiteLinksView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
-    def get(self, request, site_id):
-        site = get_site_or_error(site_id)
-        links = [_link_payload(link) for link in site.links.all()]
-        return Response({"site_id": site.pk, "links": links})
-
-    @extend_schema(request=serializers.ManualLinksInput, responses={201: dict})
-    def post(self, request, site_id):
-        actor = self.caller(request)
-        site = get_site_or_error(site_id)
-        payload = parse_input(serializers.ManualLinksInput, request.data)
-        result = services.add_links_manually(site, payload.urls, actor)
-        return Response(result, status=status.HTTP_201_CREATED)
-
-
-class LinkReviewView(AdminOnlyView):
-    @extend_schema(request=serializers.LinkReviewInput, responses={200: dict})
-    def post(self, request, site_id):
-        actor = self.caller(request)
-        site = get_site_or_error(site_id)
-        payload = parse_input(serializers.LinkReviewInput, request.data)
-        result = services.review_links(
-            site, payload.keep_ids, payload.remove_ids, actor
+        payload = parse_input(ManualLinksInput, request.data)
+        links = services.add_links_manually(site, payload.urls, actor=actor)
+        return Response(
+            {"results": [_link_payload(link) for link in links]},
+            status=status.HTTP_201_CREATED,
         )
-        return Response(result)
 
 
 # ---------------------------------------------------------------------------
-# US3 — operator-driven capture (FR-012..FR-017)
+# US3 — LLM link refilter (FR-012..FR-015)
+# ---------------------------------------------------------------------------
+
+
+class RefilterView(OperatorOnlyView):
+    @extend_schema(responses={200: dict, 202: ConsoleErrorSerializer})
+    def post(self, request, link_id):
+        self.caller(request)
+        link = get_link_or_error(link_id)
+        try:
+            services.refilter_link(link)
+        except Exception as exc:  # noqa: BLE001
+            raise _stage_error(exc) from exc
+        return Response({"link": _link_payload(link)})
+
+
+class RefilterOverrideView(OperatorOnlyView):
+    @extend_schema(request=RefilterOverrideInput, responses={200: dict})
+    def post(self, request, link_id):
+        actor = self.caller(request)
+        link = get_link_or_error(link_id)
+        payload = parse_input(RefilterOverrideInput, request.data)
+        services.override_refilter(link, payload.refilter_state, payload.reason, actor=actor)
+        return Response({"link": _link_payload(link)})
+
+
+# ---------------------------------------------------------------------------
+# US4 — server-side headless capture (FR-016..FR-019)
 # ---------------------------------------------------------------------------
 
 
@@ -209,411 +271,301 @@ def _capture_payload(session):
     return {
         "id": session.pk,
         "link_id": session.link_id,
-        "mode": session.mode,
         "state": session.state,
-        "local_path": session.local_path,
+        "mode": session.mode,
         "duration_ms": session.duration_ms,
         "error": session.error,
         "trace_id": session.trace_id,
     }
 
 
-class CaptureStartView(AdminOnlyView):
-    @extend_schema(request=serializers.CaptureStartInput, responses={201: dict})
+class CaptureStartView(OperatorOnlyView):
+    @extend_schema(request=CaptureStartInput, responses={201: dict})
     def post(self, request, link_id):
-        actor = self.caller(request)
-        link = get_link_or_error(link_id)
-        payload = parse_input(serializers.CaptureStartInput, request.data)
-        session, _ = services.start_capture(
-            link, actor, mode=payload.mode, duration_ms=payload.duration_ms
-        )
-        return Response(
-            {"capture": _capture_payload(session)}, status=status.HTTP_201_CREATED
-        )
-
-
-class ActiveCaptureView(AdminOnlyView):
-    """The caller's in-flight capture, so the UI can prevent a second recording."""
-
-    @extend_schema(responses={200: dict})
-    def get(self, request):
-        actor = self.caller(request)
-        session = services.active_capture_for(actor)
-        return Response(
-            {
-                "capture": _capture_payload(session) if session else None,
-                "link_url": session.link.url if session else None,
-            }
-        )
-
-
-class DomtrackHealthView(AdminOnlyView):
-    """Probe the operator's local ``domtrack serve`` instance."""
-
-    @extend_schema(responses={200: dict})
-    def get(self, request):
         self.caller(request)
-        from admin_console import domtrack_client
-
-        return Response(domtrack_client.local_health())
-
-
-class TraceUploadView(AdminOnlyView):
-    @extend_schema(request=None, responses={201: dict})
-    def post(self, request, capture_session_id):
-        actor = self.caller(request)
-        session = CaptureSession.objects.filter(pk=capture_session_id).first()
-        if session is None:
-            raise ApiError("not_found", "Capture session not found.", http_status=404)
-        upload = request.FILES.get("file")
-        if upload is not None:
-            source = upload
-        elif request.data.get("local_path"):
-            source = request.data["local_path"]
-        else:
-            raise ApiError(
-                "invalid_field",
-                "Provide a trace file or a local_path.",
-                fields={"fields": ["file", "local_path"]},
+        link = get_link_or_error(link_id)
+        payload = parse_input(CaptureStartInput, request.data) if request.data else None
+        try:
+            session = services.start_capture(
+                link, duration_ms=payload.duration_ms if payload else None
             )
-        trace = services.store_trace(session, source, actor)
+        except Exception as exc:  # noqa: BLE001
+            raise _stage_error(exc) from exc
         return Response(
-            {
-                "trace": {
-                    "id": trace.pk,
-                    "link_id": trace.link_id,
-                    "captured_at": trace.captured_at.isoformat(),
-                    "captured_by": trace.captured_by_id,
-                    "is_valid_trace": trace.is_valid_trace,
-                },
-                "capture": _capture_payload(session),
-            },
+            {"capture_session": _capture_payload(session), "link": _link_payload(link)},
             status=status.HTTP_201_CREATED,
         )
 
 
-class CaptureFailView(AdminOnlyView):
-    @extend_schema(request=None, responses={200: dict})
+class LinkCaptureListView(OperatorOnlyView):
+    def get(self, request, link_id):
+        self.caller(request)
+        link = get_link_or_error(link_id)
+        sessions = link.capture_sessions.all()
+        return Response({"results": [_capture_payload(s) for s in sessions]})
+
+
+class CaptureFailView(OperatorOnlyView):
     def post(self, request, capture_session_id):
         self.caller(request)
         session = CaptureSession.objects.filter(pk=capture_session_id).first()
         if session is None:
             raise ApiError("not_found", "Capture session not found.", http_status=404)
-        services.fail_capture(session, request.data.get("error", "operator failed"))
-        return Response({"capture": _capture_payload(session)})
+        services.fail_capture(session, request.data.get("error", "failed"))
+        return Response({"capture_session": _capture_payload(session)})
 
 
 # ---------------------------------------------------------------------------
-# US4 — table extraction (FR-018..FR-020)
+# US5 — table extraction (FR-020..FR-022)
 # ---------------------------------------------------------------------------
 
 
-class ExtractionView(AdminOnlyView):
-    @extend_schema(request=None, responses={201: dict, 409: ConsoleErrorSerializer})
+class ExtractionView(OperatorOnlyView):
+    @extend_schema(responses={201: dict, 409: ConsoleErrorSerializer})
     def post(self, request, link_id):
         self.caller(request)
         link = get_link_or_error(link_id)
-        if link.current_trace is None:
-            raise ApiError(
-                "trace_required",
-                "A stored trace is required before extraction.",
-                http_status=409,
-            )
-        from admin_console.tasks import run_extraction_task
-
-        task_result = run_extraction_task.enqueue(link.pk)
-        if not task_result.is_finished:
-            # A queued (non-immediate) backend runs the task elsewhere.
-            return Response(
-                {"link_id": link.pk, "queued": True},
-                status=status.HTTP_202_ACCEPTED,
-            )
-        if task_result.errors:
-            detail = task_result.errors[0].traceback or "extraction failed"
-            raise ApiError(
-                "extraction_failed",
-                "Table extraction failed.",
-                fields={"detail": str(detail)[-300:]},
-            )
-        result = task_result.return_value
-        return Response(result, status=status.HTTP_201_CREATED)
+        try:
+            tables = services.extract_link_tables(link)
+        except Exception as exc:  # noqa: BLE001
+            raise _stage_error(exc) from exc
+        return Response(
+            {
+                "extraction": {"trace_id": link.current_trace_id, "table_count": len(tables)},
+                "link": _link_payload(link),
+            },
+            status=status.HTTP_201_CREATED if tables else status.HTTP_200_OK,
+        )
 
 
-class LinkTablesView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
+class LinkTablesView(OperatorOnlyView):
     def get(self, request, link_id):
         self.caller(request)
         link = get_link_or_error(link_id)
+        return Response({"tables": services.tables_payload(link)})
+
+
+# ---------------------------------------------------------------------------
+# US6 — table classification (FR-023..FR-025)
+# ---------------------------------------------------------------------------
+
+
+class ClassificationView(OperatorOnlyView):
+    @extend_schema(request=ClassifyInput, responses={200: dict, 202: ConsoleErrorSerializer})
+    def post(self, request, link_id):
+        self.caller(request)
+        link = get_link_or_error(link_id)
+        try:
+            services.classify_link_tables(link)
+        except Exception as exc:  # noqa: BLE001
+            raise _stage_error(exc) from exc
         return Response(
             {
-                "link_id": link.pk,
-                "site_id": link.site_id,
-                "url": link.url,
-                "pipeline_stage": link.pipeline_stage,
-                "current_trace_id": link.current_trace_id,
-                "tables": services.tables_payload(link),
+                "classifications": services.classifications_payload(link),
+                "link": _link_payload(link),
             }
         )
 
-
-# ---------------------------------------------------------------------------
-# US5 — labeling, settings, and cost ceiling (FR-021..FR-024, FR-043)
-# ---------------------------------------------------------------------------
-
-
-class LabelingView(AdminOnlyView):
-    @extend_schema(request=None, responses={200: dict, 403: dict, 409: dict})
-    def post(self, request, link_id):
-        actor = self.caller(request)
+    def get(self, request, link_id):
+        self.caller(request)
         link = get_link_or_error(link_id)
-        # Gate synchronously so domain errors surface as their contract codes.
-        services.assert_labeling_allowed(link)
-        from admin_console.tasks import run_labeling_task
-
-        task_result = run_labeling_task.enqueue(link.pk, actor.pk)
-        if not task_result.is_finished:
-            return Response({"queued": True}, status=status.HTTP_202_ACCEPTED)
-        if task_result.errors:
-            raise ApiError(
-                "labeling_failed",
-                "Labeling failed.",
-                fields={"detail": str(task_result.errors[0].traceback)[-300:]},
-            )
-        return Response(task_result.return_value)
-
-
-TUNABLE_FIELDS = (
-    "REPLAY_PERIOD_HOURS",
-    "REPLAY_BATCH_SIZE",
-    "FAILURE_RATE_THRESHOLD",
-    "FAILURE_RATE_WINDOW_RUNS",
-    "LABELING_ENABLED",
-    "LABELING_PROVIDER",
-    "LABELING_MODEL",
-    "LABELING_LANGUAGE",
-    "LABELING_BATCH_SIZE",
-    "SITEMAP_FETCH_TIMEOUT_SECONDS",
-    "SITEMAP_MAX_INDEX_DEPTH",
-    "LINK_DISCOVERY_MAX_LINKS",
-    "CLEANING_RULES",
-    "CAPTURE_MODES_ALLOWED",
-    "PUBLISH_AUTO_THRESHOLD",
-)
-
-
-class SettingsView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
-    def get(self, request):
-        self.caller(request)
-        from constance import config
-
-        return Response({field: getattr(config, field) for field in TUNABLE_FIELDS})
-
-    @extend_schema(request=serializers.SettingsUpdateInput, responses={200: dict})
-    def put(self, request):
-        self.caller(request)
-        from constance import config
-
-        payload = parse_input(serializers.SettingsUpdateInput, request.data)
-        for key, value in (payload.values or {}).items():
-            if key not in TUNABLE_FIELDS:
-                raise ApiError(
-                    "invalid_field",
-                    "Unknown tunable.",
-                    fields={"fields": [key]},
-                )
-            setattr(config, key, value)
-        return Response({field: getattr(config, field) for field in TUNABLE_FIELDS})
-
-
-class LlmCostCeilingView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
-    def get(self, request):
-        self.caller(request)
-        return Response(services.llm_ceiling_status())
-
-    @extend_schema(request=serializers.LlmCostCeilingInput, responses={200: dict})
-    def put(self, request):
-        actor = self.caller(request)
-        payload = parse_input(serializers.LlmCostCeilingInput, request.data)
-        services.set_llm_ceiling(
-            payload.ceiling_amount, period=payload.period, actor=actor
-        )
-        return Response(services.llm_ceiling_status())
+        return Response({"classifications": services.classifications_payload(link)})
 
 
 # ---------------------------------------------------------------------------
-# US6 — mapping workspace and the extraction recipe (FR-025..FR-031)
+# US7 — plan schema extraction (FR-026..FR-031)
 # ---------------------------------------------------------------------------
 
 
-class PlanSchemaView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
+class PlanSchemaView(OperatorOnlyView):
     def get(self, request):
-        self.caller(request)
-        from admin_console.plan_schema import PLAN_SCHEMA
+        from admin_console import plan_schema
 
+        self.caller(request)
+        plan_type = request.query_params.get("plan_type", "hosting")
+        plan = plan_schema.schema_for(plan_type)
+        if plan is None:
+            raise ApiError("not_found", "Unknown plan type.", http_status=404)
         return Response(
             {
-                "plan_types": [
+                "plan_type": plan.key,
+                "label": plan.label,
+                "fields": [
                     {
-                        "key": plan.key,
-                        "label": plan.label,
-                        "fields": [
-                            {
-                                "key": f.key,
-                                "label": f.label,
-                                "kind": f.kind,
-                                "required": f.required,
-                                "unit_family": f.unit_family,
-                                "values": list(f.values),
-                            }
-                            for f in plan.fields
-                        ],
+                        "key": field.key,
+                        "label": field.label,
+                        "kind": field.kind,
+                        "required": field.required,
+                        "values": list(field.values),
                     }
-                    for plan in PLAN_SCHEMA.values()
-                ]
+                    for field in plan.fields
+                ],
             }
         )
 
 
-class RecipeView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
+class PlansView(OperatorOnlyView):
+    @extend_schema(request=PlansInput, responses={201: dict, 202: ConsoleErrorSerializer})
+    def post(self, request, link_id):
+        self.caller(request)
+        link = get_link_or_error(link_id)
+        try:
+            services.extract_link_plans(link)
+        except Exception as exc:  # noqa: BLE001
+            raise _stage_error(exc) from exc
+        return Response(
+            {"plans": services.plans_payload(link), "link": _link_payload(link)},
+            status=status.HTTP_201_CREATED,
+        )
+
     def get(self, request, link_id):
         self.caller(request)
         link = get_link_or_error(link_id)
-        recipe = services.get_current_recipe(link)
-        return Response(
-            {
-                "link_id": link.pk,
-                "pipeline_stage": link.pipeline_stage,
-                "recipe": services.recipe_payload(recipe),
-                "tables": services.tables_payload(link),
-            }
-        )
-
-    @extend_schema(request=serializers.RecipeSaveInput, responses={200: dict, 409: dict})
-    def put(self, request, link_id):
-        actor = self.caller(request)
-        link = get_link_or_error(link_id)
-        payload = parse_input(serializers.RecipeSaveInput, request.data)
-        recipe, unconnected = services.save_recipe(
-            link,
-            payload.plan_type,
-            [b.model_dump() for b in payload.bindings],
-            actor=actor,
-        )
-        link.refresh_from_db()
-        if not recipe.is_complete:
-            raise ApiError(
-                "recipe_incomplete",
-                "Required schema fields are unconnected.",
-                http_status=409,
-                fields={"unconnected": unconnected},
-            )
-        return Response(
-            {
-                "recipe": services.recipe_payload(recipe),
-                "link": {"pipeline_stage": link.pipeline_stage},
-            }
-        )
+        return Response({"plans": services.plans_payload(link)})
 
 
 # ---------------------------------------------------------------------------
-# US7 — cleaning and publishing (FR-032..FR-036)
+# US8 — optional labeling (FR-032..FR-035)
 # ---------------------------------------------------------------------------
 
 
-class CleaningView(AdminOnlyView):
-    @extend_schema(request=None, responses={200: dict, 409: dict})
+class LabelingView(OperatorOnlyView):
+    @extend_schema(responses={200: dict, 403: ConsoleErrorSerializer, 202: ConsoleErrorSerializer})
     def post(self, request, link_id):
-        actor = self.caller(request)
+        self.caller(request)
         link = get_link_or_error(link_id)
-        result = services.clean_link_data(link, actor=actor)
-        return Response(result)
+        try:
+            labels = services.label_link_tables(link)
+        except Exception as exc:  # noqa: BLE001
+            raise _stage_error(exc) from exc
+        return Response({"labels": labels, "labeled_tables": len(labels)})
 
 
-class PublishView(AdminOnlyView):
-    @extend_schema(request=None, responses={200: dict, 409: dict})
+# ---------------------------------------------------------------------------
+# US9 — publishing (FR-036..FR-038)
+# ---------------------------------------------------------------------------
+
+
+class PublishView(OperatorOnlyView):
+    @extend_schema(responses={200: dict, 409: ConsoleErrorSerializer})
     def post(self, request, link_id):
-        actor = self.caller(request)
+        self.caller(request)
         link = get_link_or_error(link_id)
-        result = services.publish_link_data(link, actor=actor)
-        return Response(result)
+        try:
+            published = services.publish_link_plans(link)
+        except Exception as exc:  # noqa: BLE001
+            raise _stage_error(exc) from exc
+        return Response({"published": published, "link": _link_payload(link)})
 
 
 # ---------------------------------------------------------------------------
-# US8 — replay runs, failure state, alerts, re-run, recipients (FR-037..FR-042)
+# US10 — replay, failure, alerts, re-run (FR-039..FR-046)
 # ---------------------------------------------------------------------------
 
 
-class ReplayRunListView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
+class ReplayRunListView(OperatorOnlyView):
     def get(self, request):
         self.caller(request)
-        link_id = request.query_params.get("link_id")
-        runs = services.replay_runs(link_id=link_id)
-        return Response(
-            {
-                "results": [services.replay_run_payload(run) for run in runs],
-                "count": len(runs),
-            }
+        runs = services.replay_runs(
+            link_id=request.query_params.get("link_id"),
+            state=request.query_params.get("state"),
         )
+        return Response({"results": [services.replay_run_payload(r) for r in runs]})
 
 
-class ReplayRunCreateView(AdminOnlyView):
-    @extend_schema(request=serializers.ReplayRunInput, responses={201: dict, 409: dict})
+class ReplayRunCreateView(OperatorOnlyView):
+    @extend_schema(request=ReplayRunInput, responses={202: dict})
     def post(self, request):
+        from admin_console import tasks
+
         self.caller(request)
-        payload = parse_input(serializers.ReplayRunInput, request.data)
-        if payload.site_id is not None:
-            links = services.due_links_for_site(payload.site_id)
-        elif payload.link_ids:
+        payload = parse_input(ReplayRunInput, request.data)
+        if payload.link_ids:
             links = list(Link.objects.filter(pk__in=payload.link_ids))
+        elif payload.site_id:
+            links = services.due_links_for_site(payload.site_id)
         else:
             links = services.due_links()
-        results = []
         for link in links:
-            from admin_console.replay import execute_replay_run
-
-            results.append(execute_replay_run(link))
-        return Response({"results": results, "count": len(results)}, status=201)
+            tasks.run_replay_task.enqueue(link.pk)
+        return Response({"enqueued": len(links)}, status=status.HTTP_202_ACCEPTED)
 
 
-class LinkFailureView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
+class LinkFailureView(OperatorOnlyView):
     def get(self, request, link_id):
         self.caller(request)
-        link = get_link_or_error(link_id)
-        return Response(services.link_failure_payload(link))
+        return Response(services.link_failure_payload(get_link_or_error(link_id)))
 
 
-class AlertListView(AdminOnlyView):
-    @extend_schema(responses={200: dict})
+class AlertListView(OperatorOnlyView):
     def get(self, request):
         self.caller(request)
-        state = request.query_params.get("state")
-        alerts = services.alerts(state=state)
-        return Response(
-            {
-                "results": [services.alert_payload(a) for a in alerts],
-                "count": len(alerts),
-            }
-        )
+        alerts = services.alerts(state=request.query_params.get("state"))
+        return Response({"results": [services.alert_payload(a) for a in alerts]})
 
 
-class LinkRerunView(AdminOnlyView):
-    @extend_schema(request=None, responses={200: dict})
+class LinkRerunView(OperatorOnlyView):
     def post(self, request, link_id):
         actor = self.caller(request)
-        link = get_link_or_error(link_id)
-        return Response(services.rerun_link_stages(link, actor=actor))
+        link = services.rerun_link_stages(get_link_or_error(link_id), actor=actor)
+        return Response({"link": _link_payload(link)})
 
 
-class MetricsView(AdminOnlyView):
-    """Operational metrics for the console (FR-045, Principle VII)."""
+# ---------------------------------------------------------------------------
+# Settings and observability (FR-047, FR-054..FR-057)
+# ---------------------------------------------------------------------------
 
-    @extend_schema(responses={200: dict})
+
+class SettingsView(OperatorOnlyView):
+    def get(self, request):
+        self.caller(request)
+        return Response({"values": _settings_snapshot()})
+
+    def put(self, request):
+        from constance import config
+
+        self.caller(request)
+        values = request.data.get("values") or {}
+        updated = {}
+        for key, value in values.items():
+            if hasattr(config, key):
+                setattr(config, key, value)
+                updated[key] = value
+        return Response({"values": updated})
+
+
+def _settings_snapshot():
+    from admin_console import constants
+
+    return {
+        "REPLAY_PERIOD_HOURS": constants.replay_period_hours(),
+        "FAILURE_RATE_THRESHOLD": constants.failure_rate_threshold(),
+        "LINK_CRAWL_MAX_PAGES": constants.link_crawl_max_pages(),
+        "LINK_DENY_EXTENSIONS": constants.link_deny_extensions(),
+        "LINK_DENY_SEGMENTS": constants.link_deny_segments(),
+        "REFILTER_DROP_CONFIDENCE": constants.refilter_drop_confidence(),
+        "CAPTURE_FIXED_DURATION_MS": constants.capture_fixed_duration_ms(),
+        "LABELING_ENABLED": constants.labeling_enabled(),
+    }
+
+
+class TokenBudgetView(OperatorOnlyView):
+    def get(self, request):
+        self.caller(request)
+        return Response(services.token_budget_status())
+
+    @extend_schema(request=TokenBudgetInput, responses={200: dict})
+    def put(self, request):
+        actor = self.caller(request)
+        payload = parse_input(TokenBudgetInput, request.data)
+        if payload.token_budget is not None:
+            services.set_token_budget(
+                payload.token_budget, period=payload.period, actor=actor
+            )
+        return Response(services.token_budget_status(period=payload.period))
+
+
+class MetricsView(OperatorOnlyView):
     def get(self, request):
         self.caller(request)
         return Response(services.metrics_snapshot())

@@ -14,7 +14,7 @@ urlpatterns = [
         api.VerificationDecisionView.as_view(),
         name="verification-decision",
     ),
-    # US2 — site onboarding and link review (FR-007..FR-011)
+    # US2 — automated link discovery (FR-007..FR-011)
     path("sites", api.SiteCreateView.as_view(), name="site-create"),
     path("sites/<int:site_id>", api.SiteDetailView.as_view(), name="site-detail"),
     path(
@@ -22,76 +22,51 @@ urlpatterns = [
         api.DiscoverLinksView.as_view(),
         name="site-discover-links",
     ),
+    path("sites/<int:site_id>/links", api.SiteLinksView.as_view(), name="site-links"),
+    # US3 — LLM link refilter (FR-012..FR-015)
+    path("links/<int:link_id>/refilter", api.RefilterView.as_view(), name="link-refilter"),
     path(
-        "sites/<int:site_id>/links",
-        api.SiteLinksView.as_view(),
-        name="site-links",
+        "links/<int:link_id>/refilter/override",
+        api.RefilterOverrideView.as_view(),
+        name="link-refilter-override",
     ),
-    path(
-        "sites/<int:site_id>/links/review",
-        api.LinkReviewView.as_view(),
-        name="site-links-review",
-    ),
-    # US3 — operator-driven capture (FR-012..FR-017)
+    # US4 — server-side headless capture (FR-016..FR-019)
     path(
         "links/<int:link_id>/captures",
         api.CaptureStartView.as_view(),
         name="capture-start",
     ),
     path(
-        "captures/active",
-        api.ActiveCaptureView.as_view(),
-        name="capture-active",
-    ),
-    path("domtrack/health", api.DomtrackHealthView.as_view(), name="domtrack-health"),
-    path(
-        "captures/<int:capture_session_id>/trace",
-        api.TraceUploadView.as_view(),
-        name="capture-trace",
+        "links/<int:link_id>/captures/list",
+        api.LinkCaptureListView.as_view(),
+        name="capture-list",
     ),
     path(
         "captures/<int:capture_session_id>/fail",
         api.CaptureFailView.as_view(),
         name="capture-fail",
     ),
-    # US4 — table extraction (FR-018..FR-020)
+    # US5 — table extraction (FR-020..FR-022)
     path(
         "links/<int:link_id>/extractions",
         api.ExtractionView.as_view(),
         name="link-extractions",
     ),
+    path("links/<int:link_id>/tables", api.LinkTablesView.as_view(), name="link-tables"),
+    # US6 — table classification (FR-023..FR-025)
     path(
-        "links/<int:link_id>/tables",
-        api.LinkTablesView.as_view(),
-        name="link-tables",
+        "links/<int:link_id>/classifications",
+        api.ClassificationView.as_view(),
+        name="link-classifications",
     ),
-    # US5 — labeling, settings, and cost ceiling (FR-021..FR-024, FR-043)
-    path(
-        "links/<int:link_id>/labeling",
-        api.LabelingView.as_view(),
-        name="link-labeling",
-    ),
-    path("settings", api.SettingsView.as_view(), name="settings"),
-    path(
-        "llm-cost-ceiling",
-        api.LlmCostCeilingView.as_view(),
-        name="llm-cost-ceiling",
-    ),
-    # US6 — mapping workspace and the extraction recipe (FR-025..FR-031)
+    # US7 — plan schema extraction (FR-026..FR-031)
     path("plan-schema", api.PlanSchemaView.as_view(), name="plan-schema"),
-    path("links/<int:link_id>/recipe", api.RecipeView.as_view(), name="link-recipe"),
-    # US7 — cleaning and publishing (FR-032..FR-036)
-    path(
-        "links/<int:link_id>/cleaning",
-        api.CleaningView.as_view(),
-        name="link-cleaning",
-    ),
-    path(
-        "links/<int:link_id>/publish",
-        api.PublishView.as_view(),
-        name="link-publish",
-    ),
-    # US8 — replay runs, failure state, alerts, re-run (FR-037..FR-042)
+    path("links/<int:link_id>/plans", api.PlansView.as_view(), name="link-plans"),
+    # US8 — optional labeling (FR-032..FR-035)
+    path("links/<int:link_id>/labeling", api.LabelingView.as_view(), name="link-labeling"),
+    # US9 — publishing (FR-036..FR-038)
+    path("links/<int:link_id>/publish", api.PublishView.as_view(), name="link-publish"),
+    # US10 — replay, failure, alerts, re-run (FR-039..FR-046)
     path("replay-runs", api.ReplayRunListView.as_view(), name="replay-runs"),
     path(
         "replay-runs/create",
@@ -103,12 +78,10 @@ urlpatterns = [
         api.LinkFailureView.as_view(),
         name="link-failure",
     ),
-    path(
-        "links/<int:link_id>/rerun",
-        api.LinkRerunView.as_view(),
-        name="link-rerun",
-    ),
+    path("links/<int:link_id>/rerun", api.LinkRerunView.as_view(), name="link-rerun"),
     path("alerts", api.AlertListView.as_view(), name="alerts"),
-    # Phase 11 — operational metrics (FR-045)
+    # Settings and observability (FR-047, FR-054..FR-057)
+    path("settings", api.SettingsView.as_view(), name="settings"),
+    path("llm-token-budget", api.TokenBudgetView.as_view(), name="llm-token-budget"),
     path("metrics", api.MetricsView.as_view(), name="metrics"),
 ]

@@ -43,7 +43,7 @@ class AdminConsoleInterface:
 
     @staticmethod
     def published_source_id():
-        """The provenance ``source`` value console writes into ``catalog`` (FR-035)."""
+        """The provenance ``source`` value console writes into ``catalog`` (FR-037)."""
         return "admin_console"
 
 

@@ -1,114 +1,99 @@
-"""Replay/diff contract tests (US8, FR-037..FR-039, SC-012)."""
+"""US10 — replay compare, content/structural changes, conditional re-extraction (FR-039..FR-043)."""
 
 import pytest
 
-from admin_console.models import ReplayRun
-from admin_console.tests.factories import make_trace_bytes
-from catalog.models import PublishedRecord
+from admin_console.models import ChangeRecord, ReplayRun
+from admin_console.replay import execute_replay_run
+from admin_console.tests import factories
 
 pytestmark = pytest.mark.django_db
 
-
-class _Stats:
-    def __init__(self, applied=0, skipped=0, failed=0, failures=None):
-        self.applied = applied
-        self.skipped = skipped
-        self.failed = failed
-        self.failures = failures or []
+PLANS_PATH = "table > tr > td.col-0"
+OTHER_PATH = "body > div > p"
 
 
-class _Diff:
-    def __init__(self, removed=None):
-        self.added = []
-        self.removed = removed or []
-        self.changed = []
-
-    @property
-    def summary(self):
-        return {
-            "a_nodes": 1,
-            "b_nodes": 1,
-            "added": len(self.added),
-            "removed": len(self.removed),
-            "changed": len(self.changed),
-        }
+class FakeChange:
+    def __init__(self, path, text_changed=True):
+        self.path = path
+        self.text_changed = text_changed
 
 
-class _CompareResult:
-    def __init__(self, after_path, diff=None, stats=None):
+class FakeDiff:
+    def __init__(self, added=(), removed=(), changed=()):
+        self.added = list(added)
+        self.removed = list(removed)
+        self.changed = list(changed)
+
+
+class FakeCompareResult:
+    def __init__(self, after_path, diff, summary):
         self.after_path = after_path
-        self.diff = diff or _Diff()
-        self.stats = stats or _Stats(applied=5)
+        self.diff = diff
+        self.summary = summary
 
 
-def _fake_compare(monkeypatch, rows=None, stats=None, diff=None):
-    from admin_console import domtrack_client
-
-    def _compare(before_path, replay_config, recording):
-        import os
-
-        out_dir = recording.get("output_dir", "/tmp")
-        after_path = os.path.join(out_dir, "after.json")
-        with open(after_path, "wb") as handle:
-            handle.write(make_trace_bytes(rows=rows))
-        return _CompareResult(after_path, diff=diff, stats=stats)
-
-    monkeypatch.setattr(domtrack_client, "compare_replay", _compare)
+def _compare_result(tmp_path, diff, summary=None):
+    after = tmp_path / "after.json"
+    after.write_bytes(factories.make_trace_bytes())
+    return FakeCompareResult(str(after), diff, summary or {"changed": 1})
 
 
-def test_replay_run_records_traces_and_applies_diff(
-    operator_client, published_link, monkeypatch
-):
-    _fake_compare(monkeypatch)
-    response = operator_client.post(
-        "/api/v1/ops/replay-runs/create",
-        {"link_ids": [published_link.pk]},
-        format="json",
+def test_change_touching_a_plans_table_reextracts(planned_link, stub_domtrack, tmp_path):
+    stub_domtrack.compare_result = _compare_result(
+        tmp_path, FakeDiff(changed=[FakeChange(PLANS_PATH)])
     )
-    assert response.status_code == 201
-    result = response.json()["results"][0]
-    assert result["diff_applied"] is True
 
-    run = ReplayRun.objects.get(link=published_link)
+    run = execute_replay_run(planned_link)
+
     assert run.state == ReplayRun.State.SUCCEEDED
-    assert run.before_trace_id is not None
+    assert run.reextracted is True
     assert run.after_trace_id is not None
-    assert run.diff_summary
-    assert run.stats_applied == 5
-    assert PublishedRecord.objects.filter(
-        link=published_link.pk, is_published=True
-    ).exists()
+    change = ChangeRecord.objects.get(replay_run=run)
+    assert change.change_kind == ChangeRecord.Kind.CONTENT
+    assert change.touches_plans_table is True
 
 
-def test_replay_run_listing(operator_client, published_link, monkeypatch):
-    _fake_compare(monkeypatch)
-    operator_client.post(
-        "/api/v1/ops/replay-runs/create",
-        {"link_ids": [published_link.pk]},
-        format="json",
+def test_change_elsewhere_runs_no_llm_work(planned_link, stub_domtrack, tmp_path):
+    stub_domtrack.compare_result = _compare_result(
+        tmp_path, FakeDiff(changed=[FakeChange(OTHER_PATH)])
     )
-    response = operator_client.get(
-        f"/api/v1/ops/replay-runs?link_id={published_link.pk}"
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["count"] == 1
-    assert body["results"][0]["before_trace_id"] is not None
-    assert body["results"][0]["after_trace_id"] is not None
+
+    run = execute_replay_run(planned_link)
+
+    assert run.state == ReplayRun.State.SUCCEEDED
+    assert run.reextracted is False
+    change = ChangeRecord.objects.get(replay_run=run)
+    assert change.touches_plans_table is False
 
 
-def test_link_failure_endpoint_reports_rate_and_runs(
-    operator_client, published_link, monkeypatch
-):
-    _fake_compare(monkeypatch, stats=_Stats(applied=9, failed=1))
-    operator_client.post(
-        "/api/v1/ops/replay-runs/create",
-        {"link_ids": [published_link.pk]},
-        format="json",
+def test_structural_change_rediscovers_and_reclassifies(planned_link, stub_domtrack,
+                                                        stub_llm, tmp_path):
+    stub_domtrack.compare_result = _compare_result(
+        tmp_path, FakeDiff(added=[(PLANS_PATH, {"tag": "td"})])
     )
-    response = operator_client.get(f"/api/v1/ops/links/{published_link.pk}/failure")
-    assert response.status_code == 200
-    body = response.json()
-    assert body["link_id"] == published_link.pk
-    assert body["recent_runs"]
-    assert body["failure_rate"] == pytest.approx(0.1)
+
+    run = execute_replay_run(planned_link)
+
+    assert run.state == ReplayRun.State.SUCCEEDED
+    change = ChangeRecord.objects.get(replay_run=run)
+    assert change.change_kind == ChangeRecord.Kind.STRUCTURAL
+    assert change.touches_plans_table is True
+    assert run.reextracted is True
+    # A structural change re-ran discovery + classification before extraction.
+    assert stub_domtrack.extract_calls
+    assert stub_llm.classification_calls
+
+
+def test_replay_without_a_before_trace_fails(kept_link):
+    run = execute_replay_run(kept_link)
+    assert run.state == ReplayRun.State.FAILED
+    assert run.diff_summary["error"] == "no_before_trace"
+
+
+def test_compare_failure_is_recorded(planned_link, stub_domtrack, tmp_path):
+    stub_domtrack.compare_error = RuntimeError("replay crashed")
+
+    run = execute_replay_run(planned_link)
+
+    assert run.state == ReplayRun.State.FAILED
+    assert "replay crashed" in run.failures[0]

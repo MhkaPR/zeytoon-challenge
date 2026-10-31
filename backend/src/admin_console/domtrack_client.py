@@ -1,244 +1,190 @@
-"""The single adapter module for the ``domtrack`` library (FR-000, SC-017).
+"""The single adapter module for the ``domtrack`` library (FR-000, SC-020).
 
-Every ``import domtrack...`` in the backend lives here; ``test_domtrack_reuse.py`` walks
-the source tree and fails if it appears anywhere else. Each function wraps one domtrack
-capability and returns domtrack's own result shape verbatim — no stage re-derives what
-domtrack already produced.
+Every ``import domtrack...`` in the backend lives here; ``test_domtrack_reuse.py``
+walks the source tree and fails if it appears anywhere else.
+
+:class:`DomtrackClient` wraps one domtrack capability per method and returns domtrack's
+own result shape verbatim. Subclass it (or inject a fake) to test a stage without a
+browser; the module-level functions delegate to :data:`default_client`.
 """
 
 import json
 import os
 
-import httpx
-from django.conf import settings
-
-from admin_console import constants
-
-
-class DomtrackUnreachable(Exception):
-    """The local domtrack REST API could not be reached (FR-017)."""
-
 
 class DomtrackCaptureError(Exception):
-    """domtrack was reachable but the recording itself failed (e.g. Chrome was closed)."""
+    """domtrack was reachable but the headless recording itself failed (FR-018)."""
 
 
-# ---------------------------------------------------------------------------
-# Local REST API (the operator's machine): capture + trace listing
-# ---------------------------------------------------------------------------
+class DomtrackClient:
+    """Server-side, headless domtrack adapter (FR-000c)."""
 
+    # -- capture -----------------------------------------------------------
 
-def _local_base_url():
-    return str(settings.DOMTRACK_LOCAL_API_URL).rstrip("/")
+    def capture_headless(self, url, duration_ms, nav_timeout_ms=None):
+        """Capture ``url`` headlessly and return the trace JSON bytes (FR-017).
 
+        Navigates, waits for the page to settle, then records for the fixed
+        ``duration_ms`` that headless capture requires. The page is **not** scrolled.
+        """
+        from playwright.sync_api import sync_playwright
 
-def local_health():
-    """Probe the operator's ``domtrack serve`` without raising (used by the console)."""
-    base = _local_base_url()
-    try:
-        response = httpx.get(
-            f"{base}/health",
-            timeout=min(5.0, float(settings.DOMTRACK_LOCAL_API_TIMEOUT_SECONDS)),
+        import domtrack
+
+        timeout = int(nav_timeout_ms or 30000)
+        config = domtrack.TracerConfig(
+            url=url,
+            headless=True,
+            goto_timeout_ms=timeout,
+            duration_ms=int(duration_ms),
+            wait_until="domcontentloaded",
         )
-    except httpx.HTTPError as exc:
-        return {
-            "reachable": False,
-            "base_url": base,
-            "error": str(exc)[:200],
-        }
-    if response.status_code >= 400:
-        return {
-            "reachable": False,
-            "base_url": base,
-            "status": response.status_code,
-            "error": response.text[:200],
-        }
-    body = response.json()
-    return {
-        "reachable": True,
-        "base_url": base,
-        "name": body.get("name"),
-        "version": body.get("version"),
-        "trace_dir": body.get("trace_dir"),
-    }
-
-
-def start_local_capture(url, mode="interactive", duration_ms=None, selector=None):
-    """Trigger ``domtrack capture`` through the local REST API (FR-012, FR-013).
-
-    Returns domtrack's capture result; raises :class:`DomtrackUnreachable` when the
-    operator's local service is down (mapped to ``502 domtrack_unreachable``).
-    """
-    if mode == "fixed_duration" and not duration_ms:
-        duration_ms = constants.capture_fixed_duration_ms()
-    interactive = mode != "fixed_duration" and not duration_ms
-    payload = {
-        "url": url,
-        "selector": selector,
-        "headless": not interactive,
-    }
-    if interactive:
-        # Mirrors ``domtrack capture <url>`` without ``--duration``: the recorder calls
-        # ``page.pause()`` and the operator presses Resume in the Playwright Inspector
-        # when they are done, so there is no fixed recording window.
-        payload["interactive"] = True
-    else:
-        payload["duration_s"] = max(1.0, float(duration_ms) / 1000.0)
-
-    # An interactive recording waits for the operator, so it must not inherit the
-    # fixed-duration read timeout. Keep the connect timeout short so a stopped
-    # ``domtrack serve`` still fails fast.
-    timeout = (
-        httpx.Timeout(connect=5.0, read=None, write=30.0, pool=5.0)
-        if interactive
-        else float(settings.DOMTRACK_LOCAL_API_TIMEOUT_SECONDS)
-    )
-    try:
-        response = httpx.post(
-            f"{_local_base_url()}/capture",
-            json=payload,
-            timeout=timeout,
-        )
-    except httpx.HTTPError as exc:
-        raise DomtrackUnreachable(str(exc)) from exc
-    if interactive and response.status_code == 422 and "duration_s" in response.text:
-        # Older domtrack servers reject the interactive flag; fall back to a bounded
-        # recording window instead of failing the capture outright.
-        payload.pop("interactive", None)
-        payload["duration_s"] = max(
-            1.0, constants.capture_interactive_duration_ms() / 1000.0
-        )
+        session = domtrack.CaptureSession(config)
         try:
-            response = httpx.post(
-                f"{_local_base_url()}/capture",
-                json=payload,
-                timeout=float(settings.DOMTRACK_LOCAL_API_TIMEOUT_SECONDS),
-            )
-        except httpx.HTTPError as exc:
-            raise DomtrackUnreachable(str(exc)) from exc
-    if response.status_code >= 400:
-        raise DomtrackCaptureError(
-            f"local domtrack returned {response.status_code}: {response.text[:200]}"
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                try:
+                    page = browser.new_page(viewport=config.viewport)
+                    page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=3000)
+                    except Exception:  # noqa: BLE001 - networkidle is best-effort
+                        pass
+                    session.install(page)
+                    page.wait_for_timeout(int(duration_ms))
+                    raw = session.collect(page)
+                finally:
+                    browser.close()
+        except Exception as exc:  # noqa: BLE001 - surfaced as a capture failure
+            raise DomtrackCaptureError(str(exc)) from exc
+        return json.dumps(session.build_payload(raw)).encode("utf-8")
+
+    # -- trace validity + loading -----------------------------------------
+
+    def is_trace(self, raw):
+        import domtrack
+
+        return bool(domtrack.is_rrweb_trace(raw)) and bool((raw or {}).get("snapshot"))
+
+    def load_trace(self, path):
+        import domtrack
+
+        raw = domtrack.load_raw(path)
+        return raw, self.is_trace(raw)
+
+    @staticmethod
+    def read_trace_bytes(path):
+        with open(path, "rb") as handle:
+            return handle.read()
+
+    @staticmethod
+    def write_trace_bytes(data, path):
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data).encode("utf-8")
+        elif isinstance(data, str):
+            data = data.encode("utf-8")
+        with open(path, "wb") as handle:
+            handle.write(data)
+        return path
+
+    # -- tables ------------------------------------------------------------
+
+    def extract_tables(self, path, min_rows=2, min_cols=2, dedupe=True):
+        """Run ``domtrack tables extract``; return its result dict verbatim (FR-020)."""
+        import domtrack
+        from domtrack.tables.discovery import DiscoveryConfig, discover_tables
+
+        raw = domtrack.load_raw(path)
+        config = DiscoveryConfig(min_rows=min_rows, min_cols=min_cols, dedupe=dedupe)
+        return discover_tables(raw, config)
+
+    def label_tables(self, tables, label_config):
+        """Run ``domtrack tables label``; return the labeled result (FR-033)."""
+        from domtrack.tables.labeling import LabelConfig, label_tables as _label
+
+        config = LabelConfig(
+            provider=label_config.get("provider", "openai"),
+            model=label_config.get("model") or None,
+            base_url=label_config.get("base_url") or None,
+            api_key=label_config.get("api_key") or os.environ.get("OPENAI_API_KEY"),
+            lang=label_config.get("language", "fa"),
+            batch_size=int(label_config.get("batch_size", 25)),
+            dry_run=bool(label_config.get("dry_run", False)),
         )
-    return response.json()
+        return _label({"tables": tables}, config)
+
+    # -- replay / record / compare / diff ---------------------------------
+
+    def compare_replay(self, before_path, replay_config=None, recording=None):
+        """Run ``domtrack compare``: replay + record + diff in one call (FR-040)."""
+        from domtrack.replay.compare import compare_replay as _compare
+        from domtrack.replay.recording import RecordingConfig
+        from domtrack.replay.replayer import ReplayConfig
+
+        replay_config = replay_config or {}
+        recording = recording or {}
+        time_policy = replay_config.get("time_policy", "skip-aware")
+        if time_policy not in ("faithful", "instant", "capped", "skip-aware"):
+            time_policy = "skip-aware"
+        rp = ReplayConfig(
+            speed=float(replay_config.get("speed", 1.0)),
+            mode=replay_config.get("mode", "all"),
+            time_policy=time_policy,
+            headless=True,
+        )
+        rec = RecordingConfig(
+            enabled=True, output_dir=recording.get("output_dir", "traces")
+        )
+        return _compare(before_path, rp, rec)
+
+    def diff_traces(self, before_path, after_path):
+        """Run ``domtrack diff`` between two trace files (FR-040)."""
+        import domtrack
+        from domtrack.diff.core import diff_traces as _diff
+
+        return _diff(domtrack.load_raw(before_path), domtrack.load_raw(after_path))
+
+    def rebuild_dom(self, path, at_ms=None):
+        """Run ``domtrack html`` to reconstruct a trace's DOM (operator diagnostics)."""
+        import domtrack
+
+        raw = domtrack.load_raw(path)
+        state = domtrack.DomState.from_trace(raw)
+        state.apply_up_to(raw.get("records") or [], at_ms)
+        return state.to_html()
 
 
-# ---------------------------------------------------------------------------
-# Trace validity + loading (domtrack.trace)
-# ---------------------------------------------------------------------------
+#: The default adapter instance the pipeline uses.
+default_client = DomtrackClient()
+
+
+def capture_headless(url, duration_ms, nav_timeout_ms=None):
+    return default_client.capture_headless(url, duration_ms, nav_timeout_ms)
 
 
 def is_trace(raw):
-    """Return whether ``raw`` is a domtrack (rrweb-style) trace."""
-    import domtrack
-
-    return bool(domtrack.is_rrweb_trace(raw)) and bool(
-        (raw or {}).get("snapshot")
-    )
+    return default_client.is_trace(raw)
 
 
 def load_trace(path):
-    """Load a trace file and return ``(raw, is_valid)``."""
-    import domtrack
-
-    raw = domtrack.load_raw(path)
-    return raw, is_trace(raw)
-
-
-def read_trace_bytes(path):
-    with open(path, "rb") as handle:
-        return handle.read()
-
-
-def write_trace_bytes(data, path):
-    if isinstance(data, (dict, list)):
-        data = json.dumps(data).encode("utf-8")
-    elif isinstance(data, str):
-        data = data.encode("utf-8")
-    with open(path, "wb") as handle:
-        handle.write(data)
-    return path
-
-
-# ---------------------------------------------------------------------------
-# Table discovery + labeling (domtrack.tables)
-# ---------------------------------------------------------------------------
+    return default_client.load_trace(path)
 
 
 def extract_tables(path, min_rows=2, min_cols=2, dedupe=True):
-    """Run ``domtrack tables extract``; return domtrack's result dict verbatim (FR-018)."""
-    import domtrack
-    from domtrack.tables.discovery import DiscoveryConfig, discover_tables
-
-    raw = domtrack.load_raw(path)
-    config = DiscoveryConfig(min_rows=min_rows, min_cols=min_cols, dedupe=dedupe)
-    return discover_tables(raw, config)
+    return default_client.extract_tables(path, min_rows, min_cols, dedupe)
 
 
 def label_tables(tables, label_config):
-    """Run ``domtrack tables label``; return the labeled result (FR-021..FR-024).
-
-    The API key is read from the environment only (Principle III).
-    """
-    from domtrack.tables.labeling import LabelConfig, label_tables as _label
-
-    config = LabelConfig(
-        provider=label_config.get("provider", "openai"),
-        model=label_config.get("model") or None,
-        base_url=label_config.get("base_url"),
-        api_key=os.environ.get(
-            "OPENAI_API_KEY"
-            if label_config.get("provider", "openai") in ("openai", "compatible")
-            else "ANTHROPIC_API_KEY"
-        ),
-        lang=label_config.get("language", "fa"),
-        batch_size=int(label_config.get("batch_size", 25)),
-        dry_run=bool(label_config.get("dry_run", False)),
-    )
-    return _label({"tables": tables}, config)
+    return default_client.label_tables(tables, label_config)
 
 
-# ---------------------------------------------------------------------------
-# Replay / record / compare / diff (domtrack.replay, domtrack.diff)
-# ---------------------------------------------------------------------------
-
-
-def compare_replay(before_path, replay_config, recording):
-    """Run ``domtrack compare``: replay + record + diff (FR-038)."""
-    from domtrack.replay.compare import compare_replay as _compare
-    from domtrack.replay.recording import RecordingConfig
-    from domtrack.replay.replayer import ReplayConfig
-
-    rp = ReplayConfig(
-        speed=float(replay_config.get("speed", 1.0)),
-        mode=replay_config.get("mode", "clean"),
-        time_policy=replay_config.get("time_policy", "skip-aware")
-        if replay_config.get("time_policy")
-        in ("faithful", "instant", "capped", "skip-aware")
-        else "skip-aware",
-        recording=RecordingConfig(
-            enabled=True,
-            output_dir=recording.get("output_dir", "traces"),
-        ),
-    )
-    return _compare(before_path, rp)
+def compare_replay(before_path, replay_config=None, recording=None):
+    return default_client.compare_replay(before_path, replay_config, recording)
 
 
 def diff_traces(before_path, after_path):
-    """Run ``domtrack diff`` between two trace files (FR-039)."""
-    from domtrack.diff.core import diff_traces as _diff
-
-    import domtrack
-
-    return _diff(domtrack.load_raw(before_path), domtrack.load_raw(after_path))
+    return default_client.diff_traces(before_path, after_path)
 
 
 def rebuild_dom(path, at_ms=None):
-    """Run ``domtrack html`` to reconstruct a trace's DOM (diagnostics)."""
-    import domtrack
-
-    raw = domtrack.load_raw(path)
-    state = domtrack.DomState.from_trace(raw)
-    records = raw.get("records") or []
-    state.apply_up_to(records, at_ms)
-    return state.to_html()
+    return default_client.rebuild_dom(path, at_ms)

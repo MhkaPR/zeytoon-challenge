@@ -1,4 +1,4 @@
-"""Structured, masked domain events for the admin console (FR-044, SC-018).
+"""Structured, masked domain events for the admin console (FR-055, SC-021).
 
 Reuses :mod:`utils.logging`, whose ``SensitiveDataFilter`` masks phone numbers, so no
 event emitted here can leak an unmasked identifier or trace content. Hot paths use
@@ -21,33 +21,33 @@ def site_onboarded(site, actor=None):
         "ops_site_onboarded",
         site_id=site.pk,
         company_id=site.company_id,
-        has_sitemap=site.has_sitemap,
+        domain=site.domain,
         actor_id=getattr(actor, "pk", None),
     )
 
 
-def links_discovered(site, count, source):
-    _emit("ops_links_discovered", site_id=site.pk, count=count, source=source)
-
-
-def links_reviewed(site, kept, removed, actor=None):
+def links_discovered(site, discovered, after_policy, source):
     _emit(
-        "ops_links_reviewed",
+        "ops_links_discovered",
         site_id=site.pk,
-        kept=kept,
-        removed=removed,
-        actor_id=getattr(actor, "pk", None),
+        discovered=discovered,
+        after_policy=after_policy,
+        source=source,
     )
 
 
-def capture_started(link, session, actor=None):
+def refilter_verdict(link, state, plan_type, confidence):
     _emit(
-        "ops_capture_started",
+        "ops_refilter_verdict",
         link_id=link.pk,
-        session_id=session.pk,
-        mode=session.mode,
-        actor_id=getattr(actor, "pk", None),
+        state=state,
+        plan_type=plan_type,
+        confidence=round(float(confidence or 0.0), 4),
     )
+
+
+def capture_started(link, session):
+    _emit("ops_capture_started", link_id=link.pk, session_id=session.pk, mode=session.mode)
 
 
 def capture_failed(link, session, reason):
@@ -72,54 +72,48 @@ def extraction_empty(link):
     _emit("ops_extraction_empty", link_id=link.pk)
 
 
-def labeling_run(link, call_count, cost):
-    _emit("ops_labeling_run", link_id=link.pk, call_count=call_count, cost=float(cost))
+def classification_completed(link, plans_tables, total):
+    _emit(
+        "ops_classification_completed",
+        link_id=link.pk,
+        plans_tables=plans_tables,
+        total=total,
+    )
+
+
+def plans_extracted(link, count, skipped):
+    _emit("ops_plans_extracted", link_id=link.pk, count=count, skipped=skipped)
+
+
+def labeling_run(link, call_count, tokens):
+    _emit("ops_labeling_run", link_id=link.pk, call_count=call_count, tokens=tokens)
 
 
 def labeling_skipped(link, reason):
     _emit("ops_labeling_skipped", link_id=link.pk, reason=reason)
 
 
-def recipe_saved(link, version, is_complete, unconnected):
+def published(link, count):
+    _emit("ops_published", link_id=link.pk, count=count)
+
+
+def retired(link, count):
+    _emit("ops_retired", link_id=link.pk, count=count)
+
+
+def replay_completed(run, change_count, reextracted):
     _emit(
-        "ops_recipe_saved",
-        link_id=link.pk,
-        version=version,
-        is_complete=is_complete,
-        unconnected=list(unconnected),
-    )
-
-
-def cleaning_completed(link, cleaned_records, exception_count):
-    _emit(
-        "ops_cleaning_completed",
-        link_id=link.pk,
-        cleaned_records=cleaned_records,
-        exception_count=exception_count,
-    )
-
-
-def published(link, published_count):
-    _emit("ops_published", link_id=link.pk, published=published_count)
-
-
-def replay_run_completed(link, failure_rate, staleness_seconds, state):
-    _emit(
-        "ops_replay_run_completed",
-        link_id=link.pk,
-        failure_rate=failure_rate,
-        staleness_seconds=staleness_seconds,
-        state=state,
+        "ops_replay_completed",
+        replay_run_id=run.pk,
+        link_id=run.link_id,
+        change_count=change_count,
+        reextracted=reextracted,
     )
 
 
 def alert_raised(link, failure_rate):
-    _emit("ops_alert_raised", link_id=link.pk, failure_rate=failure_rate)
+    _emit("ops_alert_raised", link_id=link.pk, failure_rate=round(float(failure_rate), 4))
 
 
-def alert_resolved(link):
-    _emit("ops_alert_resolved", link_id=link.pk)
-
-
-def approval_queue_read(count, actor=None):
-    _emit("ops_approval_queue_read", count=count, actor_id=getattr(actor, "pk", None))
+def stage_failed(link, stage, reason):
+    _emit("ops_stage_failed", link_id=link.pk, stage=stage, reason=reason)
