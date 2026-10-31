@@ -1,6 +1,7 @@
 """US1 — approval queue and verification decisions (FR-001..FR-006)."""
 
 import pytest
+from types import SimpleNamespace
 
 from admin_console.models import Site
 from companies import services as company_services
@@ -51,6 +52,27 @@ def test_approval_creates_site_in_onboarding_and_verifies_company(operator_clien
     site = Site.objects.get(company=company)
     assert site.domain == company.domain
     assert site.maintenance_state == Site.MaintenanceState.ONBOARDING
+
+
+def test_approval_enqueues_automatic_site_pipeline_after_commit(
+    owner, operator, monkeypatch
+):
+    company = _pending_company(owner)
+    callbacks = []
+    enqueued = []
+    monkeypatch.setattr("admin_console.services.transaction.on_commit", callbacks.append)
+    monkeypatch.setattr(
+        "admin_console.tasks.run_site_pipeline_task",
+        SimpleNamespace(enqueue=lambda site_id: enqueued.append(site_id)),
+    )
+
+    from admin_console import services
+
+    services.record_decision(company.pk, operator, "approved")
+
+    assert enqueued == []
+    callbacks[0]()
+    assert enqueued == [Site.objects.get(company=company).pk]
 
 
 def test_rejection_suspends_an_existing_site(operator_client, owner):

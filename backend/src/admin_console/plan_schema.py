@@ -78,16 +78,27 @@ PLAN_SCHEMA: dict[str, PlanSchema] = {
         label="Hosting",
         fields=(
             SchemaField("plan_name", "Plan name", "text"),
-            SchemaField("storage_amount", "Storage amount", "number", unit_family="data_size"),
-            SchemaField("storage_unit", "Storage unit", "enum", values=("GB", "TB")),
-            SchemaField("ram_amount", "RAM amount", "number", unit_family="data_size"),
-            SchemaField("cpu_cores", "CPU cores", "number"),
             SchemaField(
-                "bandwidth_amount", "Bandwidth amount", "number", unit_family="data_size"
+                "storage_amount", "Storage amount", "number", required=False,
+                unit_family="data_size",
+            ),
+            SchemaField(
+                "storage_unit", "Storage unit", "enum", required=False,
+                values=("GB", "TB"),
+            ),
+            SchemaField(
+                "ram_amount", "RAM amount", "number", required=False,
+                unit_family="data_size",
+            ),
+            SchemaField("cpu_cores", "CPU cores", "number", required=False),
+            SchemaField(
+                "bandwidth_amount", "Bandwidth amount", "number", required=False,
+                unit_family="data_size",
             ),
             SchemaField("price_amount", "Price amount", "number", unit_family="currency"),
             SchemaField(
-                "billing_period", "Billing period", "enum", values=("monthly", "yearly")
+                "billing_period", "Billing period", "enum", required=False,
+                values=("monthly", "yearly"),
             ),
         ),
     ),
@@ -96,7 +107,8 @@ PLAN_SCHEMA: dict[str, PlanSchema] = {
         label="CDN",
         fields=(
             SchemaField("plan_name", "Plan name", "text"),
-            SchemaField("traffic_amount", "Traffic amount", "number", unit_family="data_size"),
+            SchemaField("traffic_amount", "Traffic amount", "number", required=False,
+                        unit_family="data_size"),
             SchemaField("request_rate", "Request rate", "number", required=False,
                         unit_family="rate"),
             SchemaField("price_amount", "Price amount", "number", unit_family="currency"),
@@ -107,9 +119,15 @@ PLAN_SCHEMA: dict[str, PlanSchema] = {
         label="Virtual server",
         fields=(
             SchemaField("plan_name", "Plan name", "text"),
-            SchemaField("vcpu_cores", "vCPU cores", "number"),
-            SchemaField("ram_amount", "RAM amount", "number", unit_family="data_size"),
-            SchemaField("disk_amount", "Disk amount", "number", unit_family="data_size"),
+            SchemaField("vcpu_cores", "vCPU cores", "number", required=False),
+            SchemaField(
+                "ram_amount", "RAM amount", "number", required=False,
+                unit_family="data_size",
+            ),
+            SchemaField(
+                "disk_amount", "Disk amount", "number", required=False,
+                unit_family="data_size",
+            ),
             SchemaField("os", "OS", "enum", required=False),
             SchemaField("price_amount", "Price amount", "number", unit_family="currency"),
         ),

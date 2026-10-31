@@ -49,9 +49,42 @@ def test_exhausted_retries_dead_letter_the_link(kept_link, monkeypatch, no_retry
     kept_link.refresh_from_db()
     assert kept_link.pipeline_stage == Link.PipelineStage.DEAD_LETTERED
     assert kept_link.last_error == "transient"
+
+
+def test_rerunning_dead_lettered_capture_resumes_at_capture(kept_link):
+    CaptureSession.objects.create(
+        link=kept_link,
+        mode=CaptureSession.Mode.HEADLESS_FIXED,
+        state=CaptureSession.State.FAILED,
+        error="transient",
+    )
+    kept_link.pipeline_stage = Link.PipelineStage.DEAD_LETTERED
+    kept_link.retry_count = 3
+    kept_link.last_error = "capture_failed"
+    kept_link.save()
+
+    services.rerun_link_stages(kept_link)
+
+    kept_link.refresh_from_db()
+    assert kept_link.pipeline_stage == Link.PipelineStage.REFILTERED
+    assert kept_link.retry_count == 0
+    assert kept_link.last_error == ""
     session = CaptureSession.objects.get(link=kept_link)
     assert session.state == CaptureSession.State.FAILED
     assert session.error == "transient"
+
+
+def test_rerunning_dead_lettered_link_with_saved_trace_skips_capture(traced_link):
+    traced_link.pipeline_stage = Link.PipelineStage.DEAD_LETTERED
+    traced_link.last_error = "plan_extraction: invalid response"
+    traced_link.save(update_fields=["pipeline_stage", "last_error", "updated_at"])
+
+    services.rerun_link_stages(traced_link)
+
+    traced_link.refresh_from_db()
+    assert traced_link.pipeline_stage == Link.PipelineStage.CAPTURED
+    assert traced_link.current_trace_id is not None
+    assert traced_link.last_error == ""
 
 
 def test_one_link_failing_does_not_block_another(kept_link, monkeypatch, no_retry_sleep,

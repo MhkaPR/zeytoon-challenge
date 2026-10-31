@@ -9,7 +9,7 @@ pytestmark = pytest.mark.django_db
 
 
 def test_plan_endpoint_extracts_and_lists(operator_client, classified_link, stub_llm):
-    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 0.85}]
+    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 
     response = operator_client.post(f"/api/v1/ops/links/{classified_link.pk}/plans")
 
@@ -41,3 +41,19 @@ def test_plan_schema_endpoint_exposes_fields(operator_client):
     assert response.status_code == 200
     field_keys = {field["key"] for field in response.json()["fields"]}
     assert {"plan_name", "price_amount"} <= field_keys
+
+
+def test_operator_can_toggle_a_plan_exclusion(operator_client, planned_link):
+    plan = PlanRecord.objects.get(link=planned_link)
+    endpoint = f"/api/v1/ops/links/{planned_link.pk}/plans/{plan.pk}/ignore"
+
+    ignored = operator_client.put(endpoint, {"ignored": True}, format="json")
+
+    assert ignored.status_code == 200
+    assert ignored.json()["ignored"] is True
+    listed = operator_client.get(f"/api/v1/ops/links/{planned_link.pk}/plans")
+    assert listed.json()["plans"][0]["ignored"] is True
+
+    restored = operator_client.put(endpoint, {"ignored": False}, format="json")
+    assert restored.status_code == 200
+    assert restored.json()["ignored"] is False

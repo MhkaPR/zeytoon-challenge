@@ -56,6 +56,9 @@ export interface Site {
   sitemap_url: string;
   maintenance_state: string;
   onboarded_at: string | null;
+  company_name?: string;
+  links_count?: number;
+  stage_counts?: Record<string, number>;
 }
 
 export interface Link {
@@ -67,6 +70,8 @@ export interface Link {
   pipeline_stage: string;
   failure_rate: number;
   current_trace_id: number | null;
+  last_error?: string;
+  pipeline_task_state?: "idle" | "queued" | "running" | "failed" | "completed";
 }
 
 export interface CaptureSession {
@@ -137,6 +142,17 @@ export interface Recipe {
   version: number;
   is_complete: boolean;
   bindings: RecipeBinding[];
+}
+
+export interface PlanReviewEntry {
+  id: number;
+  classification_id: number;
+  trace_id: number;
+  plan_type: string;
+  natural_key: string;
+  values: Record<string, unknown>;
+  confidence: number | null;
+  ignored: boolean;
 }
 
 export interface ReplayRun {
@@ -215,7 +231,7 @@ export function createSite(token: string | null, companyId: number) {
 
 export function listSites(token: string | null) {
   return request<{
-    results: (Site & { links_count: number })[];
+    results: (Site & { links_count: number; stage_counts: Record<string, number> })[];
     count: number;
   }>("/api/v1/ops/sites", token);
 }
@@ -439,6 +455,26 @@ export interface PublishResult {
   pipeline_stage: string;
 }
 
+export function getPlans(token: string | null, linkId: number) {
+  return request<{ plans: PlanReviewEntry[] }>(
+    `/api/v1/ops/links/${linkId}/plans`,
+    token,
+  );
+}
+
+export function setPlanIgnored(
+  token: string | null,
+  linkId: number,
+  planId: number,
+  ignored: boolean,
+) {
+  return request<{ plan_id: number; ignored: boolean }>(
+    `/api/v1/ops/links/${linkId}/plans/${planId}/ignore`,
+    token,
+    { method: "PUT", body: JSON.stringify({ ignored }) },
+  );
+}
+
 export function publishLink(token: string | null, linkId: number) {
   return request<PublishResult>(`/api/v1/ops/links/${linkId}/publish`, token, {
     method: "POST",
@@ -479,7 +515,7 @@ export function getLinkFailure(token: string | null, linkId: number) {
 }
 
 export function rerunLink(token: string | null, linkId: number) {
-  return request<{ pipeline_stage: string; previous_stage: string }>(
+  return request<{ link: Link }>(
     `/api/v1/ops/links/${linkId}/rerun`,
     token,
     { method: "POST" },

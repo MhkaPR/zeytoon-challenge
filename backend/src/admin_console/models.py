@@ -38,6 +38,7 @@ class Site(TimestampedModel):
         default=MaintenanceState.ONBOARDING,
     )
     onboarded_at = models.DateTimeField(null=True, blank=True)
+    last_discovered_at = models.DateTimeField(null=True, blank=True)
     last_replay_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -98,6 +99,7 @@ class Link(TimestampedModel):
     failure_rate = models.FloatField(default=0.0)
     retry_count = models.PositiveIntegerField(default=0)
     last_error = models.CharField(max_length=512, blank=True, default="")
+    pipeline_task_state = models.CharField(max_length=16, default="idle", db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
     last_replay_at = models.DateTimeField(null=True, blank=True)
 
@@ -324,6 +326,24 @@ class PlanRecord(TimestampedModel):
 
     def __str__(self):
         return f"{self.plan_type}:{self.natural_key}"
+
+
+class PlanExclusion(TimestampedModel):
+    """Operator decision to keep a logical plan out across future extractions."""
+
+    link = models.ForeignKey(Link, on_delete=models.CASCADE, related_name="plan_exclusions")
+    fingerprint = models.CharField(max_length=64)
+    plan_type = models.CharField(max_length=64)
+    plan_name = models.CharField(max_length=255)
+    price_amount = models.CharField(max_length=64)
+
+    class Meta:
+        db_table = "admin_console_plan_exclusion"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("link", "fingerprint"), name="uniq_plan_exclusion_link_fingerprint"
+            )
+        ]
 
 
 class SemanticLabel(TimestampedModel):

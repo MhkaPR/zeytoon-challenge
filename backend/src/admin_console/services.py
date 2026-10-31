@@ -9,6 +9,7 @@ Network/provider failures are retried with backoff and dead-lettered on exhausti
 """
 
 import hashlib
+import math
 import time
 import urllib.parse
 from datetime import timedelta
@@ -34,6 +35,7 @@ from admin_console.models import (
     ExtractedTableRow,
     FailureAlert,
     Link,
+    PlanExclusion,
     PlanRecord,
     ReplayRun,
     SemanticLabel,
@@ -84,6 +86,10 @@ def record_decision(company_id, actor, outcome, note=""):
     elif site is not None:
         site.maintenance_state = Site.MaintenanceState.SUSPENDED
         site.save(update_fields=["maintenance_state", "updated_at"])
+    if outcome == "approved":
+        from admin_console.tasks import run_site_pipeline_task
+
+        transaction.on_commit(lambda: run_site_pipeline_task.enqueue(site.pk))
     return company, decision, site
 
 
@@ -139,6 +145,8 @@ def discover_and_store_links(site, actor=None, bounds=None):
         harvested.extend(discovery.crawl_candidate_links(site.domain, query, bounds=bounds))
     reduced = discovery.apply_link_policy(harvested, host=host)
     stored = _store_links(site, reduced, Link.Source.ADAPTIVE_CRAWL)
+    site.last_discovered_at = timezone.now()
+    site.save(update_fields=["last_discovered_at", "updated_at"])
     events.links_discovered(
         site, len(harvested), len(reduced), Link.Source.ADAPTIVE_CRAWL
     )
@@ -465,8 +473,8 @@ def extract_link_plans(link, actor=None):
     ]
     if not tables:
         raise ValueError("plans_required")
-    extracted = 0
     skipped = 0
+    pending_records = []
     for table in tables:
         classification = table.classification
         plan_type = classification.plan_type or "hosting"
@@ -482,34 +490,57 @@ def extract_link_plans(link, actor=None):
         valid = [
             plan
             for plan in plans
-            if _plan_is_complete(plan.values, plan_type)
+            if _plan_is_complete(plan.values, plan_type, plan.confidence)
         ]
+        skipped += len(plans) - len(valid)
         if not valid:
-            skipped += 1
+            if not plans:
+                skipped += 1
             continue
-        with transaction.atomic():
-            PlanRecord.objects.filter(table=table).delete()
-            for index, plan in enumerate(valid):
-                PlanRecord.objects.create(
+        for plan in valid:
+            pending_records.append(
+                PlanRecord(
                     link=link,
                     table=table,
                     classification=classification,
                     plan_type=plan_type,
-                    natural_key=_natural_key(plan.values, plan_type, index),
+                    natural_key=_natural_key(plan.values, plan_type, len(pending_records)),
                     values=plan.values,
                     confidence=plan.confidence,
                     prompt_version=llm.PROMPT_VERSION,
                 )
-                extracted += 1
+            )
+    if not pending_records:
+        raise llm.NoPlanRecordsError(
+            "no plan records met confidence and required-field rules; each needs a "
+            "directly supported name, positive price, and confidence 1.0"
+        )
+    with transaction.atomic():
+        PlanRecord.objects.filter(link=link).delete()
+        PlanRecord.objects.bulk_create(pending_records)
+    extracted = len(pending_records)
     link.pipeline_stage = Link.PipelineStage.PLANS_EXTRACTED
     link.save()
     events.plans_extracted(link, extracted, skipped)
     return link
 
 
-def _plan_is_complete(values, plan_type):
+def _plan_is_complete(values, plan_type, confidence):
+    if confidence != 1.0:
+        return False
     required = plan_schema.required_keys(plan_type)
-    return all(values.get(key) not in (None, "") for key in required)
+    if not all(values.get(key) not in (None, "") for key in required):
+        return False
+    name = values.get("plan_name")
+    price = values.get("price_amount")
+    return (
+        isinstance(name, str)
+        and bool(name.strip())
+        and isinstance(price, (int, float))
+        and not isinstance(price, bool)
+        and math.isfinite(price)
+        and price > 0
+    )
 
 
 def _natural_key(values, plan_type, index):
@@ -518,6 +549,7 @@ def _natural_key(values, plan_type, index):
 
 
 def plans_payload(link):
+    excluded = set(link.plan_exclusions.values_list("fingerprint", flat=True))
     return [
         {
             "id": plan.pk,
@@ -527,9 +559,48 @@ def plans_payload(link):
             "natural_key": plan.natural_key,
             "values": plan.values,
             "confidence": plan.confidence,
+            "ignored": plan_fingerprint(plan.plan_type, plan.values) in excluded,
         }
         for plan in link.plan_records.select_related("table").all()
     ]
+
+
+def plan_fingerprint(plan_type, values):
+    name = " ".join(str(values.get("plan_name", "")).split()).casefold()
+    identity = f"{plan_type}\x1f{name}"
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+
+def set_plan_excluded(link, plan, ignored):
+    fingerprint = plan_fingerprint(plan.plan_type, plan.values)
+    exclusion = PlanExclusion.objects.filter(link=link, fingerprint=fingerprint)
+    if ignored:
+        PlanExclusion.objects.get_or_create(
+            link=link,
+            fingerprint=fingerprint,
+            defaults={
+                "plan_type": plan.plan_type,
+                "plan_name": str(plan.values.get("plan_name", ""))[:255],
+                "price_amount": str(plan.values.get("price_amount", ""))[:64],
+            },
+        )
+        from catalog.interfaces import CatalogInterface
+
+        CatalogInterface.retire_published_record(
+            site=link.site_id, natural_key=plan.natural_key
+        )
+    else:
+        exclusion.delete()
+    return ignored
+
+
+def unignored_plan_keys(link):
+    excluded = set(link.plan_exclusions.values_list("fingerprint", flat=True))
+    return {
+        plan.natural_key
+        for plan in link.plan_records.all()
+        if plan_fingerprint(plan.plan_type, plan.values) not in excluded
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -593,9 +664,13 @@ def publish_link_plans(link, actor=None):
     plans = list(link.plan_records.all())
     if not plans:
         raise ValueError("plans_required")
+    excluded = set(link.plan_exclusions.values_list("fingerprint", flat=True))
     published = 0
     for plan in plans:
-        if not _plan_is_complete(plan.values, plan.plan_type):
+        if (
+            not _plan_is_complete(plan.values, plan.plan_type, plan.confidence)
+            or plan_fingerprint(plan.plan_type, plan.values) in excluded
+        ):
             continue
         CatalogInterface.upsert_published_record(
             source="admin_console",
@@ -608,6 +683,10 @@ def publish_link_plans(link, actor=None):
             values=plan.values,
         )
         published += 1
+    if not published and not all(
+        plan_fingerprint(plan.plan_type, plan.values) in excluded for plan in plans
+    ):
+        raise ValueError("no_plan_records_met_quality_rules")
     link.pipeline_stage = Link.PipelineStage.PUBLISHED
     link.save()
     events.published(link, published)
@@ -666,10 +745,22 @@ def evaluate_failure_alert(link):
 
 
 def rerun_link_stages(link, actor=None):
-    link.pipeline_stage = Link.PipelineStage.DISCOVERED
-    link.retry_count = 0
+    if link.pipeline_stage == Link.PipelineStage.DEAD_LETTERED:
+        link.pipeline_stage = (
+            Link.PipelineStage.CAPTURED
+            if link.current_trace_id
+            else Link.PipelineStage.REFILTERED
+        )
+    elif link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET:
+        awaiting_stage = link.last_error.rsplit(":", 1)[-1]
+        link.pipeline_stage = {
+            "refilter": Link.PipelineStage.DISCOVERED,
+            "classification": Link.PipelineStage.EXTRACTED,
+            "schema_extraction": Link.PipelineStage.CLASSIFIED,
+        }.get(awaiting_stage, Link.PipelineStage.DISCOVERED)
     link.last_error = ""
-    link.save()
+    link.retry_count = 0
+    link.save(update_fields=["pipeline_stage", "retry_count", "last_error", "updated_at"])
     return link
 
 

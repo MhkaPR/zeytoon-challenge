@@ -355,6 +355,6 @@ def planned_link(classified_link, stub_llm):
     """A link with one normalized hosting plan record."""
     from admin_console import services
 
-    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 0.8}]
+    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
     services.extract_link_plans(classified_link)
     return classified_link

@@ -28,7 +28,7 @@ def test_publish_writes_a_record_with_provenance(planned_link):
 def test_publish_upserts_by_source_site_natural_key(planned_link, stub_llm):
     services.publish_link_plans(planned_link)
     updated = dict(HOSTING_PLAN_VALUES, price_amount=99000)
-    stub_llm.plans = [{"values": updated, "confidence": 0.9}]
+    stub_llm.plans = [{"values": updated, "confidence": 1.0}]
     services.extract_link_plans(planned_link)
 
     services.publish_link_plans(planned_link)
@@ -50,9 +50,11 @@ def test_incomplete_plan_is_not_published(classified_link):
         confidence=0.5,
     )
 
-    published = services.publish_link_plans(classified_link)
+    with pytest.raises(ValueError, match="no_plan_records_met_quality_rules"):
+        services.publish_link_plans(classified_link)
 
-    assert published == 0
+    classified_link.refresh_from_db()
+    assert classified_link.pipeline_stage == Link.PipelineStage.CLASSIFIED
     assert PublishedRecord.objects.count() == 0
 
 
@@ -77,3 +79,19 @@ def test_kept_plan_is_not_retired(planned_link):
     assert PublishedRecord.objects.get(
         source="admin_console", site=planned_link.site_id
     ).is_published is True
+
+
+def test_ignored_plan_is_retired_and_stays_excluded_after_reextraction(
+    planned_link, stub_llm
+):
+    services.publish_link_plans(planned_link)
+    record = PlanRecord.objects.get(link=planned_link)
+    services.set_plan_excluded(planned_link, record, True)
+
+    published = PublishedRecord.objects.get(source="admin_console", site=planned_link.site_id)
+    assert published.is_published is False
+
+    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
+    services.extract_link_plans(planned_link)
+    assert services.publish_link_plans(planned_link) == 0
+    assert services.unignored_plan_keys(planned_link) == set()

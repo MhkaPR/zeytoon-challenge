@@ -67,6 +67,10 @@ class PlansInput(BaseModel):
     classification_ids: list[int] = Field(default_factory=list)
 
 
+class PlanIgnoreInput(BaseModel):
+    ignored: bool
+
+
 class ReplayRunInput(BaseModel):
     link_ids: list[int] = Field(default_factory=list)
     site_id: int | None = None

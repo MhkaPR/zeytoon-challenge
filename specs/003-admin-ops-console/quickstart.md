@@ -60,6 +60,17 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 ```
 
+Run a database-backed task worker in a second terminal so queued site pipelines,
+captures, and retries execute outside the web request:
+
+```bash
+python manage.py db_worker
+```
+
+Task queue records are stored in the configured Django database. The operator can
+retry an individual failed link from the site's links list; keep the worker running
+to process that retry.
+
 Register `admin_console` in `INSTALLED_APPS`, mount `/api/v1/ops/` in `config/urls.py`,
 and add the constance constants and the `TASKS` setting described in
 [research.md](./research.md) (R2, R16) and [data-model.md](./data-model.md). Set

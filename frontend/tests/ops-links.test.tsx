@@ -1,11 +1,18 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LinkReviewTable } from "@/src/features/ops/links/LinkReviewTable";
 import { SiteOnboarding } from "@/src/features/ops/sites/SiteOnboarding";
-import type { Link, Site } from "@/src/lib/api/ops";
+import type { Site } from "@/src/lib/api/ops";
 import { opsStrings } from "@/src/lib/i18n/strings";
+import { LinkList } from "@/src/features/ops/links/LinkList";
+import { rerunLink } from "@/src/lib/api/ops";
+
+vi.mock("@/src/lib/session", () => ({ getAccessToken: () => "token" }));
+vi.mock("@/src/lib/api/ops", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/src/lib/api/ops")>();
+  return { ...actual, rerunLink: vi.fn() };
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -15,86 +22,73 @@ const site: Site = {
   id: 4,
   company_id: 7,
   domain: "example.com",
-  has_sitemap: true,
-  sitemap_url: "https://example.com/sitemap.xml",
   maintenance_state: "onboarding",
   onboarded_at: null,
 };
 
-const links: Link[] = [
-  {
-    id: 11,
-    site_id: 4,
-    url: "https://example.com/plans",
-    source: "sitemap",
-    review_state: "candidate",
-    pipeline_stage: "review",
-    failure_rate: 0,
-    current_trace_id: null,
-  },
-  {
-    id: 12,
-    site_id: 4,
-    url: "https://example.com/about",
-    source: "manual",
-    review_state: "candidate",
-    pipeline_stage: "review",
-    failure_rate: 0,
-    current_trace_id: null,
-  },
-];
+describe("automated site pipeline", () => {
+  it("shows pipeline progress without manual discovery or link actions", () => {
+    render(<SiteOnboarding linksCount={2} site={site} />);
 
-describe("site onboarding", () => {
-  it("discovers links when the site has a sitemap", async () => {
-    const onDiscover = vi.fn();
+    expect(screen.getByText(opsStrings.automaticPipelineHint)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("allows retrying a second link while the first retry is queued", async () => {
     const user = userEvent.setup();
+    let resolveFirst: (() => void) | undefined;
+    let resolveSecond: (() => void) | undefined;
+    vi.mocked(rerunLink)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = () => resolve({} as never); }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = () => resolve({} as never); }));
     render(
-      <SiteOnboarding
-        linksCount={0}
-        onDiscover={onDiscover}
-        onManualAdd={vi.fn()}
-        site={site}
+      <LinkList
+        links={[1, 2].map((id) => ({
+          id,
+          site_id: 4,
+          url: `https://example.com/${id}`,
+          source: "manual",
+          review_state: "kept",
+          pipeline_stage: "classified",
+          failure_rate: 0,
+          current_trace_id: 12,
+          last_error: "plan_extraction: no valid plans",
+        }))}
       />,
     );
 
-    expect(screen.getByText(opsStrings.sitemapFound)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: new RegExp(opsStrings.discoverLinks) }));
-    expect(onDiscover).toHaveBeenCalled();
+    const retryButtons = screen.getAllByRole("button", { name: opsStrings.retry });
+    await user.click(retryButtons[0]);
+    await user.click(retryButtons[1]);
+
+    expect(rerunLink).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      resolveFirst?.();
+      resolveSecond?.();
+    });
   });
 
-  it("accepts manual links when no sitemap exists", async () => {
-    const onManualAdd = vi.fn();
-    const user = userEvent.setup();
+  it("explains an empty quality result without showing a pipeline error", () => {
     render(
-      <SiteOnboarding
-        linksCount={0}
-        onDiscover={vi.fn()}
-        onManualAdd={onManualAdd}
-        site={{ ...site, has_sitemap: false, sitemap_url: "" }}
+      <LinkList
+        links={[{
+          id: 3,
+          site_id: 4,
+          url: "https://example.com/no-price",
+          source: "manual",
+          review_state: "kept",
+          pipeline_stage: "classified",
+          failure_rate: 0,
+          current_trace_id: 12,
+          last_error: "no_valid_plans: no plan met the quality gate",
+          pipeline_task_state: "completed",
+        }]}
       />,
     );
 
-    expect(screen.getByText(opsStrings.sitemapMissing)).toBeInTheDocument();
-    await user.type(
-      screen.getByLabelText(opsStrings.manualLinksTitle),
-      "https://example.com/a{enter}https://example.com/b",
-    );
-    await user.click(screen.getByRole("button", { name: opsStrings.addLinks }));
-    expect(onManualAdd).toHaveBeenCalledWith([
-      "https://example.com/a",
-      "https://example.com/b",
-    ]);
-  });
-
-  it("keeps the rest and submits removed links", async () => {
-    const onReview = vi.fn();
-    const user = userEvent.setup();
-    render(<LinkReviewTable links={links} onReview={onReview} />);
-
-    const removeButtons = screen.getAllByRole("button", { name: opsStrings.remove });
-    await user.click(removeButtons[1]);
-    await user.click(screen.getByRole("button", { name: opsStrings.reviewSubmit }));
-
-    expect(onReview).toHaveBeenCalledWith([11], [12]);
+    expect(screen.getByText(opsStrings.noValidPlansOutcome)).toBeInTheDocument();
+    expect(screen.queryByText(opsStrings.pipelineFailure)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: opsStrings.retry })).toBeEnabled();
   });
 });

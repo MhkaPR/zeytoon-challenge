@@ -30,6 +30,7 @@ class DomtrackClient:
         from playwright.sync_api import sync_playwright
 
         import domtrack
+        from domtrack.recorder import CaptureSession
 
         timeout = int(nav_timeout_ms or 30000)
         config = domtrack.TracerConfig(
@@ -39,7 +40,7 @@ class DomtrackClient:
             duration_ms=int(duration_ms),
             wait_until="domcontentloaded",
         )
-        session = domtrack.CaptureSession(config)
+        session = CaptureSession(config)
         try:
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)

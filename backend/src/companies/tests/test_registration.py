@@ -31,6 +31,13 @@ def test_create_company_pending_unverified(auth_client, owner):
     assert company.owner_id == owner.pk
 
 
+def test_create_company_without_trailing_slash(auth_client):
+    response = auth_client.post(LIST_URL.rstrip("/"), _payload(), format="json")
+
+    assert response.status_code == 201
+    assert response.json()["company"]["verification_status"] == "pending"
+
+
 def test_internal_number_is_optional(auth_client):
     response = auth_client.post(
         LIST_URL, _payload(internal_number=""), format="json"

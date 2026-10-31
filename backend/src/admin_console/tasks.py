@@ -11,6 +11,7 @@ from django.tasks import task
 @task
 def run_capture_task(link_id, duration_ms=None):
     """Run a headless capture for a link (FR-016..FR-019)."""
+    from admin_console import services
     from admin_console.models import Link
     from admin_console.services import start_capture
 
@@ -60,3 +61,219 @@ def run_replay_task(link_id):
     from admin_console.replay import execute_replay_run
 
     return execute_replay_run(Link.objects.get(pk=link_id))
+
+
+@task
+def run_site_pipeline_task(site_id, discover=True, link_id=None):
+    """Discover once, then advance saved links from their persisted stage."""
+    import logging
+
+    from admin_console import services
+    from admin_console.models import Link, Site
+
+    logger = logging.getLogger(__name__)
+    site = Site.objects.get(pk=site_id)
+    discovered = {"after_policy": 0}
+    if discover and site.last_discovered_at is None:
+        discovered = services.discover_and_store_links(site)
+    completed = []
+
+    links = Link.objects.filter(site=site, is_active=True).exclude(
+        pipeline_stage__in=(
+            Link.PipelineStage.PUBLISHED,
+            Link.PipelineStage.FLAGGED,
+            Link.PipelineStage.DEAD_LETTERED,
+            Link.PipelineStage.AWAITING_LLM_BUDGET,
+        )
+    )
+    if link_id is not None:
+        links = links.filter(pk=link_id)
+
+    if link_id is not None:
+        Link.objects.filter(pk=link_id).update(pipeline_task_state="running")
+
+    for link in links:
+        if link.review_state not in (Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT):
+            continue
+        if link.last_error and link.pipeline_task_state != "queued":
+            continue
+        try:
+            if link.pipeline_stage == Link.PipelineStage.DISCOVERED:
+                services.refilter_link(link)
+                link.refresh_from_db()
+                if link.review_state != Link.ReviewState.KEPT:
+                    completed.append(link.pk)
+                    continue
+            if link.pipeline_stage == Link.PipelineStage.REFILTERED:
+                try:
+                    services.start_capture(link)
+                except RuntimeError as exc:
+                    if str(exc) == "capture_in_progress":
+                        # A duplicate site task may have lost the race to create
+                        # the unique non-terminal capture session. The winning
+                        # task owns this stage; don't park the link as failed.
+                        continue
+                    raise
+                link.refresh_from_db()
+            if link.pipeline_stage == Link.PipelineStage.CAPTURED:
+                services.extract_link_tables(link)
+                link.refresh_from_db()
+            if link.pipeline_stage == Link.PipelineStage.EXTRACTED:
+                services.classify_link_tables(link)
+                link.refresh_from_db()
+                if not link.extracted_tables.filter(
+                    classification__is_plans_table=True
+                ).exists():
+                    completed.append(link.pk)
+                    continue
+            if link.pipeline_stage == Link.PipelineStage.CLASSIFIED:
+                services.extract_link_plans(link)
+                link.refresh_from_db()
+            completed.append(link.pk)
+            link.last_error = ""
+            link.save(update_fields=["last_error", "updated_at"])
+        except Exception as exc:
+            link.refresh_from_db()
+            if isinstance(exc, services.llm.NoPlanRecordsError):
+                link.last_error = f"no_valid_plans: {exc}"[:512]
+                link.save(update_fields=["last_error", "updated_at"])
+                logger.info(
+                    "site_pipeline_no_valid_plans",
+                    extra={"event": "site_pipeline_no_valid_plans", "link_id": link.pk},
+                )
+                continue
+            failed_stage = {
+                Link.PipelineStage.DISCOVERED: "refilter",
+                Link.PipelineStage.REFILTERED: "capture",
+                Link.PipelineStage.CAPTURED: "extraction",
+                Link.PipelineStage.EXTRACTED: "classification",
+                Link.PipelineStage.CLASSIFIED: "plan_extraction",
+            }.get(link.pipeline_stage, link.pipeline_stage)
+            link.last_error = f"{failed_stage}: {str(exc)[:450]}"
+            link.save(update_fields=["last_error", "updated_at"])
+            from notifications.interfaces import NotificationsInterface
+
+            NotificationsInterface.notify(
+                event_type="pipeline_stage_failed",
+                subject=f"Pipeline paused: {failed_stage}",
+                body=f"{link.url}\nStage: {failed_stage}\nError: {str(exc)[:400]}",
+                related_object=f"admin_console.Link:{link.pk}",
+                dedup_key=f"pipeline-failure:{link.pk}:{link.pipeline_stage}",
+            )
+            logger.exception(
+                "site_pipeline_link_failed",
+                extra={"event": "site_pipeline_link_failed", "link_id": link.pk},
+            )
+
+    if link_id is not None:
+        target = Link.objects.filter(pk=link_id).first()
+        if target is not None:
+            terminal_stages = {
+                Link.PipelineStage.PLANS_EXTRACTED,
+                Link.PipelineStage.PUBLISHED,
+                Link.PipelineStage.FLAGGED,
+                Link.PipelineStage.DEAD_LETTERED,
+                Link.PipelineStage.AWAITING_LLM_BUDGET,
+            }
+            if target.last_error.startswith("no_valid_plans:"):
+                state = "completed"
+            elif target.last_error:
+                state = "failed"
+            elif target.pipeline_stage in terminal_stages:
+                state = "completed"
+            else:
+                state = "failed"
+                target.last_error = f"pipeline_incomplete: stopped at {target.pipeline_stage}"
+                target.save(update_fields=["last_error", "updated_at"])
+            Link.objects.filter(pk=link_id).update(pipeline_task_state=state)
+            if state == "failed":
+                raise RuntimeError(target.last_error or "pipeline_incomplete")
+
+    return {"site_id": site.pk, "discovered": discovered["after_policy"], "links": completed}
+
+
+def recover_site_pipeline_tasks(backend_name="default"):
+    """Requeue interrupted pipeline work and unqueued, clean in-progress links."""
+    from django.utils import timezone
+    from django_tasks_db.compat import TaskResultStatus
+    from django_tasks_db.models import DBTaskResult
+
+    from admin_console import services
+    from admin_console.models import Link
+
+    task_path = "admin_console.tasks.run_site_pipeline_task"
+    interrupted = DBTaskResult.objects.filter(
+        task_path=task_path,
+        backend_name=backend_name,
+        status=TaskResultStatus.RUNNING,
+    )
+    interrupted_link_ids = [
+        result.args_kwargs.get("kwargs", {}).get("link_id")
+        for result in interrupted.only("args_kwargs")
+    ]
+    interrupted_count = interrupted.update(
+        status=TaskResultStatus.READY,
+        started_at=None,
+        finished_at=None,
+        worker_ids=[],
+        exception_class_path="",
+        traceback="",
+        run_after=timezone.now(),
+    )
+    Link.objects.filter(pk__in=[pk for pk in interrupted_link_ids if pk]).update(
+        pipeline_task_state="queued"
+    )
+
+    active_tasks = DBTaskResult.objects.filter(
+        task_path=task_path,
+        backend_name=backend_name,
+        status__in=(TaskResultStatus.READY, TaskResultStatus.RUNNING),
+    )
+    queued_site_ids = {
+        result.args_kwargs["args"][0]
+        for result in active_tasks.only("args_kwargs")
+        if result.args_kwargs.get("args")
+    }
+    stale_plan_links = []
+    for link in Link.objects.filter(
+        is_active=True,
+        review_state__in=(Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT),
+        pipeline_stage=Link.PipelineStage.PLANS_EXTRACTED,
+        last_error="",
+    ).prefetch_related("plan_records"):
+        records = list(link.plan_records.all())
+        if not records or any(
+            not services._plan_is_complete(
+                record.values, record.plan_type, record.confidence
+            )
+            for record in records
+        ):
+            stale_plan_links.append(link.pk)
+    if stale_plan_links:
+        Link.objects.filter(pk__in=stale_plan_links).update(
+            pipeline_stage=Link.PipelineStage.CLASSIFIED,
+            last_error="",
+        )
+    unfinished_site_ids = set(
+        Link.objects.filter(
+            is_active=True,
+            review_state__in=(Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT),
+            pipeline_stage__in=(
+                Link.PipelineStage.DISCOVERED,
+                Link.PipelineStage.REFILTERED,
+                Link.PipelineStage.CAPTURED,
+                Link.PipelineStage.EXTRACTED,
+                Link.PipelineStage.CLASSIFIED,
+            ),
+            last_error="",
+        ).values_list("site_id", flat=True)
+    )
+    site_ids = unfinished_site_ids - queued_site_ids
+    if site_ids:
+        from admin_console.models import Site
+
+        for site_id in Site.objects.filter(pk__in=site_ids).values_list("pk", flat=True):
+            run_site_pipeline_task.using(backend=backend_name).enqueue(
+                site_id, discover=False
+            )
+    return {"recovered": interrupted_count, "enqueued_sites": len(site_ids)}

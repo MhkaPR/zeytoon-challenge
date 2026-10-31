@@ -1,6 +1,7 @@
 """DRF views for the operator console API, mounted at /api/v1/ops/."""
 
 from drf_spectacular.utils import extend_schema
+from django.db.models import Count
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,6 +17,7 @@ from admin_console.serializers import (
     ConsoleErrorSerializer,
     DiscoverLinksInput,
     ManualLinksInput,
+    PlanIgnoreInput,
     PlansInput,
     RefilterOverrideInput,
     ReplayRunInput,
@@ -77,7 +79,26 @@ def _link_payload(link):
         "pipeline_stage": link.pipeline_stage,
         "failure_rate": link.failure_rate,
         "current_trace_id": link.current_trace_id,
+        "last_error": link.last_error,
+        "pipeline_task_state": link.pipeline_task_state,
     }
+
+
+def _site_link_payloads(queryset):
+    return list(
+        queryset.order_by("-created_at").values(
+            "id",
+            "site_id",
+            "url",
+            "source",
+            "review_state",
+            "pipeline_stage",
+            "failure_rate",
+            "current_trace_id",
+            "last_error",
+            "pipeline_task_state",
+        )
+    )
 
 
 def get_site_or_error(site_id):
@@ -166,6 +187,26 @@ class VerificationDecisionView(OperatorOnlyView):
 
 
 class SiteCreateView(OperatorOnlyView):
+    def get(self, request):
+        self.caller(request)
+        sites = Site.objects.select_related("company")
+        results = []
+        for site in sites:
+            stage_rows = Link.objects.filter(site=site).values("pipeline_stage").annotate(
+                count=Count("pk")
+            )
+            stage_counts = {stage: 0 for stage, _ in Link.PipelineStage.choices}
+            stage_counts.update(
+                {row["pipeline_stage"]: row["count"] for row in stage_rows}
+            )
+            results.append({
+                **_site_payload(site),
+                "company_name": site.company.company_name,
+                "links_count": sum(stage_counts.values()),
+                "stage_counts": stage_counts,
+            })
+        return Response({"results": results, "count": len(results)})
+
     @extend_schema(request=SiteCreateInput, responses={201: dict, 409: ConsoleErrorSerializer})
     def post(self, request):
         actor = self.caller(request)
@@ -184,7 +225,9 @@ class SiteCreateView(OperatorOnlyView):
 class SiteDetailView(OperatorOnlyView):
     def get(self, request, site_id):
         self.caller(request)
-        return Response({"site": _site_payload(get_site_or_error(site_id))})
+        site = get_site_or_error(site_id)
+        links = _site_link_payloads(Link.objects.filter(site=site))
+        return Response({"site": _site_payload(site), "links": links})
 
 
 class DiscoverLinksView(OperatorOnlyView):
@@ -222,7 +265,8 @@ class SiteLinksView(OperatorOnlyView):
         review_state = request.query_params.get("review_state")
         if review_state:
             qs = qs.filter(review_state=review_state)
-        return Response({"results": [_link_payload(link) for link in qs], "count": qs.count()})
+        links = _site_link_payloads(qs)
+        return Response({"site_id": site.pk, "links": links, "count": len(links)})
 
     def post(self, request, site_id):
         actor = self.caller(request)
@@ -424,6 +468,22 @@ class PlansView(OperatorOnlyView):
         return Response({"plans": services.plans_payload(link)})
 
 
+class PlanIgnoreView(OperatorOnlyView):
+    @extend_schema(request=PlanIgnoreInput, responses={200: dict})
+    def put(self, request, link_id, plan_id):
+        self.caller(request)
+        link = get_link_or_error(link_id)
+        plan = link.plan_records.filter(pk=plan_id).first()
+        if plan is None:
+            return Response(
+                {"error": {"code": "plan_not_found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        values = parse_input(PlanIgnoreInput, request.data)
+        ignored = services.set_plan_excluded(link, plan, values.ignored)
+        return Response({"plan_id": plan.pk, "ignored": ignored})
+
+
 # ---------------------------------------------------------------------------
 # US8 — optional labeling (FR-032..FR-035)
 # ---------------------------------------------------------------------------
@@ -506,9 +566,31 @@ class AlertListView(OperatorOnlyView):
 
 class LinkRerunView(OperatorOnlyView):
     def post(self, request, link_id):
+        from django.db import transaction
+
+        from admin_console.tasks import run_site_pipeline_task
+
         actor = self.caller(request)
-        link = services.rerun_link_stages(get_link_or_error(link_id), actor=actor)
-        return Response({"link": _link_payload(link)})
+        with transaction.atomic():
+            get_link_or_error(link_id)
+            link = Link.objects.select_for_update().get(pk=link_id)
+            if link.pipeline_task_state in ("queued", "running"):
+                return Response(
+                    {"link": _link_payload(link), "queued": True},
+                    status=status.HTTP_202_ACCEPTED,
+                )
+            link = services.rerun_link_stages(link, actor=actor)
+            link.pipeline_task_state = "queued"
+            link.save(update_fields=["pipeline_task_state", "updated_at"])
+            transaction.on_commit(
+                lambda site_id=link.site_id, retry_link_id=link.pk: run_site_pipeline_task.enqueue(
+                    site_id, discover=False, link_id=retry_link_id
+                )
+            )
+        return Response(
+            {"link": _link_payload(link), "queued": True},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -26,6 +26,67 @@ def test_second_site_for_the_same_company_is_refused(operator_client, site):
     assert response.status_code == 409
 
 
+def test_site_list_includes_pipeline_stage_counts(operator_client, site):
+    Link.objects.create(
+        site=site,
+        url="https://example.com/plans",
+        url_hash="plans-hash",
+        pipeline_stage=Link.PipelineStage.CAPTURED,
+    )
+
+    response = operator_client.get("/api/v1/ops/sites")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 1
+    assert payload["results"][0]["links_count"] == 1
+    assert payload["results"][0]["stage_counts"][Link.PipelineStage.CAPTURED] == 1
+
+
+def test_site_detail_includes_links(operator_client, site):
+    link = Link.objects.create(
+        site=site,
+        url="https://example.com/plans",
+        url_hash="detail-plans-hash",
+    )
+
+    response = operator_client.get(f"/api/v1/ops/sites/{site.pk}")
+
+    assert response.status_code == 200
+    assert response.json()["site"]["id"] == site.pk
+    assert response.json()["links"][0]["id"] == link.pk
+
+
+def test_site_links_endpoint_returns_client_expected_shape(operator_client, site):
+    link = Link.objects.create(
+        site=site,
+        url="https://example.com/links",
+        url_hash="links-endpoint-hash",
+    )
+
+    response = operator_client.get(f"/api/v1/ops/sites/{site.pk}/links")
+
+    assert response.status_code == 200
+    assert response.json()["links"][0]["id"] == link.pk
+
+
+def test_site_detail_and_links_list_use_only_pipeline_summary_columns(operator_client, site):
+    link = Link.objects.create(
+        site=site,
+        url="https://example.com/progress",
+        url_hash="progress-summary-hash",
+        pipeline_stage=Link.PipelineStage.CAPTURED,
+    )
+
+    detail = operator_client.get(f"/api/v1/ops/sites/{site.pk}")
+    link_list = operator_client.get(f"/api/v1/ops/sites/{site.pk}/links")
+
+    assert detail.status_code == 200
+    assert detail.json()["links"][0]["id"] == link.pk
+    assert link_list.status_code == 200
+    assert link_list.json()["links"][0]["pipeline_stage"] == Link.PipelineStage.CAPTURED
+
+
 def test_discovery_stores_candidate_links(operator_client, site, stub_discovery):
     stub_discovery.urls = ["https://example.com/plans", "https://example.com/plans"]
 

@@ -23,6 +23,12 @@ def test_capture_never_scrolls_the_page():
     assert "headless=true" in source.replace(" ", "")
 
 
+def test_capture_session_uses_supported_domtrack_module():
+    from domtrack.recorder import CaptureSession
+
+    assert CaptureSession.__module__ == "domtrack.recorder"
+
+
 def test_plan_schema_describes_a_list_of_plans():
     model = plan_schema.list_model("hosting")
     valid = {

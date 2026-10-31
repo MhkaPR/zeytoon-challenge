@@ -11,21 +11,27 @@ developer can subclass them or inject fakes in tests. The module-level defaults
 """
 
 import json
+import logging
 import uuid
 
 import httpx
 from django.conf import settings
 from django.utils import timezone
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from admin_console import plan_schema
 from admin_console.models import Link, LlmCostLedger
 
 PROMPT_VERSION = "v1"
+logger = logging.getLogger(__name__)
 
 
 class LlmError(Exception):
     """The provider was reachable but returned an unusable response."""
+
+
+class NoPlanRecordsError(LlmError):
+    """Extraction ran successfully but no plan met the quality requirements."""
 
 
 class LlmBudgetExhausted(Exception):
@@ -149,7 +155,7 @@ class LlmClient:
 
     def __init__(self, budget=None, model=None):
         self.budget = budget or LlmBudget()
-        self.model = model
+        self.model = model or settings.OPENAI_MODEL
 
     def chat_json(self, system, user, *, stage, idempotency_key=None, model=None,
                   link=None, table=None):
@@ -222,6 +228,21 @@ class LlmClient:
         system = (
             "You extract hosting/server plan data from a table as JSON. Produce DATA only: "
             "no selectors and no formulas. Normalize amounts, units, and billing periods. "
+            "Treat each table row as a separate plan; map cells by column headers, not by "
+            "assuming a fixed column order. Headers may be Persian or English and prices "
+            "may include localized digits, separators, or currency words. Normalize those "
+            "to a numeric price_amount, converting Persian and Arabic-Indic digits. "
+            "Every plan must have a non-empty plan_name and a numeric price_amount. "
+            "Never use 0, an empty string, or a guessed value to represent a missing price; "
+            "if a row has no explicit price, omit that row from the plans list. Only return "
+            "a zero price when the source explicitly states that the plan is free. "
+            "Other specifications may be unknown; use null or omit them rather than guessing. "
+            "Set confidence to 1.0 when the plan name and price are explicitly present in "
+            "the corresponding row and mapped unambiguously; optional missing CPU, RAM, "
+            "storage, OS, or billing details do not lower confidence. Use below 1.0 only "
+            "when name or price is ambiguous, inferred, or unsupported. Do not invent plans. "
+            "Every plan item must contain a 'values' object with the schema fields; "
+            "never put plan fields directly at the item top level. "
             f"The output is a LIST of plans; each plan uses these field keys for plan type "
             f"'{plan_type}': {sorted(field_keys)}. "
             'Return JSON: {"plans": [{"values": {field_key: value}, "confidence": number}]}.'
@@ -229,10 +250,34 @@ class LlmClient:
         user = json.dumps({"table": table_context}, ensure_ascii=False)
         data = self.chat_json(system, user, stage="schema_extraction",
                               idempotency_key=idempotency_key, link=link, table=table)
-        plans = [PlanRecordOut(**item) for item in data.get("plans", [])]
+        raw_plans = data.get("plans", [])
+        if not isinstance(raw_plans, list):
+            raise LlmError("LLM returned plans in an invalid format")
         model = plan_schema.list_model(plan_type)
-        if model is not None:
-            model.model_validate({"plans": [plan.values for plan in plans]})
+        allowed_fields = plan_schema.all_field_keys(plan_type)
+        plans = []
+        for index, item in enumerate(raw_plans):
+            if isinstance(item, dict) and "values" not in item:
+                flat_values = {key: value for key, value in item.items() if key in allowed_fields}
+                if flat_values:
+                    item = {"values": flat_values, "confidence": item.get("confidence")}
+            try:
+                plan = PlanRecordOut.model_validate(item)
+                if model is not None:
+                    model.model_validate({"plans": [plan.values]})
+            except (ValidationError, TypeError):
+                logger.warning(
+                    "llm_plan_record_skipped",
+                    extra={
+                        "event": "llm_plan_record_skipped",
+                        "record_index": index,
+                        "table_id": getattr(table, "pk", None),
+                    },
+                )
+                continue
+            plans.append(plan)
+        if raw_plans and not plans:
+            raise LlmError("LLM returned no valid plan records")
         return plans
 
 

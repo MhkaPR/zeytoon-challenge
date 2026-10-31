@@ -10,8 +10,11 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(Path(__file__).resolve().parents[3] / ".env", override=False)
 
 
 def env(name, default=None):
@@ -62,13 +65,14 @@ INSTALLED_APPS = [
     "constance",
     "drf_spectacular",
     "storages",
+    "admin_console",
+    "django_tasks_db.apps.TasksAppConfig",
     # Local
     "utils",
     "accounts",
     "companies",
     "catalog",
     "notifications",
-    "admin_console",
 ]
 
 MIDDLEWARE = [
@@ -431,9 +435,8 @@ STORAGES = {
 # Django Tasks framework (Django 6). No Celery anywhere (research R2).
 TASKS = {
     "default": {
-        "BACKEND": env(
-            "TASKS_BACKEND", "django.tasks.backends.immediate.ImmediateBackend"
-        ),
+        "BACKEND": "django_tasks_db.DatabaseBackend",
+        "QUEUES": ["default"],
     }
 }
 
@@ -442,6 +445,7 @@ TASKS = {
 # worker (research R3). No operator-machine endpoint exists.
 OPENAI_BASE_URL = env("OPENAI_BASE_URL", "")
 OPENAI_API_KEY = env("OPENAI_API_KEY", "")
+OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-mini")
 
 # Transparent crawler user-agent with a contact URL (Principle X).
 CRAWLER_USER_AGENT = env(

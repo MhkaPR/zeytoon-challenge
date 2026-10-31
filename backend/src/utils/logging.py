@@ -63,9 +63,15 @@ class SensitiveDataFilter(logging.Filter):
         record.msg = mask_text(record.msg)
         if record.args:
             if isinstance(record.args, dict):
-                record.args = {k: mask_text(v) for k, v in record.args.items()}
+                record.args = {
+                    key: mask_text(value) if isinstance(value, str) else value
+                    for key, value in record.args.items()
+                }
             else:
-                record.args = tuple(mask_text(a) for a in record.args)
+                record.args = tuple(
+                    mask_text(value) if isinstance(value, str) else value
+                    for value in record.args
+                )
         return True
 
 

@@ -62,6 +62,11 @@ urlpatterns = [
     # US7 — plan schema extraction (FR-026..FR-031)
     path("plan-schema", api.PlanSchemaView.as_view(), name="plan-schema"),
     path("links/<int:link_id>/plans", api.PlansView.as_view(), name="link-plans"),
+    path(
+        "links/<int:link_id>/plans/<int:plan_id>/ignore",
+        api.PlanIgnoreView.as_view(),
+        name="link-plan-ignore",
+    ),
     # US8 — optional labeling (FR-032..FR-035)
     path("links/<int:link_id>/labeling", api.LabelingView.as_view(), name="link-labeling"),
     # US9 — publishing (FR-036..FR-038)

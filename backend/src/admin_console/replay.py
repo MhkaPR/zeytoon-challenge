@@ -74,10 +74,7 @@ def execute_replay_run(link, actor=None):
                 services.classify_link_tables(link)
             services.extract_link_plans(link)
             services.publish_link_plans(link)
-            services.retire_missing_plans(
-                link,
-                set(link.plan_records.values_list("natural_key", flat=True)),
-            )
+            services.retire_missing_plans(link, services.unignored_plan_keys(link))
             reextracted = True
         except llm.LlmBudgetExhausted:
             run.state = ReplayRun.State.AWAITING_LLM_BUDGET

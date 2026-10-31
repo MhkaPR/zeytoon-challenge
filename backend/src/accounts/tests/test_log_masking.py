@@ -36,6 +36,17 @@ def test_filter_masks_record_message_and_args():
     assert PHONE not in rendered
 
 
+def test_filter_preserves_numeric_format_arguments():
+    record = logging.LogRecord(
+        "httpx", logging.INFO, __file__, 1, 'HTTP %s "%s %d %s"',
+        ("GET", "https://example.com", 200, "OK"), None
+    )
+
+    SensitiveDataFilter().filter(record)
+
+    assert record.getMessage() == 'HTTP GET "https://example.com 200 OK"'
+
+
 def test_otp_flow_logs_do_not_leak_phone(issued_code, caplog):
     code = issued_code(PHONE)
     with caplog.at_level(logging.INFO):
