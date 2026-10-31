@@ -3,19 +3,20 @@
 All Technical Context unknowns are resolved below. Each entry records the decision, why it
 was chosen, and what alternatives were considered. No `NEEDS CLARIFICATION` items remain.
 
-The feature is a pipeline with eight stages. Two of them (approval, publishing) are pure
-platform work; six are thin orchestration over the mandated `domtrack` library. The
-research therefore concentrates on (a) where the console lives, (b) how background work is
-scheduled without Celery, (c) how each domtrack capability is reached, and (d) the platform
+The feature is a pipeline with ten stages. Approval and publishing are platform work; the
+ingestion stages orchestrate the mandated `domtrack` library plus `crawl4ai`, with an LLM
+layer for the link refilter, table classification, and plan-schema extraction. The research
+therefore concentrates on (a) where the console lives, (b) how background work is scheduled
+without Celery, (c) how each domtrack/crawl4ai capability is reached, and (d) the platform
 models that hold the pipeline's state between stages.
 
 ## R1. Admin console placement and module boundary
 
 - **Decision**: Build the operator console inside this feature as a
   **new backend Django app `admin_console`** (`python manage.py startapp admin_console`)
-  that owns every site-maintenance entity (Site, Link, Trace, ExtractedTable, SemanticLabel,
-  ExtractionRecipe, PublishedRecord, ReplayRun, FailureAlert, NotificationRecipient,
-  CleaningRule) and the approval *queue* surface. Company verification itself is **not**
+  that owns every site-maintenance entity (Site, Link, Trace, ExtractedTable,
+  TableClassification, PlanRecord, SemanticLabel, ReplayRun, ChangeRecord, FailureAlert,
+  LlmCostLedger) and the approval *queue* surface. Company verification itself is **not**
   re-implemented: the console calls
   `companies.interfaces.CompaniesInterface` →
   `companies.services.record_verification_decision`, which already exists from feature 002.
@@ -71,30 +72,25 @@ models that hold the pipeline's state between stages.
 
 ## R3. How each pipeline stage reaches domtrack
 
-- **Decision**: Reach domtrack through **two routes, matched to where the work runs**:
-  1. **Local operator machine → REST API** (`domtrack serve`, FastAPI): the site panel's
-     capture button calls the operator's local domtrack `POST /capture`. The base URL
-     (`DOMTRACK_LOCAL_API_URL`) and capture timeout are settings, because only the operator
-     knows their host/port and the default 8000 collides with Django's dev server.
-  2. **Server → Python library directly**: scheduled replay, record-during-replay, compare,
-     diff, HTML rebuild, table extraction, and LLM labeling run in-process in
-     `admin_console`'s domtrack adapter, importing `domtrack.capture` / `.replay` /
-     `.compare` / `.diff` / `.html` / `.tables` / `.tables.labeling`.
-  A single thin adapter module (`admin_console/domtrack_client.py`) is the **only** file
-  that imports domtrack, so every call site is auditable against SC-017 ("0 capabilities
-  reimplemented").
-- **Rationale**: FR-012 requires capture to open a Chrome window *on the operator's
-  machine*, which is only possible through the local REST API; FR-038 and the labeling/
-  extraction stages run server-side, where the library avoids HTTP overhead, avoids a
-  second long-lived service to operate, and gives direct access to typed results
-  (`CompareResult`, `DiffResult`, table dicts). Concentrating the import in one adapter
-  makes the FR-000/SC-017 guarantee testable (an import test can assert domtrack is
-  imported only there).
-- **Alternatives considered**: (a) Running `domtrack serve` on the server for everything —
-  rejected: the operator-local capture requirement forces a local instance anyway, and a
-  server-side HTTP hop adds a failure mode for no benefit; (b) shelling out to the
-  `domtrack` CLI — rejected: brittle string parsing where the library exposes typed return
-  values; (c) vendoring/forking domtrack — rejected by FR-000 ("used as-is").
+- **Decision**: Reach every domtrack capability **server-side through the Python library**,
+  in one thin adapter module `admin_console/domtrack_client.py` (the **only** file that
+  imports domtrack): `domtrack.capture` (headless, fixed duration), `.replay` (`--record`),
+  `.compare` (replay + record + diff), `.diff`, `.html`, `.tables` (extract), and
+  `.tables.labeling`. Link discovery is a parallel server-side adapter
+  (`admin_console/discovery.py`, the only file importing `crawl4ai`), and the refilter/
+  classification/schema-extraction LLM calls go through `admin_console/llm.py`. No
+  operator-machine domtrack instance exists (FR-000c).
+- **Rationale**: Capture is now headless and server-side (FR-016), so the operator-local
+  REST route is gone; running the library in-process avoids a second long-lived service and
+  gives direct access to typed results (`CompareResult`, `DiffResult`, table dicts).
+  Concentrating each third-party import in one adapter makes FR-000/SC-020 auditable (an
+  import test asserts domtrack is imported only in the client and crawl4ai only in the
+  discovery module).
+- **Alternatives considered**: (a) Running `domtrack serve` and calling it over HTTP —
+  rejected: an extra service and failure mode for no benefit when the library runs
+  in-process; (b) shelling out to the `domtrack` CLI — rejected: brittle string parsing where
+  the library exposes typed return values; (c) vendoring/forking domtrack — rejected by
+  FR-000 ("used as-is").
 
 ## R4. Stored trace artifact and storage model
 
@@ -104,9 +100,9 @@ models that hold the pipeline's state between stages.
   other configured `STORAGES` alias) without code changes. The object key is
   **UUID-based** (`traces/<uuid4>.json`) so every artifact gets a unique, non-guessable,
   collision-free name independent of the operator's original path or the numeric trace id;
-  the pipeline tree is not encoded in the key. A `Trace` row records: link, capturing
-  operator, capture time, origin, the **storage key**, the **backend alias**, byte size, a
-  content hash, and the capture mode (interactive/fixed-duration). The trace is **never
+  the pipeline tree is not encoded in the key. A `Trace` row records: link, capture time,
+  **storage key**, the **backend alias**, byte size, a content hash, and the capture duration
+  (capture is always server-side and headless). The trace is **never
   converted** — the same object is what replay, compare, diff, and table extraction read
   (FR-000a). The database stores keys, not blobs.
 - **Rationale**: The user requires artifacts to be saved in S3 by default while letting a
@@ -125,25 +121,28 @@ models that hold the pipeline's state between stages.
   host paths, and makes the key guessable; (d) normalizing the trace into platform tables —
   rejected: directly violates FR-000/FR-000a.
 
-## R5. Sitemap discovery and robots.txt compliance
+## R5. Link discovery: crawl4ai adaptive crawling (statistical) + deterministic policy
 
-- **Decision**: Implement discovery in `admin_console/discovery.py` using only the Python
-  standard library (`xml.etree.ElementTree`) plus `httpx` for fetching: fetch
-  `/robots.txt`, read the `Sitemap:` directives, and fall back to `/sitemap.xml`; follow
-  sitemap-index (`<sitemapindex>`) nesting up to a configurable depth; extract `<loc>`
-  entries and normalize them to absolute URLs. Requests use the transparent project
-  user-agent with a contact URL and honor the site's crawl delay (Principle X).
-- **Rationale**: No sitemap library is currently a dependency, and a sitemap is a small,
-  well-specified XML format where a library adds a dependency for very little behavior.
-  `httpx` is already the intended HTTP client and `xml.etree` is stdlib, so no new
-  dependency is introduced and the crawling-ethics rules (robots.txt, transparent UA,
-  per-domain rate limit) can be enforced in one place.
-- **Alternatives considered**: (a) `ultimate-sitemap-parser` / `sitemap-parser` —
-  considered; rejected as a new dependency for a format the stdlib parses, though it
-  remains a drop-in if discovery needs grow; (b) a full crawler library (Scrapy) —
-  rejected: far beyond sitemap enumeration and would duplicate domtrack's role;
-  (c) treating any site as sitemap-less — rejected: FR-008 requires automatic discovery
-  when a sitemap exists.
+- **Decision**: Discover candidate links in `admin_console/discovery.py` (the only module
+  importing `crawl4ai`) by running
+  `AdaptiveCrawler(AdaptiveConfig(strategy="statistical", max_pages=…, max_depth=…,
+  top_k_links=…)).digest(seed=site.domain, query=LINK_CRAWL_QUERY_*)` with a Persian and an
+  English pass, then union the same-host internal links harvested from the crawled pages and
+  reduce them with a deterministic policy: same-host only, fragment and query stripped, a
+  configurable extension/segment deny list applied, and dedupe by normalized URL hash. No
+  sitemap is fetched, parsed, or required (FR-008). The statistical strategy uses
+  keyword/BM25 statistics only — no embeddings and no LLM.
+- **Rationale**: The user requires adaptive crawling via the statistical strategy to replace
+  sitemap discovery and to bias for recall, so the crawler's early-stop is pushed out
+  (`confidence_threshold` high) and `max_pages`/`top_k_links` are the real recall bounds.
+  The deterministic policy keeps discovery deterministic and cheap, and excludes non-content
+  resources (scripts, styles, text, JSON/XML, documents, media, fonts, blog/docs/auth/cart/
+  legal paths) before any refilter or capture cost is paid. Robots.txt, a transparent UA, and
+  per-domain rate limiting are honored (Principle X).
+- **Alternatives considered**: (a) sitemap.xml parsing (the original design) — rejected by
+  the user; (b) adaptive crawling with the embedding strategy — rejected: embeddings need a
+  model and cost, and the user requires statistics only; (c) a plain BFS crawl — rejected:
+  adaptive ranking focuses the crawl on plans pages without an LLM.
 
 ## R6. Site and Link state model
 
@@ -164,28 +163,25 @@ models that hold the pipeline's state between stages.
   boolean `excluded` — rejected: a two-valued flag cannot express the review→capture
   progression alongside removal; (c) hard-deleting removed links — rejected by FR-010.
 
-## R7. Capture flow, automatic transfer, and manual fallback
+## R7. Server-side headless capture
 
-- **Decision**: Model capture as a short-lived `CaptureSession` row
-  (`pending` → `recording` → `awaiting_upload` → `stored` / `failed`). The panel calls our
-  `POST /api/v1/ops/links/{id}/captures`, which calls the **local** domtrack
-  `POST /capture` and returns the local trace path domtrack reports. The panel then
-  attempts automatic transfer by posting the file to
-  `POST /api/v1/ops/captures/{id}/trace` (multipart); when the browser cannot read the
-  local file (or CORS/permission blocks it), the same endpoint accepts an
-  operator-confirmed manual upload, and a third path lets the operator paste the local
-  path for an operator-side helper to read. Any path that fails leaves the link at
-  `capture` and records the failure (FR-015, FR-017, edge cases).
-- **Rationale**: The spec's assumption pins "automatic upload if possible" to the browser
-  reading the file and transferring it, with a manual fallback — a browser cannot silently
-  read an arbitrary local path, so the session state machine must explicitly model
-  "recording finished, trace not yet stored". That same state machine is what enforces
-  FR-014 ("MUST NOT advance until a trace has been stored").
-- **Alternatives considered**: (a) A single upload endpoint with no session — rejected: it
-  cannot distinguish "operator cancelled" from "upload still pending", and the edge cases
-  require a recorded failed attempt; (b) a native helper/desktop agent that reads the path
-  — rejected as out of scope and a maintenance burden; (c) requiring manual upload only —
-  rejected: FR-015 requires attempting automatic transfer first.
+- **Decision**: Model capture as a short-lived `CaptureSession` row (`pending` → `recording`
+  → `stored` / `failed`) driven entirely on the server: the pipeline calls
+  `domtrack_client.capture_headless(url, duration_ms, nav_timeout_ms)`, which opens the link
+  in a headless browser, waits for the page to settle (`networkidle`), scrolls to the bottom
+  to trigger lazily loaded content, records for the configured fixed duration (headless
+  requires a fixed duration), and stores the resulting trace through `artifacts.save_trace`.
+  There is no operator field, no local path, and no upload step; a capture that produces no
+  trace marks the session `failed` and leaves the link at `captured` (FR-016..FR-019).
+- **Rationale**: The user requires capture to run on the server, not on a client machine;
+  headless mode requires a fixed `duration_ms`, which the pipeline supplies from constance.
+  The explicit state machine is what enforces FR-018 ("MUST NOT advance until a trace has
+  been stored") and makes repeated attempts auditable.
+- **Alternatives considered**: (a) interactive operator capture (the original design) —
+  rejected by the user; (b) a single fire-and-forget call with no session — rejected: it
+  cannot distinguish a failure from a stored trace, and the edge cases require a recorded
+  failed attempt; (c) a per-site interaction recipe for tabs/accordions — deferred: headless
+  v1 captures the loaded state and flags interaction-dependent links.
 
 ## R8. Extraction persistence shape
 
@@ -196,130 +192,121 @@ models that hold the pipeline's state between stages.
   `row_count`), plus the table's rows as `ExtractedTableRow` rows keyed by column id.
   Store the domtrack discovery `score` so the operator can see which candidate was chosen.
   Extraction is idempotent per trace: re-running replaces the existing extraction for that
-  trace in a transaction, so "same trace → same tables" (SC-008) holds as data, not just
-  as library behavior. When domtrack returns zero tables, the link is flagged (FR-020).
-- **Rationale**: FR-018 requires storing columns and rows *with each column's path and
-  coverage as domtrack reports them*; the column `path` is exactly what the mapping recipe
-  needs later (FR-028). Normalizing columns into rows lets the mapping workspace query
-  selectors without parsing a JSON blob in Python, and the replace-in-transaction rule
+  trace in a transaction, so "same trace → same tables" (SC-010) holds as data, not just
+  as library behavior. When domtrack returns zero tables, the link is flagged (FR-022).
+- **Rationale**: FR-020 requires storing columns and rows *with each column's path and
+  coverage as domtrack reports them*; the column `path` is kept as provenance and as the
+  identifier classification and replay change-matching attach to (FR-025). Normalizing
+  columns into rows keeps classification and change-detection queries simple without parsing
+  a JSON blob in Python, and the replace-in-transaction rule
   makes determinism a queryable property.
 - **Alternatives considered**: (a) Storing the raw domtrack table dict as JSON only —
-  rejected: the mapping workspace and recipe need queryable per-column selectors;
-  (b) storing rows as a single JSON blob per table — considered for large tables; rejected
-  for the initial `tasks.md` scope because normalized rows keep mapping and cleaning
-  queries simple, and may be revisited as a performance task if row counts demand it;
-  (c) re-extracting lazily on every mapping open — rejected: violates FR-018's "store the
-  returned tables" and SC-008.
+  rejected: the per-table classification and replay change matching need queryable table and
+  column records; (b) storing rows as a single JSON blob per table — considered for large
+  tables; rejected for the initial `tasks.md` scope because relational rows keep
+  classification, change detection, and provenance queries simple, and may be revisited as a
+  performance task if row counts demand it; (c) re-extracting lazily on every read —
+  rejected: violates FR-020's "store the returned tables" and SC-010.
 
-## R9. Labeling gate and LLM cost ceiling
+## R9. Labeling gate and the LLM token budget
 
 - **Decision**: Labeling runs only when the constance toggle `LABELING_ENABLED` is true
-  (default **false**, FR-021). When on, the server calls
+  (default **false**, FR-032). When on, the server calls
   `domtrack.tables.labeling.label_tables(data, LabelConfig(provider, model, base_url, lang,
-  batch_size, dry_run))` using provider/model/language/batch-size from constance and the
-  API key from the environment (Principle III). Before each call the adapter checks the
-  LLM cost ceiling held in a Django model (feature-level rule per Principle II): if the
-  next call would exceed it, labeling **stops and reports**, and it never silently
-  overspends (FR-024). Labels are written to `SemanticLabel` rows; when labeling is
-  disabled or ceiling-blocked, no label rows exist and every downstream stage behaves
-  identically (FR-023, SC-016).
+  batch_size, dry_run))` using provider/model/language/batch-size from constance and the API
+  key from the environment (Principle III). Every LLM-gated call (refilter, classification,
+  schema extraction, labeling) first checks the **admin-set LLM token budget** held in a
+  Django model (`LlmCostLedger`, model-backed per Principle II): when the pending call would
+  exceed the budget for the period, the call is not made, the link enters
+  `awaiting_llm_budget`, and the admin is notified; the rest of the pipeline continues
+  (FR-047..FR-049). Spend rows are keyed by `idempotency_key` so a retry is not charged twice
+  (FR-050). Labels are written to `SemanticLabel` rows; when labeling is disabled or
+  budget-blocked, no label rows exist and every downstream stage behaves identically
+  (FR-033, SC-019).
 - **Rationale**: The toggle must be admin-controlled at runtime (Principle XIII) and the
-  ceiling must be model-backed (Principle II, which explicitly requires a Django model for
-  the ceiling). Because domtrack owns the LLM call, the platform cannot meter inside it, so
-  the adapter pre-checks the ceiling against the planned batch and records the call's
-  cost after the fact — the cheapest enforceable point that keeps the ceiling authoritative
-  and observable.
+  budget must be model-backed (Principle II). Because domtrack owns the labeling LLM call,
+  the platform cannot meter inside it, so the adapter pre-checks the budget and records the
+  call's spend after the fact — the cheapest enforceable point that keeps the budget
+  authoritative and observable, and the queue/resume behavior keeps non-LLM stages moving.
 - **Alternatives considered**: (a) Metering inside domtrack — rejected: domtrack is used
-  as-is (FR-000) and is not modifiable; (b) enforcing the ceiling only after the call —
-  rejected: FR-024 forbids exceeding it, not just detecting it; (c) making labeling a
-  hard dependency of extraction — rejected by FR-023.
+  as-is (FR-000) and is not modifiable; (b) enforcing the budget only after the call —
+  rejected: FR-048 forbids exceeding it, not just detecting it; (c) making labeling a hard
+  dependency of extraction — rejected by FR-033.
 
-## R10. Mapping workspace and the extraction recipe
+## R10. Table classification and plan-schema extraction (data, not recipes)
 
-- **Decision**: The workspace is an operator page that renders a link's extracted tables
-  in **Handsontable** (grid) with a table dropdown, driven by admin-console endpoints that
-  serve tables/columns/rows and accept a saved recipe. The recipe is stored as
-  `ExtractionRecipe` (one per link, versioned by `version`) plus one `RecipeFieldBinding`
-  per schema field: the target `schema_field_key`, the source `table` + `column` (whose
-  domtrack `path` is the selector), and the combination `formula`. The formula syntax is
-  **Excel/spreadsheet-compatible**: cell references (`A1`, `B7`, or named column ranges over
-  the table's columns), spreadsheet operators and functions (`+ - * / ^`, `=`, parentheses,
-  `SUM`, `MIN`, `MAX`, `AVERAGE`, `IF`, `ROUND`, `CONCATENATE`/`&`, `TEXT`, unit-suffix
-  handling for `10GB`/`1 TB` style cells), and `,` as the argument separator so a saved
-  formula is valid to paste into Excel/LibreOffice/Google Sheets. It is validated at the
-  request boundary against a whitelisted function/operator set (no arbitrary code, no host
-  access), and evaluated by a small deterministic evaluator over resolved column values. A
-  link is `mapped` only when every **required**
-  schema field for the selected plan type has a binding (FR-030); opening the workspace
-  restores saved bindings (FR-031); replay evaluates the same bindings (FR-029).
-- **Rationale**: FR-028 requires recording a source selector *and* a combination formula
-  per field — a per-field binding row is the only shape that captures both and is
-  queryable per field. The user requires formulas to be valid in Excel/spreadsheet systems,
-  so the grammar targets spreadsheet syntax rather than a bespoke DSL: operators already
-  know it, mapping work is copy-pasteable into a spreadsheet for verification, and the
-  Handsontable grid can echo the same expression. Versioning the recipe lets a re-map keep
-  history without breaking published provenance (FR-035).
-- **Alternatives considered**: (a) Storing the recipe as one JSON blob on the Link —
-  rejected: cannot enforce "every required field connected" or query "which fields use this
-  selector"; (b) a bespoke formula DSL — rejected by the explicit Excel-compatibility
-  requirement; (c) `eval`-ing formulas with Python — rejected: arbitrary-code execution and
-  not spreadsheet-valid; (d) a full visual formula builder — deferred as gold-plating for
-  the first cut, since a spreadsheet-valid expression covers host/server plan arithmetic;
-  (e) mapping without a stored recipe and re-deriving on replay — rejected explicitly by
-  FR-029.
+- **Decision**: After extraction, each `ExtractedTable` is classified by an LLM
+  (`llm.classify_tables`) into `TableClassification` (plans/not-plans, plan type, confidence),
+  then every plans table is extracted by an LLM (`llm.extract_plans`) into `PlanRecord` rows
+  validated against the code plan schema (R11) — a list of plan dicts in the standard format,
+  normalized by the model (amounts, units, billing periods). **No selectors and no formulas
+  are produced or stored anywhere**: there is no operator mapping workspace, no
+  `ExtractionRecipe`, and no formula engine (FR-028). A table whose extraction cannot fill the
+  schema's required fields is skipped; the page's other mappable tables are still extracted.
+  Re-extraction is idempotent for an unchanged table and runs on initial extraction and on a
+  replay change that touches a plans table (FR-029, FR-031, FR-042).
+- **Rationale**: The user requires the LLM to extract the *data* against a Pydantic schema,
+  not to build a selector/formula recipe, and to skip tables that cannot map. A per-table
+  classification is the anchor replay needs to decide whether a change is relevant (R14), and
+  relational `PlanRecord` rows keep the published payload queryable and the required-field
+  gate enforceable without a recipe.
+- **Alternatives considered**: (a) the original operator mapping workspace with
+  selector+formula recipes — rejected by the user (no operator, no formulas); (b) one flat
+  JSON blob per page — rejected: a per-table classification must anchor replay change
+  detection; (c) re-deriving the extraction on every read — rejected by
+  idempotency/observability.
 
 ## R11. Plan schema representation
 
-- **Decision**: Define the plan schema in **code** as a structured Python module
+- **Decision**: Define the plan schema in **code** as a structured Pydantic module
   (`admin_console/plan_schema.py`): a top-level schema with a **plan-type dimension**
   (`hosting`, `cdn`, `virtual_server`, …), each plan type carrying an ordered set of field
   definitions (`key`, `label`, `type` (`number`/`text`/`bool`/`unit`/`enum`),
-  `required`, `unit` family, `enum` values). It is read-only (never user-editable), exposed
-  to the mapping workspace through an admin-console endpoint. Recipes reference fields by
-  `(plan_type, field_key)`, so the same code schema can grow new plan types without
-  migrating recipes.
-- **Rationale**: FR-027 requires a code-defined schema that is not user-editable and
-  carries a plan-type dimension selecting which fields apply. A code module gives type
-  checking, unit declarations the cleaning stage can consume (R12), and a stable key space
-  for bindings.
+  `required`, `unit` family, `enum` values). It is read-only (never user-editable; edited by
+  hand in code) and is the target the LLM extraction validates against. `PlanRecord.values`
+  is keyed by `(plan_type, field_key)`, so the schema can grow new plan types without
+  migrating records.
+- **Rationale**: FR-027 requires a code-defined schema that is not user-editable and carries
+  a plan-type dimension selecting which fields apply. A Pydantic module gives type
+  checking/validation, unit declarations the LLM normalizes to (R12), and a stable key space
+  for plan records.
 - **Alternatives considered**: (a) A schema stored in the database — rejected by FR-027;
   (b) one flat schema without plan types — rejected: the spec explicitly requires the
   plan-type dimension; (c) Pydantic models for the schema — considered; the schema is
   metadata used by both backend and frontend, so a plain declarative structure (with a
-  Pydantic validation of the recipe against it) is chosen.
+  Pydantic validation of the extracted plan records against it) is chosen.
 
-## R12. Cleaning rules engine
+## R12. Value normalization lives in the LLM extraction (no cleaning engine)
 
-- **Decision**: Implement cleaning as a rules registry keyed by field/unit family, with the
-  rule set and its thresholds stored in **constance** (FR-043): unit standardization
-  (GB/TB↔numeric, currency separators, Mbps/Gbps), number/range parsing, category
-  normalization (enum mapping), and required-field presence. The engine returns a cleaned
-  value plus a per-value outcome (`clean` / `exception`); only exceptions are surfaced to
-  the operator (FR-033), and a record with exceptions keeps everything else cleaned and
-  remains publishable (edge case).
-- **Rationale**: FR-032/FR-033 define cleaning as *automatic first, exceptions surfaced*,
-  and FR-043 requires the rules be runtime-tunable. Constance-backed rules satisfy both
-  and let operations adjust standardization without a redeploy; a per-value outcome is what
-  makes "surface only exceptions" precise and testable.
-- **Alternatives considered**: (a) Hard-coded cleaning functions — rejected by FR-043 and
-  Principle XIII; (b) a third-party dataframe/cleaning library — rejected: the domain rules
-  are format-specific and small, and a library would add a dependency without removing the
-  rule-authoring work; (c) cleaning at query time in the frontend — rejected: filters must
-  work on stored, standardized values.
+- **Decision**: There is **no separate cleaning rule engine and no formula evaluation**.
+  Normalizing amounts, units, and billing periods is part of the LLM schema extraction
+  (`llm.extract_plans`, R10), which emits `PlanRecord.values` already in the units the plan
+  schema declares (`unit_family`). The schema's `enum` values constrain category
+  normalization, and the required-field check gates publishability. What the original design
+  called "cleaning exceptions" no longer exists; a value the model cannot normalize means the
+  table cannot fill a required field and is skipped (FR-030).
+- **Rationale**: The user requires the LLM to produce the data directly with no formulas, so
+  a separate deterministic cleaner would both duplicate the normalization and contradict the
+  "data, not formulas" decision. Keeping normalization inside the validated schema extraction
+  makes the normalized output the single artifact and removes an entire component.
+- **Alternatives considered**: (a) the original constance-driven cleaning rules engine —
+  rejected by the user; (b) normalizing at query time in the frontend — rejected: filters
+  must work on stored, standardized values.
 
 ## R13. Publishing and provenance
 
 - **Decision**: `PublishedRecord` **belongs to the `catalog` app**, not `admin_console`: the
   published plan data is what catalog and search consume, so its model, migration, and read
-  surface live where they are used. Cleaning therefore produces a cleaned, plan-typed
-  payload that `admin_console` writes through `catalog/interfaces.py`
+  surface live where they are used. The LLM plan extraction therefore produces a normalized,
+  plan-typed payload that `admin_console` writes through `catalog/interfaces.py`
   (`catalog.services.upsert_published_record(...)` / `retire_published_record(...)`), which
-  owns the upsert-by-`(site, link, natural key)` rule and preserves the provenance FKs to
-  `site`, `link`, `trace`, and `recipe` version (FR-035). When a replay reports an item
-  removed (domtrack diff `removed`), a replay-report call through the same interface retires
-  the record rather than retaining stale values (FR-036). (`site`, `link`, `trace`, and
-  `recipe` references cross modules as opaque ids, so `catalog` never imports
-  `admin_console` internals.) This feature does not implement search or ranking (FR-046).
+  owns the upsert-by-`(site, link, natural key)` rule and preserves the provenance references
+  to `site`, `link`, `trace`, and the plans-table `classification` (FR-037). When a replay
+  reports an item removed (domtrack diff `removed`), a replay-report call through the same
+  interface retires the record rather than retaining stale values (FR-038). (`site`, `link`,
+  `trace`, and `classification` references cross modules as opaque ids, so `catalog` never
+  imports `admin_console` internals.) This feature does not implement search or ranking
+  (FR-057).
 - **Rationale**: The user's requirement is that the model used by catalog and search must
   live in the proper app (no published-plan model inside the admin/ops module), and
   Principle V requires the writer to go through an interface rather than touching
@@ -335,13 +322,17 @@ models that hold the pipeline's state between stages.
 - **Decision**: A scheduled run (`ReplayRun`, one row per link per cycle) calls
   `domtrack.compare.compare_replay(before_path, ReplayConfig(mode="clean", …), recording=
   RecordingConfig(enabled=True, …))` — replay, record-during-replay, and diff in one call
-  (FR-038) — then applies the resulting `diff` (added/removed/changed) to published data
-  (FR-039) and records `stats.failed`/`stats.failures`. The link's failure rate is derived
-  from domtrack's reported failures over a configurable trailing window (constance), not
-  computed from our own heuristics. When the rate crosses the configured threshold, a
+  (FR-040) — then classifies each change as a **content change** or a **structural change**
+  and records `ChangeRecord`s. When a change touches a region with a
+  `TableClassification(is_plans_table=true)`, the run re-extracts plan data with the LLM
+  (re-discovering and re-classifying first when the change is structural), and a change
+  elsewhere triggers no LLM work (FR-041..FR-043); it then applies the resulting updates to
+  published data and records `stats.failed`/`stats.failures`. The link's failure rate is
+  derived from domtrack's reported failures over a configurable trailing window (constance),
+  not computed from our own heuristics. When the rate crosses the configured threshold, a
   `FailureAlert` is raised once per crossing (state-based, so it is not re-raised every
   cycle while the condition persists — an explicit edge case) and notification is
-  dispatched (R15). The operator can re-run all stages for the link (FR-042).
+  dispatched (R15). The operator can re-run the maintenance stages for the link (FR-046).
 - **Rationale**: FR-038 mandates domtrack for replay *and* diff and forbids reimplementing
   them, so `compare_replay` is the single correct call. Making the alert state-based (tied
   to `FailureAlert.open`) rather than event-based satisfies the edge case "alert not
@@ -368,7 +359,7 @@ models that hold the pipeline's state between stages.
   delivery logic stay separate.
 - **Rationale**: The user requires notifications to be more general and to live in their own
   app rather than in the admin/ops module. A generic notification model + pluggable channels
-  means other features (e.g. approval notices, provider degradation, LLM ceiling breaches —
+  means other features (e.g. approval notices, provider degradation, LLM budget exhaustion notices —
   Principle II) reuse the same machinery without duplicating delivery, which is exactly the
   platform-capability shape Principle XII favors. Splitting "what is wrong" (link alert
   state) from "how it is delivered" (notification app) keeps each app's model set minimal.
@@ -387,73 +378,71 @@ models that hold the pipeline's state between stages.
   `REPLAY_PERIOD_HOURS`, `REPLAY_BATCH_SIZE`, `FAILURE_RATE_THRESHOLD`,
   `FAILURE_RATE_WINDOW_RUNS`, `LABELING_ENABLED`, `LABELING_PROVIDER`,
   `LABELING_MODEL`, `LABELING_LANGUAGE`, `LABELING_BATCH_SIZE`,
-  `SITEMAP_FETCH_TIMEOUT_SECONDS`, `SITEMAP_MAX_INDEX_DEPTH`,
-  `LINK_DISCOVERY_MAX_LINKS`, `CLEANING_RULES`, `CLEANING_UNIT_FAMILIES`,
-  `CAPTURE_MODES_ALLOWED`, `PUBLISH_AUTO_THRESHOLD`,
-  `ALERT_RECIPIENT_DEFAULT_EMAILS`.
-  The LLM **cost ceiling** lives in a Django model (Principle II), not constance.
+  `LINK_CRAWL_QUERY_FA`, `LINK_CRAWL_QUERY_EN`, `LINK_CRAWL_MAX_PAGES`,
+  `LINK_CRAWL_MAX_DEPTH`, `LINK_CRAWL_TOP_K`, `LINK_DENY_EXTENSIONS`,
+  `LINK_DENY_SEGMENTS`, `LINK_DISCOVERY_MAX_LINKS`, `REFILTER_PROVIDER`,
+  `REFILTER_MODEL`, `REFILTER_DROP_CONFIDENCE`, `CAPTURE_FIXED_DURATION_MS`,
+  `CAPTURE_NAV_TIMEOUT_MS`, `RETRY_MAX_ATTEMPTS`, `RETRY_BACKOFF_SECONDS`,
+  `PUBLISH_AUTO_THRESHOLD`.
+  The LLM **token budget** lives in a Django model (Principle II), not constance.
   Environment-specific values live in `settings.py` with env overrides and now include the
   **artifact storage backend**: `STORAGES["default"]` (defaulting to S3 via
   `django-storages`, overridable to local filesystem or another alias),
   `AWS_STORAGE_BUCKET_NAME`/`AWS_S3_ENDPOINT_URL`/`AWS_ACCESS_KEY_ID`/
-  `AWS_SECRET_ACCESS_KEY`/`AWS_S3_REGION_NAME`, `DOMTRACK_LOCAL_API_URL`, the email backend,
+  `AWS_SECRET_ACCESS_KEY`/`AWS_S3_REGION_NAME`, the LLM gateway base URL, the email backend,
   and request timeouts. Provider/LLM and S3 secrets remain environment-only (Principle III).
-- **Rationale**: FR-043/SC-015 require every tunable to be changeable at runtime without
+- **Rationale**: FR-054/SC-018 require every tunable to be changeable at runtime without
   editing code, and Principle XIII names constance (database backend) for exactly this;
-  Principle II separately requires the ceiling in a model. Splitting by "operator-facing
+  Principle II separately requires the budget in a model. Splitting by "operator-facing
   tunable vs environment vs domain-identity value" matches the constitution's own
   taxonomy.
 - **Alternatives considered**: (a) All values in `settings.py` — rejected: not
   runtime-adjustable; (b) a bespoke settings model for everything — rejected: constance is
   the established, constitution-named tool and provides an operator UI; (c) putting the
-  ceiling in constance too — rejected: Principle II requires a model-backed ceiling rule.
+  token budget in constance too — rejected: Principle II requires a model-backed budget rule.
 
 ## R17. Observability and masked logging
 
 - **Decision**: Emit structured JSON events (reusing `utils.logging`) for: approval
-  decisions (delegated to `companies.events`), site onboarded, links discovered/entered/
-  removed, capture started/succeeded/failed, trace stored, extraction completed/empty,
-  labeling run/skipped/ceiling-blocked (with call count and cost), recipe saved/mapped,
-  cleaning completed/exception, published/removed, replay run completed with failure rate,
-  alert raised/resolved, and notification delivery. Metrics required by Principle VII are
-  exported as event fields: crawl success rate per provider, latency per site, LLM call
-  count and cost, and replay staleness. Hot paths (per-link replay loops, per-row cleaning)
-  use aggregation/sampling rather than per-item logs; no log entry contains unmasked
-  personal data (SC-018).
-- **Rationale**: FR-044/FR-045 require these events and per-provider metrics, and
+  decisions (delegated to `companies.events`), site onboarded, links discovered/refiltered/
+  dropped, capture started/succeeded/failed, trace stored, extraction completed/empty,
+  classification completed, plan extraction completed/skipped, labeling run/skipped/
+  budget-blocked (with token count and cost), published/removed, replay run completed with
+  change kind and failure rate, budget exhausted, alert raised/resolved, and notification
+  delivery. Metrics required by Principle VII are exported as event fields: crawl success
+  rate per provider, latency per site, LLM call count and tokens, and replay staleness. Hot
+  paths (per-link replay loops, per-table extraction) use aggregation/sampling rather than
+  per-item logs; no log entry contains unmasked personal data (SC-021).
+- **Rationale**: FR-055/FR-056 require these events and per-provider metrics, and
   Principles VII and the anti-noise rule require sampling on hot paths. Reusing the
-  existing masking machinery satisfies SC-018 without a second implementation.
+  existing masking machinery satisfies SC-021 without a second implementation.
 - **Alternatives considered**: (a) A metrics library (Prometheus client) — considered;
   deferred, since the constitution specifies structured JSON logs as the mechanism and no
-  metrics backend is mandated; (b) per-row logging in cleaning/replay — rejected by the
+  metrics backend is mandated; (b) per-row logging in extraction/replay — rejected by the
   anti-noise rule.
 
-## R18. Frontend structure and the Handsontable dependency
+## R18. Frontend structure (no mapping spreadsheet)
 
 - **Decision**: Add an **`ops`** route group in the Next.js App Router
-  (`frontend/app/ops/**`: approval queue, site detail, links review, capture, tables,
-  mapping workspace, cleaning/publish, replay & alerts, settings) with feature slices in
+  (`frontend/app/ops/**`: approval queue, site detail, links/refilter review, tables &
+  classifications, plan data, replay & alerts, settings) with feature slices in
   `frontend/src/features/ops/**`, an API client module `frontend/src/lib/api/ops.ts`
   following the existing `lib/api/companies.ts` pattern, and Persian/RTL copy via
-  `src/lib/i18n`. The console API is mounted at `/api/v1/ops/`. The grid uses
-  **Handsontable**, added as `@handsontable/react-wrapper` (+ `handsontable`), because the
-  spec names Handsontable explicitly for the mapping spreadsheet (FR/User Story 6); the
-  mapping formula cells use the Excel/spreadsheet-compatible grammar from R10. `ops` routes
-  are guarded by the operator role and kept in the same app (single deployable, Principle V).
+  `src/lib/i18n`. The console API is mounted at `/api/v1/ops/`. There is **no Handsontable
+  grid and no mapping workspace**: the operator reviews auto-extracted plan data and manages
+  the token budget/thresholds. `ops` routes are guarded by the operator role and kept in the
+  same app (single deployable, Principle V).
 - **Rationale**: The user requires that the frontend admin URL must not be `admin` like
   Django's `/admin`; `ops` is an unambiguous operator-console name that cannot be confused
   with Django's built-in admin site and leaves the framework admin convention untouched.
   Reusing the existing component/design system and i18n keeps the console consistent with the
   rest of the frontend (Principle XII); the route group is the idiomatic App-Router way to
-  isolate a role-gated area without a second application. Handsontable is specified by the
-  user, so it is a deliberate, justified dependency (Principle XII's "unless justified"
-  clause — here the user requires it).
+  isolate a role-gated area without a second application.
 - **Alternatives considered**: (a) `frontend/app/admin/**` — rejected by the user: it would
   shadow/read like Django's `/admin`; (b) a separate admin frontend application — rejected:
   contradicts single-deployable modular monolith (Principle V) and duplicates the design
-  system; (c) building a custom grid — rejected: the user explicitly requires Handsontable
-  and it is the established library for this exact use case; (d) TanStack Table/AG Grid —
-  rejected: would contradict the explicit requirement.
+  system; (c) a mapping spreadsheet (Handsontable) — rejected: mapping is retired, so no
+  grid dependency is needed.
 
 ## R19. Access control for the console
 
@@ -461,8 +450,8 @@ models that hold the pipeline's state between stages.
   enforced by an `AdminOnlyView` base in `admin_console/api.py` (mirroring the `companies`
   pattern). Company owners can never reach approval decisions (FR-005); site-maintenance
   endpoints are operator-only as well, since they act on behalf of approved companies.
-  Object-level permission for the local domtrack capture call is the operator's own machine
-  and thus inherently operator-scoped.
+  Capture runs headlessly on the server under the same operator role gate, so there is no
+  operator-machine object-level permission to model.
 - **Rationale**: FR-005 requires refusal of any owner attempt to influence their own
   verification, and the whole console is an operator surface; a single shared base class
   makes the rule uniform and auditable.
@@ -485,3 +474,70 @@ models that hold the pipeline's state between stages.
 - **Alternatives considered**: (a) Continuing to publish until the data goes stale —
   rejected by the edge case; (b) deleting the site — rejected: the company may be
   re-approved and the pipeline state should survive.
+
+## R21. Adaptive-crawl recall tuning
+
+- **Decision**: Bias discovery toward recall, since a missed plans page is a lost provider.
+  Use a high `confidence_threshold` (so the crawler does not stop early), a large
+  `max_pages` as the real ceiling, a high `top_k_links` (the default of 3 is far too low to
+  surface a provider's whole plans section), and a high `saturation_threshold`; run a
+  Persian and an English query pass and union the results. The candidate set is bounded by
+  `LINK_DISCOVERY_MAX_LINKS` and reduced by the deterministic policy (R5).
+- **Rationale**: crawl4ai's statistical strategy stops as soon as its confidence reaches
+  `confidence_threshold`; the default settings are optimized to *stop early*, which fights
+  "find many links". Because scoring is BFS over the frontier, recall is governed by
+  `max_pages`/`top_k_links` and the query's term coverage, not by a precision dial.
+- **Alternatives considered**: (a) default adaptive settings — rejected: they stop early and
+  miss pages; (b) a second precision pass — unnecessary, since the LLM refilter (R22) already
+  removes non-plans pages downstream.
+
+## R22. Refilter: deterministic extraction, then one LLM call
+
+- **Decision**: For each candidate link, fetch the page, derive the summary deterministically
+  (`refilter.important_section`: the largest text-density block inside `<main>`/`<article>`,
+  with nav/footer/script stripped and a size cap, plus the `h1–h3` headings), and send only
+  the URL + headings + section to the LLM. The prompt returns
+  `{is_plans_page, plan_type, confidence}`. Recall bias: drop only when `is_plans_page=false`
+  and `confidence >= REFILTER_DROP_CONFIDENCE`; otherwise keep and set `refilter_flag` when
+  confidence is low.
+- **Rationale**: The user requires the model never to see HTML and requires the "important
+  section" to come from a deterministic algorithm; a recall-biased drop rule means a
+  provider is never silently lost, and the flag routes borderline cases to operator review.
+- **Alternatives considered**: (a) sending cleaned HTML or markdown to the model — rejected
+  by the user; (b) dropping on low confidence — rejected: it loses providers; (c) skipping
+  the refilter — rejected: it wastes capture and LLM budget on non-plans pages.
+
+## R23. LLM token budget: queue and resume, never stall the cycle
+
+- **Decision**: Every LLM-gated stage (refilter, classification, schema extraction, labeling)
+  checks the model-backed token budget before calling the model. When the budget is exhausted,
+  the stage does not run: the link's stage is recorded as `awaiting_llm_budget`, an admin
+  notification is raised, and the cycle continues with all non-LLM work (crawl, fetch,
+  capture, extraction, unchanged-table processing, publishing of already-extracted data). When
+  the budget is restored, the parked work resumes from its recorded stage. Each logical call
+  carries an `idempotency_key`, so a retry never double-charges the ledger.
+- **Rationale**: The user requires that links which can continue do continue and only
+  LLM-gated work waits; the budget is admin-set (price-sensitive) and must not be exceeded.
+  Making the wait a link state (not a failure) keeps the cycle healthy and makes the queue
+  observable.
+- **Alternatives considered**: (a) failing the cycle on exhaustion — rejected by the user;
+  (b) skipping the work permanently — rejected: it would silently drop providers; (c) an
+  unbounded retry loop — rejected: it would hammer the provider and the budget.
+
+## R24. Resilience and artifact ordering
+
+- **Decision**: Process each link in isolation so one failure never aborts the cycle. Wrap
+  network/crawl/fetch/capture/LLM calls in a bounded retry with exponential backoff
+  (`RETRY_MAX_ATTEMPTS`, `RETRY_BACKOFF_SECONDS`); when the budget is spent, mark the link
+  `dead_lettered` with `last_error` and stop retrying it. Artifacts are written to the object
+  store **before** the `Trace` row is committed, and an orphaned object is compensated, so a
+  `Trace` row never exists without its artifact (FR-053). Retries reuse the LLM
+  `idempotency_key` (R23) so no side effect is duplicated.
+- **Rationale**: The user requires resilience to network and other errors; per-link isolation
+  plus a bounded retry/dead-letter path keeps a single bad link from poisoning the batch, and
+  the write ordering closes the two-system consistency gap between object storage and
+  Postgres.
+- **Alternatives considered**: (a) failing the whole cycle on the first error — rejected:
+  one bad link would block every other link; (b) unbounded retries — rejected: it would spin
+  on permanently broken links and burn budget; (c) writing the `Trace` row before the object
+  — rejected: it can leave a row pointing at a missing artifact.

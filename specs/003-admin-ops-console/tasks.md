@@ -1,9 +1,9 @@
 ---
 
-description: "Task list for Admin Console — Company Approval & Site Data Maintenance"
+description: "Task list for Admin Console — Company Approval & Automated Site Data Pipeline"
 ---
 
-# Tasks: Admin Console — Company Approval & Site Data Maintenance
+# Tasks: Admin Console — Company Approval & Automated Site Data Pipeline
 
 **Input**: Design documents from `/specs/003-admin-ops-console/`
 
@@ -12,13 +12,13 @@ description: "Task list for Admin Console — Company Approval & Site Data Maint
 **Tests**: Included. The project constitution (Principle VIII) requires an automated test for
 every domain behavior, so test tasks are part of each story.
 
-**Organization**: Tasks are grouped by user story so each of the eight pipeline stories can be
+**Organization**: Tasks are grouped by user story so each of the ten pipeline stories can be
 implemented and tested independently.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (US1..US8)
+- **[Story]**: Which user story this task belongs to (US1..US10)
 - All paths are relative to the repository root.
 
 ## Path Conventions
@@ -36,14 +36,15 @@ which is Django's built-in admin site.
 
 - [X] T001 Create the `admin_console` app with `python manage.py startapp admin_console` and register `"admin_console"` in `INSTALLED_APPS` in `backend/src/config/settings.py`
 - [X] T002 [P] Create the `notifications` app with `python manage.py startapp notifications` and register `"notifications"` in `INSTALLED_APPS` in `backend/src/config/settings.py`
-- [X] T003 [P] Mount `path("api/v1/ops/", include("admin_console.urls"))` in `backend/src/config/urls.py` (create the placeholder `backend/src/admin_console/urls.py`) and mount the notifications recipient/inbox routes under `api/v1/ops/` from `notifications.urls`
-- [X] T004 [P] Add `django-storages` and `boto3` to the backend dependency list (`backend/requirements.txt` or the project's dependency file) for S3-backed artifacts
-- [X] T005 [P] Configure artifact storage in `backend/src/config/settings.py`: `STORAGES["default"]` backed by `storages.backends.s3.S3Storage` (S3-compatible default) with `AWS_STORAGE_BUCKET_NAME`, `AWS_S3_ENDPOINT_URL`, `AWS_S3_REGION_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` read from environment via the existing `env()` helper; keep a commented local-filesystem alternative so a developer selects the backend from settings without code changes (Principle XIII; research R4)
-- [X] T006 [P] Configure the Django Tasks framework in `backend/src/config/settings.py`: `TASKS = {"default": {"BACKEND": env("TASKS_BACKEND", "django.tasks.backends.immediate.ImmediateBackend")}}` (Celery is NOT used; research R2)
-- [X] T007 [P] Do not configure email delivery; alerts are in-app only by project decision, so no `EMAIL_*` settings exist
-- [X] T008 [P] Declare this feature's runtime constants in `CONSTANCE_CONFIG` in `backend/src/config/settings.py` with defaults per data-model.md / research R16: `REPLAY_PERIOD_HOURS`, `REPLAY_BATCH_SIZE`, `FAILURE_RATE_THRESHOLD`, `FAILURE_RATE_WINDOW_RUNS`, `LABELING_ENABLED` (default `False`), `LABELING_PROVIDER`, `LABELING_MODEL`, `LABELING_LANGUAGE` (default `"fa"`), `LABELING_BATCH_SIZE`, `SITEMAP_FETCH_TIMEOUT_SECONDS`, `SITEMAP_MAX_INDEX_DEPTH`, `LINK_DISCOVERY_MAX_LINKS`, `CLEANING_RULES`, `CLEANING_UNIT_FAMILIES`, `CAPTURE_MODES_ALLOWED`, `PUBLISH_AUTO_THRESHOLD` (no email recipient constant: in-app only)
-- [X] T009 [P] Add Handsontable to `frontend/package.json` (`handsontable` + `@handsontable/react-wrapper`) and install with `yarn install` (research R18)
-- [X] T010 [P] Create `backend/src/admin_console/tests/__init__.py`, `backend/src/admin_console/migrations/__init__.py`, and `backend/src/notifications/tests/__init__.py` so pytest and migrations discover the new packages
+- [X] T003 [P] Mount `path("api/v1/ops/", include("admin_console.urls"))` in `backend/src/config/urls.py` and mount the notifications recipient/inbox routes under `api/v1/ops/` from `notifications.urls`
+- [X] T004 [P] Add `django-storages` and `boto3` to the backend dependency list for S3-backed artifacts
+- [X] T005 [P] Add `crawl4ai` to the backend dependency list and install a headless Chromium for the server (domtrack and crawl4ai both drive it) (FR-008, FR-016)
+- [X] T006 [P] Configure artifact storage in `backend/src/config/settings.py`: `STORAGES["default"]` backed by `storages.backends.s3.S3Storage` (S3-compatible default) with credentials from `env()`, plus a commented local-filesystem alternative (Principle XIII; research R4)
+- [X] T007 [P] Configure the Django Tasks framework in `backend/src/config/settings.py`: `TASKS = {"default": {"BACKEND": env("TASKS_BACKEND", "django.tasks.backends.immediate.ImmediateBackend")}}` (Celery is NOT used; research R2)
+- [X] T008 [P] Do not configure email delivery; alerts are in-app only by project decision, so no `EMAIL_*` settings exist
+- [X] T009 [P] Declare this feature's runtime constants in `CONSTANCE_CONFIG`: `REPLAY_PERIOD_HOURS`, `REPLAY_BATCH_SIZE`, `FAILURE_RATE_THRESHOLD`, `FAILURE_RATE_WINDOW_RUNS`, `LABELING_ENABLED` (default `False`), `LABELING_PROVIDER`, `LABELING_MODEL`, `LABELING_LANGUAGE` (default `"fa"`), `LINK_CRAWL_QUERY_FA`, `LINK_CRAWL_QUERY_EN`, `LINK_CRAWL_MAX_PAGES`, `LINK_CRAWL_MAX_DEPTH`, `LINK_CRAWL_TOP_K`, `LINK_DENY_EXTENSIONS`, `LINK_DENY_SEGMENTS`, `LINK_DISCOVERY_MAX_LINKS`, `REFILTER_PROVIDER`, `REFILTER_MODEL`, `REFILTER_DROP_CONFIDENCE`, `CAPTURE_FIXED_DURATION_MS`, `CAPTURE_NAV_TIMEOUT_MS`, `RETRY_MAX_ATTEMPTS`, `RETRY_BACKOFF_SECONDS`, `PUBLISH_AUTO_THRESHOLD` (FR-054)
+- [X] T010 [P] Remove Handsontable from `frontend/package.json`; the mapping workspace is retired (no spreadsheet dependency)
+- [X] T011 [P] Create `backend/src/admin_console/tests/__init__.py`, `backend/src/admin_console/migrations/__init__.py`, and `backend/src/notifications/tests/__init__.py`
 
 **Checkpoint**: Both modules exist, routing/config/storage/tasks are wired, dependencies are installed.
 
@@ -51,296 +52,289 @@ which is Django's built-in admin site.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: The models, artifact store, domtrack adapter, interfaces, and shared plumbing that
-every user story depends on
+**Purpose**: The models, artifact store, domtrack/crawl4ai/LLM adapters, interfaces, and shared
+plumbing that every user story depends on
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 ### Models (all inherit `utils.models.TimestampedModel`)
 
-- [X] T011 [P] Implement the `Site` model in `backend/src/admin_console/models.py`: `company` (OneToOneField → `companies.Company`, **unique** — one site per company, FR-007), `domain` (CharField, indexed), `has_sitemap` (Boolean, default False), `sitemap_url` (URLField, blank), `maintenance_state` (`onboarding`/`active`/`suspended`), `onboarded_at` (null), `last_replay_at` (null)
-- [X] T012 [P] Implement the `Link` model in `backend/src/admin_console/models.py`: `site` (FK), `url` (URLField, indexed), `url_hash` (CharField, indexed; unique together with `site` so discovery is idempotent), `source` (`sitemap`/`manual`), `review_state` (`candidate`/`kept`/`removed`), `pipeline_stage` (`review`/`capture`/`extracted`/`mapped`/`cleaned`/`published`/`flagged`/`failed`), `current_trace` (FK → Trace, null), `failure_rate` (Float, default 0), `is_active` (Boolean), `last_replay_at` (null)
-- [X] T013 [P] Implement the `CaptureSession` model in `backend/src/admin_console/models.py`: `link` (FK), `operator` (FK → `accounts.User`), `mode` (`interactive`/`fixed_duration`), `state` (`pending`/`recording`/`awaiting_upload`/`stored`/`failed`), `local_path` (blank), `duration_ms` (null), `error` (blank), `trace` (FK → Trace, null); add a constraint allowing only one non-terminal session per link
-- [X] T014 [P] Implement the `Trace` model in `backend/src/admin_console/models.py`: `link` (FK), `capture_session` (FK, null), `captured_by` (FK → `accounts.User`, null), `captured_at`, `origin` (`operator_capture`/`replay_recording`), `storage_key` (CharField, **unique**, UUID-based object key), `storage_backend` (CharField, default `"default"`), `byte_size` (PositiveBigInteger), `content_sha256` (CharField, indexed), `is_valid_trace` (Boolean); **no field stores trace content**
-- [X] T015 [P] Implement `ExtractedTable`, `ExtractedTableColumn`, and `ExtractedTableRow` in `backend/src/admin_console/models.py`: table keeps `trace` (FK), `link` (FK), `parent` (blank), `score` (Float), `column_count`/`row_count` (PositiveInteger), `meta` (JSONField); column keeps `table` (FK), `column_id`, `label` (blank), `path` (CharField, **indexed** — domtrack's selector), `atype`, `slot` (blank), `coverage` (Float), `row_count`; row keeps `table` (FK), `row_index` (PositiveInteger), `cells` (JSONField of `{column_id: value}`)
-- [X] T016 [P] Implement the `SemanticLabel` model in `backend/src/admin_console/models.py`: `table` (FK), `column_id` (blank for table-level labels), `label`, `provider`, `model`, `language`; must remain optional so nothing depends on it (FR-023)
-- [X] T017 [P] Implement `ExtractionRecipe` and `RecipeFieldBinding` in `backend/src/admin_console/models.py`: recipe keeps `link` (FK), `plan_type`, `version`, `is_current` (exactly one per link), `is_complete` (Boolean); binding keeps `recipe` (FK), `schema_field_key`, `source_table` (FK), `source_column` (FK), `selector` (snapshot of the column `path`), `formula` (CharField, Excel/spreadsheet-compatible expression), `aggregation` (blank; `row`/`sum`/`min`/`max`/`concat`)
-- [X] T018 [P] Implement the `ReplayRun` model in `backend/src/admin_console/models.py`: `link` (FK), `recipe` (FK), `scheduled_for`/`started_at`/`finished_at`, `state` (`scheduled`/`running`/`succeeded`/`failed`), `before_trace` (FK), `after_trace` (FK, null), `diff_summary` (JSONField), `diff_applied` (Boolean), `stats_applied`/`stats_skipped`/`stats_failed` (PositiveInteger), `failures` (JSONField)
-- [X] T019 [P] Implement the `FailureAlert` model in `backend/src/admin_console/models.py`: `link` (FK), `state` (`open`/`resolved`), `failure_rate` (Float), `raised_at`/`resolved_at`, `notification_dedup_key` (CharField, indexed); enforce at most one `open` alert per link
-- [X] T020 [P] Implement the `LlmCostLedger` model in `backend/src/admin_console/models.py`: `scope` (`global`/provider-model key), `ceiling_amount` (Decimal, null = ceiling not set), `period` (`daily`/`monthly`/`total`), `updated_by` (FK, null), `timestamp` (for spend rows), `amount` (Decimal), `label_run_ref` (FK → Link, null); ceiling is model-backed, never in settings (Principle II)
-- [X] T021 [P] Implement the `PublishedRecord` model in **`backend/src/catalog/models.py`** (the `catalog` app owns published plan data — not `admin_console`): `site`/`link`/`trace`/`recipe` as indexed integer ids (opaque references, no cross-app FK), `source` (default `"admin_console"`), `plan_type`, `natural_key` (indexed), `values` (JSONField keyed by `schema_field_key`), `cleaning_exceptions` (JSONField), `is_published` (Boolean), `published_at`/`retired_at` (null); add a uniqueness constraint on (`source`, `site`, `natural_key`) for upserts
-- [X] T022 [P] Implement `Notification`, `NotificationRecipient`, and `NotificationDelivery` in **`backend/src/notifications/models.py`** (general-purpose app, not `admin_console`): notification keeps `event_type` (indexed), `severity` (`info`/`warning`/`critical`), `subject`, `body`, `related_object` (opaque `"app.Model:id"` string), `dedup_key` (blank, indexed); delivery keeps `notification` (FK), `recipient` (FK), `channel` (`in_app` only; email is out of scope by project decision), `state` (`pending`/`sent`/`failed`), `sent_at`/`read_at` (null), `error` (blank); recipient keeps `user` (FK), `name` (blank), `is_active` (Boolean), `created_by` (FK, null)
-- [X] T023 Create and apply migrations for all three apps with `python manage.py makemigrations admin_console notifications catalog` and `python manage.py migrate` (depends on T011..T022)
+- [ ] T012 [P] Implement the `Site` model: `company` (OneToOneField → `companies.Company`, **unique**, FR-007), `domain` (indexed; crawl seed), `crawl_query` (blank), `maintenance_state` (`onboarding`/`active`/`suspended`), `onboarded_at` (null), `last_replay_at` (null); **no sitemap fields**
+- [ ] T013 [P] Implement the `Link` model: `site` (FK), `url`/`url_hash` (unique together with `site`), `source` (`adaptive_crawl`/`manual`), `review_state` (`candidate`/`kept`/`dropped`/`flagged`), `refilter_plan_type` (blank)/`refilter_confidence` (null)/`refilter_flag` (Boolean), `pipeline_stage` (`discovered`→`refiltered`→`captured`→`extracted`→`classified`→`plans_extracted`→`published`; plus `awaiting_llm_budget`/`flagged`/`dead_lettered`), `current_trace` (FK, null), `failure_rate` (Float), `retry_count` (PositiveInteger, default 0), `last_error` (blank), `is_active` (Boolean), `last_replay_at` (null) (FR-009..FR-015, FR-018, FR-052)
+- [ ] T014 [P] Implement the `CaptureSession` model: `link` (FK), `mode` (`headless_fixed` only), `state` (`pending`/`recording`/`stored`/`failed`), `duration_ms` (PositiveInteger), `error` (blank), `trace` (FK, null); only one non-terminal session per link; **no operator/local-path fields** (FR-016..FR-018)
+- [ ] T015 [P] Implement the `Trace` model: `link` (FK), `capture_session` (FK, null), `captured_at`, `origin` (`server_capture`/`replay_recording`), `storage_key` (unique, UUID-based), `storage_backend` (default `"default"`), `byte_size`, `content_sha256` (indexed), `is_valid_trace`; **no trace content column**; no `captured_by` (FR-019, FR-053)
+- [ ] T016 [P] Implement `ExtractedTable`, `ExtractedTableColumn`, `ExtractedTableRow`: table keeps `trace`/`link` (FK), `parent`, `score`, `column_count`/`row_count`, `meta`; column keeps `column_id`, `label` (blank), `path` (indexed, diagnostics only), `atype`, `slot`, `coverage`, `row_count`; row keeps `row_index`, `cells` (JSON) (FR-020)
+- [ ] T017 [P] Implement the `TableClassification` model: `table` (OneToOneField → ExtractedTable), `is_plans_table` (Boolean), `plan_type` (blank), `confidence` (Float), `provider`/`model`/`prompt_version` (CharField) (FR-023..FR-025)
+- [ ] T018 [P] Implement the `PlanRecord` model: `link`/`table`/`classification` (FK), `plan_type`, `natural_key` (indexed), `values` (JSON keyed by schema field key), `confidence` (null), `prompt_version` (FR-026..FR-031)
+- [ ] T019 [P] Implement the `SemanticLabel` model: `table` (FK), `column_id` (blank for table-level), `label`, `provider`/`model`, `language`; optional, nothing depends on it (FR-032..FR-034)
+- [ ] T020 [P] Implement the `ReplayRun` model: `link` (FK), `scheduled_for`/`started_at`/`finished_at`, `state` (`scheduled`/`running`/`succeeded`/`failed`/`awaiting_llm_budget`), `before_trace`/`after_trace` (FK), `diff_summary` (JSON), `reextracted` (Boolean), `stats_applied`/`stats_skipped`/`stats_failed`, `failures` (JSON); **no recipe FK** (FR-039..FR-043)
+- [ ] T021 [P] Implement the `ChangeRecord` model: `replay_run` (FK), `change_kind` (`content`/`structural`), `touches_plans_table` (Boolean), `classification` (FK, null), `summary` (JSON) (FR-041, FR-042)
+- [ ] T022 [P] Implement the `FailureAlert` model: `link` (FK), `state` (`open`/`resolved`), `failure_rate`, `raised_at`/`resolved_at`, `notification_dedup_key` (indexed); at most one `open` alert per link (FR-044)
+- [ ] T023 [P] Implement the `LlmCostLedger` as the **token budget + spend** model: `scope`, `token_budget` (BigInteger, null), `period` (`daily`/`monthly`/`total`), `updated_by` (FK, null), `timestamp`, `tokens_used`, `amount` (null), `stage` (`refilter`/`classification`/`schema_extraction`/`labeling`), `link_ref`/`table_ref` (FK, null), `idempotency_key` (**unique**) (FR-047..FR-050, Principle II)
+- [ ] T024 [P] Implement the `PublishedRecord` model in **`backend/src/catalog/models.py`** (the `catalog` app owns published plan data): `site`/`link`/`trace`/`classification` as indexed integer ids (opaque, no cross-app FK), `source` (default `"admin_console"`), `plan_type`, `natural_key` (indexed), `values` (JSON), `is_published` (Boolean), `published_at`/`retired_at` (null); uniqueness on (`source`, `site`, `natural_key`); **no `recipe` id and no `cleaning_exceptions`** (FR-036..FR-038)
+- [ ] T025 Generate migrations for `admin_console`, `notifications`, and `catalog` and apply them
 
 ### Shared infrastructure
 
-- [X] T024 Implement the artifact store in `backend/src/admin_console/artifacts.py` on top of Django's `STORAGES` API: `save_trace(file) -> (storage_key, byte_size, sha256)` writing under a **UUID-based key** (`traces/<uuid4>.json`) to the configured backend, `open_trace(storage_key)`, `materialize(storage_key) -> temp local path` (for domtrack's path-based API), and `delete_trace(storage_key)`; no hand-written S3 code (Principle XII), no DB blobs (FR-000a)
-- [X] T025 [P] Define the code plan schema in `backend/src/admin_console/plan_schema.py`: `PLAN_SCHEMA` with a plan-type dimension (`hosting`, `cdn`, `virtual_server`) and per type an ordered field list of `{key, label, type (number/text/bool/unit/enum), required, unit_family, enum_values}` exactly as in data-model.md; expose `fields_for(plan_type)` and `required_fields(plan_type)`; read-only, never user-editable (FR-027)
-- [X] T026 [P] Implement the Excel-compatible formula engine in `backend/src/admin_console/formulas.py`: a tokenizer/validator for spreadsheet syntax (cell/column references, `+ - * / ^`, `=`, parentheses, `&`, and the whitelisted functions `SUM`, `MIN`, `MAX`, `AVERAGE`, `IF`, `ROUND`, `VALUE`, `SUBSTITUTE`, `TEXT`, `CONCATENATE` with `,` argument separator), `validate_formula(expr) -> errors`, and a deterministic `evaluate(expr, cells) -> value`; no `eval`, no arbitrary code (FR-028, research R10)
-- [X] T027 Implement the domtrack adapter in `backend/src/admin_console/domtrack_client.py` — the **only** module in the backend that imports `domtrack` (FR-000, SC-017): `start_local_capture(url, mode, duration_ms=None)` (HTTP `POST /capture` on `DOMTRACK_LOCAL_API_URL`), `load_trace(path)`, `is_trace(raw)`, `extract_tables(path, min_rows, min_cols)`, `label_tables(tables, label_config)`, `compare_replay(before_path, replay_config, recording)`, `diff_traces(before_path, after_path)`, `rebuild_dom(path, at_record)`; returns domtrack's own results unmodified (contract: domtrack-integration.md)
-- [X] T028 Define `AdminConsoleInterface` in `backend/src/admin_console/interfaces.py` (the only sanctioned entry point for other modules, Principle V): reads the catalog/search feature needs (published-record source ids, link/site summaries) and no leaked internals
-- [X] T029 Define `CatalogInterface` in `backend/src/catalog/interfaces.py` with `upsert_published_record(source, site_id, link_id, trace_id, recipe_id, plan_type, natural_key, values, cleaning_exceptions) -> PublishedRecord` and `retire_published_record(source, site_id, natural_key)`; `catalog` never imports `admin_console` (Principle V, FR-034..FR-036)
-- [X] T030 Implement `backend/src/notifications/interfaces.py` (`notify(event_type, severity, subject, body, related_object="", dedup_key="", recipients=None)`) and `backend/src/notifications/channels.py` (an in-app channel dispatched from a `django.tasks` task; email is intentionally absent per project decision); callers never write notification tables directly (FR-041, research R15)
-- [X] T031 [P] Implement structured, masked pipeline events in `backend/src/admin_console/events.py` reusing `utils.logging` (`SensitiveDataFilter`/masking) for every pipeline transition, so no log entry carries unmasked personal data (FR-044, SC-018)
-- [X] T032 Implement the operator API base in `backend/src/admin_console/api.py`: an `OperatorOnlyView` (mirroring the `companies` pattern) that resolves the caller via `accounts.selectors.user_from_request`, requires `user.is_admin()`, and returns `403 {"error": {"code": "admin_required", ...}}` plus a shared error-shape helper matching `accounts.exceptions.ApiError` (FR-005, XI)
-- [X] T033 [P] Add constance readers in `backend/src/admin_console/constants.py` (`replay_period_hours()`, `failure_rate_threshold()`, `failure_rate_window_runs()`, `labeling_enabled()`, `labeling_config()`, `cleaning_rules()`, `capture_modes_allowed()`, and the rest) so no business-logic module reads constance directly (FR-043, SC-015)
-- [X] T034 [P] Implement the LLM ceiling rule in `backend/src/admin_console/services.py`: `llm_ceiling_status(scope, period)` (projection over `LlmCostLedger` spend rows) and `record_llm_cost(...)`, raising a ceiling breach through `notifications` when the ceiling is passed (Principle II, FR-024)
-- [X] T035 [P] Scaffold `backend/src/admin_console/tasks.py` with module-level `django.tasks` task functions (`run_extraction_task`, `run_labeling_task`, `run_replay_task`) that validate their arguments and delegate to services, and create the management command skeleton `backend/src/admin_console/management/commands/run_scheduled_replays.py` (due-run scan → enqueue per-link tasks)
-- [X] T036 Register the new models in `backend/src/admin_console/admin.py` and `backend/src/notifications/admin.py` for operator-side reads (labeling toggle, cost ceiling, recipients) (FR-021, Principle II)
+- [ ] T026 [P] Implement the artifact store in `backend/src/admin_console/artifacts.py`: `save_trace(bytes) -> (key, backend, byte_size, sha256)` writing under a UUID-based key (`traces/<uuid4>.json`), `open_trace`, `materialize(storage_key) -> temp path`, and `delete_trace`; write the object before committing the `Trace` row and compensate orphans (FR-053)
+- [ ] T027 [P] Define the code plan schema in `backend/src/admin_console/plan_schema.py` as Pydantic models: plan types `hosting`/`cdn`/`virtual_server` with their fields exactly as in data-model.md; expose `schema_for(plan_type)`, `required_fields(plan_type)`; read-only, hand-edited (FR-027)
+- [ ] T028 [P] Implement the domtrack adapter in `backend/src/admin_console/domtrack_client.py` — the **only** backend module importing `domtrack` (FR-000, SC-020): `capture_headless(url, duration_ms, nav_timeout_ms)`, `load_trace(path)`, `is_trace(raw)`, `extract_tables(path, min_rows, min_cols)`, `label_tables(tables, label_config)`, `compare_replay(before_path, replay_config, recording)`; returns domtrack results unmodified (contract: domtrack-integration.md)
+- [ ] T029 [P] Implement the discovery adapter in `backend/src/admin_console/discovery.py` — the **only** backend module importing `crawl4ai`: `crawl_candidate_links(domain, query, bounds) -> list[str]` using `AdaptiveCrawler(AdaptiveConfig(strategy="statistical", ...))`, plus `apply_link_policy(urls, deny_extensions, deny_segments) -> list[str]` (same-host, fragment/query strip, dedupe) (FR-008, FR-009)
+- [ ] T030 [P] Implement the LLM client in `backend/src/admin_console/llm.py`: an OpenAI-compatible client (base URL/key from env, provider `openai` or `compatible`) with `classify_tables(...)`, `extract_plans(...)`, and `refilter_page(...)`, each returning validated Pydantic objects; the single place any LLM call is made (FR-023, FR-026, FR-012)
+- [ ] T031 [P] Implement the artifact-storage helpers for the refilter's deterministic extraction in `backend/src/admin_console/refilter.py`: `important_section(html) -> {h1..h3, text}` (largest text-density block in `<main>`/`<article>`, nav/footer/script stripped, capped) — no LLM, no HTML sent downstream (FR-012)
+- [ ] T032 Define `AdminConsoleInterface` in `backend/src/admin_console/interfaces.py` as the only sanctioned entry point for other modules (Principle V)
+- [ ] T033 Define `CatalogInterface` in `backend/src/catalog/interfaces.py` with `upsert_published_record(source, site_id, link_id, trace_id, classification_id, plan_type, natural_key, values)` and `retire_published_record(source, site_id, natural_key)`; `catalog` never imports `admin_console` (Principle V)
+- [ ] T034 Implement `backend/src/notifications/interfaces.py` (`notify(...)`) and `channels.py` (in-app channel dispatched from a `django.tasks` task; email intentionally absent) (FR-045)
+- [ ] T035 [P] Implement structured, masked pipeline events in `backend/src/admin_console/events.py` reusing `utils.logging` masking, so no log entry carries unmasked personal data (FR-055, SC-021)
+- [ ] T036 Implement the operator API base in `backend/src/admin_console/api.py`: an `OperatorOnlyView` (mirroring the `companies` pattern) requiring `user.is_admin()` and a shared error shape (FR-005)
+- [ ] T037 [P] Add constance readers in `backend/src/admin_console/constants.py` for every constant in T009 so no business-logic module reads constance directly (FR-054)
+- [ ] T038 [P] Implement the budget gate in `backend/src/admin_console/llm.py`: `budget_allows(stage, scope, period)`, `record_llm_spend(...)` keyed by `idempotency_key`, and `budget_exhausted(stage)` marking a link `awaiting_llm_budget` and raising a `notifications` alert (FR-047..FR-050)
+- [ ] T039 [P] Scaffold `backend/src/admin_console/tasks.py` with `django.tasks` task functions (`run_capture_task`, `run_extraction_task`, `run_classification_task`, `run_plan_extraction_task`, `run_labeling_task`, `run_replay_task`) and the management command skeleton `backend/src/admin_console/management/commands/run_scheduled_replays.py`
+- [ ] T040 Register the new models in `backend/src/admin_console/admin.py` and `backend/src/notifications/admin.py` for operator-side reads (labeling toggle, token budget, recipients)
 
-**Checkpoint**: Models, migrations, artifact store, domtrack adapter, plan schema, formula engine, interfaces, notifications core, and shared API plumbing exist — every user story can now begin.
+**Checkpoint**: Models, artifact store, domtrack/crawl4ai/LLM adapters, plan schema, interfaces, budget gate, and shared plumbing exist.
 
 ---
 
 ## Phase 3: User Story 1 - Company approval (Priority: P1) 🎯 MVP
 
-**Goal**: The operator sees the pending companies with the information needed to decide and
-records exactly one append-only outcome per company; an owner can never influence it.
+**Goal**: List pending companies and record exactly one append-only decision, with owner refusal.
 
-**Independent Test**: With a pending company, record an approval and confirm verified + panel reachable + one decision record + a `Site` created; record a not-approved outcome and confirm the company stays unverified, step one reopens, and the site is suspended; attempt the decision as the owner and get `403`.
+**Independent Test**: Approve/deny from the queue and confirm the decision record and the company's verification state; confirm an owner cannot set their own status.
 
 ### Tests for User Story 1 ⚠️
 
-> Write these FIRST and confirm they FAIL before implementation.
-
-- [X] T037 [P] [US1] Contract test for `GET /api/v1/ops/approvals` and `POST /api/v1/ops/companies/{id}/verification-decisions` in `backend/src/admin_console/tests/test_approval_queue.py`: queue includes name/representative/domain/masked phone and a `duplicate_domain_warning`, 201 on approved ⇒ verified + `Site` in `onboarding`, not_approved ⇒ unverified + step one reopened + `Site` suspended (FR-001, FR-003, FR-004, SC-002, SC-003)
-- [X] T038 [P] [US1] Operator-only and append-only test in `backend/src/admin_console/tests/test_approval_authorization.py`: an owner JWT gets `403 admin_required` and changes nothing; a second decision leaves the first `companies.VerificationDecision` row unchanged and both remain readable (FR-005, FR-006, SC-001, SC-004)
+- [ ] T041 [P] [US1] Contract test for `GET /api/v1/ops/companies` and `POST /api/v1/ops/companies/{id}/decision` in `backend/src/admin_console/tests/test_approval_queue.py`
+- [ ] T042 [P] [US1] Authorization test in `backend/src/admin_console/tests/test_approval_authorization.py` (owner refused; operator-only)
 
 ### Implementation for User Story 1
 
-- [X] T039 [US1] Add console serializers (Pydantic boundary schemas + DRF I/O) for the approval queue entry and the decision payload (`outcome` ∈ {`approved`, `not_approved`}, `note`) in `backend/src/admin_console/serializers.py` (FR-002)
-- [X] T040 [US1] Add console selectors in `backend/src/admin_console/selectors.py`: `pending_approval_queue()` (companies from `CompaniesInterface` awaiting verification, joining the normalized domain to flag duplicates) and `site_for_company(company_id)` (FR-001, FR-004)
-- [X] T041 [US1] Implement approval services in `backend/src/admin_console/services.py`: `approve_or_reject_company(company_id, actor, outcome, note)` delegating to `CompaniesInterface.record_verification_decision`, then creating the `Site` in `onboarding` on approval or setting `maintenance_state=suspended` on rejection (FR-003, FR-007, research R20)
-- [X] T042 [US1] Implement `ApprovalQueueView` (`GET`) and `VerificationDecisionView` (`POST`) in `backend/src/admin_console/api.py` on the `OperatorOnlyView` base (FR-001, FR-002, FR-005)
-- [X] T043 [US1] Wire the approval routes in `backend/src/admin_console/urls.py` (`approvals`, `companies/<int:company_id>/verification-decisions`)
-- [X] T044 [US1] Emit structured approval events (decision recorded, site lifecycle started/suspended) in `backend/src/admin_console/events.py` with the phone masked (FR-044, SC-018)
-- [X] T045 [P] [US1] Add the console API client in `frontend/src/lib/api/ops.ts` (typed fetch helpers following the `frontend/src/lib/api/companies.ts` error/CSRF pattern) with the approvals and decision calls (US2..US8 extend this file)
-- [X] T046 [US1] Build the operator shell and role guard in `frontend/app/ops/layout.tsx` (operator-only; non-operators are redirected) and the approvals queue page in `frontend/app/ops/page.tsx` plus `frontend/src/features/ops/approvals/ApprovalQueue.tsx` / `CompanyReviewCard.tsx` with the duplicate-domain warning shown, never auto-resolving (FR-001, FR-004)
-- [X] T047 [P] [US1] Add Persian/RTL copy for the console shell, approvals queue, and decision form in `frontend/src/lib/i18n/strings.ts`
-- [X] T048 [P] [US1] Add frontend tests for the queue, the duplicate warning display, and the decision form in `frontend/tests/ops-approvals.test.tsx`
+- [ ] T043 [US1] Implement the approval queue + decision services in `backend/src/admin_console/services.py`, delegating verification to `companies/interfaces.py`
+- [ ] T044 [US1] Implement `CompanyQueueView`/`DecisionView` in `backend/src/admin_console/api.py` and wire `backend/src/admin_console/urls.py`
+- [ ] T045 [P] [US1] Emit masked decision/site-lifecycle events in `backend/src/admin_console/events.py`
+- [ ] T046 [P] [US1] Add the console API client in `frontend/src/lib/api/ops.ts` and the operator shell + role guard in `frontend/app/ops/layout.tsx` / `page.tsx`
+- [ ] T047 [P] [US1] Add Persian/RTL copy and frontend tests for the queue/decision in `frontend/src/lib/i18n/strings.ts` and `frontend/tests/ops-approvals.test.tsx`
 
-**Checkpoint**: User Story 1 works independently — the queue can be cleared and a decision always produces exactly one record.
+**Checkpoint**: US1 works independently — the queue can be cleared and a decision always produces exactly one record.
 
 ---
 
-## Phase 4: User Story 2 - Site onboarding and link review (Priority: P2)
+## Phase 4: User Story 2 - Automated link discovery (crawl4ai) (Priority: P2)
 
-**Goal**: Onboard the approved company's single site, auto-discover candidate links from its
-sitemap (or accept manual entry), review them, and let only kept links proceed.
+**Goal**: Onboard an approved company's site by adaptive crawling (statistical) and reduce the
+harvested links with the deterministic host/extension/segment policy.
 
-**Independent Test**: Onboard a site with a sitemap and confirm candidates are discovered; onboard one without and confirm manual entry works; remove some links in review and confirm only kept links are eligible for capture while removed links stay recorded.
+**Independent Test**: Onboard a site (stubbed crawler) and confirm a deduplicated candidate set with denied extensions/segments excluded; confirm no sitemap request.
 
 ### Tests for User Story 2 ⚠️
 
-- [X] T049 [P] [US2] Contract test for `POST /api/v1/ops/sites`, `.../discover-links`, `.../links`, and `.../links/review` in `backend/src/admin_console/tests/test_site_onboarding.py`: 201 onboarding, 409 for a second site on the same company (FR-007), sitemap discovery stores `source="sitemap"` candidates, no sitemap ⇒ `has_sitemap=false` and `discovered=0` (FR-008, SC-005)
-- [X] T050 [P] [US2] Link review test in `backend/src/admin_console/tests/test_link_review.py`: removed links become `review_state="removed"` and are excluded from capture while remaining recorded; kept links are capture-eligible; a review keeping none leaves the site in `onboarding` with `link_not_ready` (FR-009, FR-010, FR-011, SC-006)
-- [X] T051 [P] [US2] Discovery unit test in `backend/src/admin_console/tests/test_discovery.py`: robots.txt `Sitemap:` directives are honored, `/sitemap.xml` is the fallback, sitemap indexes are followed to `SITEMAP_MAX_INDEX_DEPTH`, `<loc>` entries are normalized to absolute URLs, the transparent user-agent is sent, and discovery is idempotent on `(site, url_hash)` (FR-008, Principle X)
+- [ ] T048 [P] [US2] Discovery test in `backend/src/admin_console/tests/test_link_discovery.py`: the statistical strategy is used (no embeddings/LLM), unknown extensions/segments are denied, same-host/query-strip/dedupe hold, and no sitemap is fetched (FR-008, FR-009, SC-005, SC-006)
+- [ ] T049 [P] [US2] Contract test for `POST /api/v1/ops/sites` and `.../discover-links` in `backend/src/admin_console/tests/test_site_onboarding.py`: 201 onboarding, 409 for a second site, `source="adaptive_crawl"` candidates stored, empty crawl keeps the site in `onboarding` (FR-007, FR-011)
 
 ### Implementation for User Story 2
 
-- [X] T052 [US2] Implement sitemap discovery in `backend/src/admin_console/discovery.py` using only stdlib `xml.etree.ElementTree` + `httpx`: `discover_sitemaps(domain)` (robots.txt then `/sitemap.xml`, index nesting up to `SITEMAP_MAX_INDEX_DEPTH`) and `discover_links(sitemap_url)` (respecting robots.txt, the transparent user-agent with contact URL, and per-domain rate limiting) (research R5, Principle X)
-- [X] T053 [US2] Implement onboarding services in `backend/src/admin_console/services.py`: `onboard_site(company_id, actor)` (refuse a second site, record `has_sitemap`/`sitemap_url`), `discover_and_store_links(site, actor)` (upsert candidates by `(site, url_hash)`), `add_links_manually(site, urls, actor)`, and `review_links(site, keep_ids, remove_ids, actor)` (FR-007..FR-011)
-- [X] T054 [US2] Implement `SiteCreateView`, `DiscoverLinksView`, `SiteLinksView` (`GET`/`POST`), and `LinkReviewView` in `backend/src/admin_console/api.py` (FR-007..FR-011)
-- [X] T055 [US2] Wire the site/link routes in `backend/src/admin_console/urls.py` (`sites`, `sites/<int:site_id>/discover-links`, `sites/<int:site_id>/links`, `sites/<int:site_id>/links/review`)
-- [X] T056 [US2] Emit structured events for site onboarded, links discovered/entered/removed in `backend/src/admin_console/events.py` (FR-044)
-- [X] T057 [US2] Extend `frontend/src/lib/api/ops.ts` with the site onboarding, discovery, manual-entry, and review calls
-- [X] T058 [US2] Build the site detail page (`frontend/app/ops/sites/[siteId]/page.tsx`, with `frontend/src/features/ops/sites/SiteOnboarding.tsx`) and the link review page (`frontend/app/ops/sites/[siteId]/links/page.tsx`, with `frontend/src/features/ops/links/LinkReviewTable.tsx`) supporting keep/remove (FR-008, FR-009)
-- [X] T059 [P] [US2] Add Persian/RTL copy for onboarding and link review in `frontend/src/lib/i18n/strings.ts`
-- [X] T060 [P] [US2] Add frontend tests for onboarding (sitemap and manual paths) and link review submission in `frontend/tests/ops-links.test.tsx`
+- [ ] T050 [US2] Implement `crawl_candidate_links` / `apply_link_policy` in `backend/src/admin_console/discovery.py` (research R5/C4A)
+- [ ] T051 [US2] Implement onboarding/discovery services in `backend/src/admin_console/services.py`: `onboard_site`, `discover_and_store_links` (upsert by `(site, url_hash)`), `add_links_manually` (FR-007..FR-011)
+- [ ] T052 [US2] Implement `SiteCreateView`/`DiscoverLinksView`/`SiteLinksView` in `backend/src/admin_console/api.py` and wire routes
+- [ ] T053 [P] [US2] Emit masked discovery events in `backend/src/admin_console/events.py`
+- [ ] T054 [P] [US2] Build the site detail + discovered-links pages (`frontend/app/ops/sites/[siteId]/**`) and the `ops.ts` calls
+- [ ] T055 [P] [US2] Add Persian/RTL copy and frontend tests in `frontend/src/lib/i18n/strings.ts` and `frontend/tests/ops-links.test.tsx`
 
-**Checkpoint**: User Stories 1 and 2 both work independently.
+**Checkpoint**: US1 and US2 both work independently.
 
 ---
 
-## Phase 5: User Story 3 - Operator-driven capture (Priority: P3)
+## Phase 5: User Story 3 - LLM link refilter (Priority: P3)
 
-**Goal**: Trigger **domtrack capture** on the operator's machine for a kept link, open Chrome,
-record interactively, then store the resulting trace on the platform (automatic transfer, else
-manual upload) before the link can advance.
+**Goal**: Deterministically extract `h1–h3` + important section and refilter each candidate with
+an LLM before capture, recall-biased.
 
-**Independent Test**: With the local domtrack API running, trigger capture and confirm a session records and reports a trace path; store the trace and confirm a `Trace` row with a UUID `storage_key`; stop domtrack and confirm `502 domtrack_unreachable` with no advance; attempt extraction without a trace and get `409 trace_required`.
+**Independent Test**: Confirm the model input excludes HTML; a confidently non-plans page is dropped; a borderline page is kept and flagged; budget exhaustion parks the link.
 
 ### Tests for User Story 3 ⚠️
 
-- [X] T061 [P] [US3] Contract test for `POST /api/v1/ops/links/{id}/captures`, `.../captures/{id}/trace`, and `.../captures/{id}/fail` in `backend/src/admin_console/tests/test_capture_flow.py`: 201 recording for a kept link, 400 for a non-kept link, 502 `domtrack_unreachable` when the local API is down (link not advanced), 201 storing a trace with link/operator/capture-time and `is_valid_trace=true` (FR-012..FR-017, SC-007)
-- [X] T062 [P] [US3] Capture session state-machine test in `backend/src/admin_console/tests/test_capture_state.py`: the link cannot pass `capture` while `current_trace` is null, `awaiting_upload` is distinguishable from `failed`, and only one non-terminal session per link exists (FR-014)
-- [X] T063 [P] [US3] Artifact storage test in `backend/src/admin_console/tests/test_artifact_storage.py`: `save_trace` writes through the configured `STORAGES` backend under a unique UUID key, `open_trace`/`materialize` round-trip the bytes, `delete_trace` removes the object, and no `Trace` column holds the body (FR-000a, research R4)
+- [ ] T056 [P] [US3] Refilter test in `backend/src/admin_console/tests/test_link_refilter.py`: `important_section` returns the largest `<main>`/`<article>` block; the model receives only URL/headings/section; only confidently non-plans links are dropped; borderline keeps are flagged (FR-012..FR-015, SC-007)
+- [ ] T057 [P] [US3] Contract test for `POST /api/v1/ops/links/{id}/refilter` and `.../links/{id}/refilter/override` (operator keep/drop) in `backend/src/admin_console/tests/test_refilter_api.py`
 
 ### Implementation for User Story 3
 
-- [X] T064 [US3] Implement capture services in `backend/src/admin_console/services.py`: `start_capture(link, operator, mode, duration_ms)` (refuse a non-kept link, call `domtrack_client.start_local_capture`, create the `CaptureSession` as `recording`, map local-service errors to `domtrack_unreachable`), `store_trace(capture_session, file_or_path, operator)` (validate with `domtrack_client.is_trace`, write via `artifacts.save_trace`, create the `Trace`, advance the link), and `fail_capture(capture_session, error)` (FR-012..FR-017)
-- [X] T065 [US3] Implement `CaptureStartView`, `TraceUploadView` (multipart file or `local_path`), and `CaptureFailView` in `backend/src/admin_console/api.py` (FR-012, FR-015, FR-017)
-- [X] T066 [US3] Wire the capture routes in `backend/src/admin_console/urls.py` (`links/<int:link_id>/captures`, `captures/<int:capture_session_id>/trace`, `captures/<int:capture_session_id>/fail`)
-- [X] T067 [US3] Emit structured events for capture started/succeeded/failed and trace stored (with size + hash, never the trace content) in `backend/src/admin_console/events.py` (FR-044, SC-018)
-- [X] T068 [US3] Extend `frontend/src/lib/api/ops.ts` with the capture start, trace upload (multipart), and capture-fail calls
-- [X] T069 [US3] Build the capture page in `frontend/app/ops/links/[linkId]/capture/page.tsx` with `frontend/src/features/ops/capture/CapturePanel.tsx`: the capture button with the interactive/fixed-duration choice, domtrack-unreachable messaging, automatic-transfer attempt with an operator-confirmed manual-upload fallback, and the stage indicator that blocks progression without a stored trace (FR-012..FR-017)
-- [X] T070 [P] [US3] Add Persian/RTL copy for the capture flow in `frontend/src/lib/i18n/strings.ts`
-- [X] T071 [P] [US3] Add frontend tests for the capture panel: mode selection, unreachable error, manual-upload fallback, and blocked advance in `frontend/tests/ops-capture.test.tsx`
+- [ ] T058 [US3] Implement `refilter.py`'s LLM half (`refilter_page`) and wire the LLM client from T030
+- [ ] T059 [US3] Implement `refilter_link(link)` in `backend/src/admin_console/services.py`: fetch the page, derive the summary, call the LLM, persist verdict/plan type/confidence/flag, and advance or drop (FR-012..FR-015)
+- [ ] T060 [US3] Implement `RefilterView`/`RefilterOverrideView` in `backend/src/admin_console/api.py` and wire routes
+- [ ] T061 [P] [US3] Emit masked refilter events and build the link/refilter review page (`frontend/app/ops/sites/[siteId]/links/page.tsx`) with the override action
+- [ ] T062 [P] [US3] Add Persian/RTL copy and frontend tests for the review page
 
-**Checkpoint**: User Stories 1–3 work independently.
+**Checkpoint**: US1–US3 work independently.
 
 ---
 
-## Phase 6: User Story 4 - Table extraction (Priority: P4)
+## Phase 6: User Story 4 - Server-side headless capture (Priority: P4)
 
-**Goal**: Convert the stored trace into table documents by invoking **domtrack's discovery**,
-and persist them linked to the link and trace; extraction is deterministic and an empty result
-flags the link.
+**Goal**: Capture each kept link headlessly on the server with domtrack and store the native trace.
 
-**Independent Test**: Extract from a stored trace and confirm tables/columns/rows persist with domtrack's `path` and `coverage`; re-run and confirm identical rows; extract from a trace with no tabular structure and confirm `table_count=0` with the link flagged.
+**Independent Test**: Capture a kept link, confirm a `Trace` row with a UUID key and `is_valid_trace`, no operator fields, and no advance without a trace; emulate a capture failure and confirm no advance.
 
 ### Tests for User Story 4 ⚠️
 
-- [X] T072 [P] [US4] Contract test for `POST /api/v1/ops/links/{id}/extractions` and `GET .../tables` in `backend/src/admin_console/tests/test_extraction.py`: 201 with tables persisted and `pipeline_stage="extracted"`, each column carrying domtrack's `path`/`atype`/`coverage`; 409 `trace_required` with no stored trace; 200 with `table_count=0` and `pipeline_stage="flagged"` (FR-018, FR-020, SC-007)
-- [X] T073 [P] [US4] Determinism test in `backend/src/admin_console/tests/test_extraction_determinism.py`: extracting the same trace twice replaces the previous extraction and yields identical table/column/row rows (FR-019, SC-008)
+- [ ] T063 [P] [US4] Contract test for `POST /api/v1/ops/links/{id}/captures` in `backend/src/admin_console/tests/test_capture_flow.py`: 201 recording a headless fixed-duration capture, 409 for a non-kept link, 409 `trace_required` when extraction is attempted without a trace (FR-016..FR-019, SC-009)
+- [ ] T064 [P] [US4] Capture state-machine + artifact test in `backend/src/admin_console/tests/test_capture_state.py` and `test_artifact_storage.py`: only `stored`/`failed` leaves `recording`; one non-terminal session per link; `save_trace` writes through `STORAGES` under a UUID key and no `Trace` column holds the body (FR-053)
 
 ### Implementation for User Story 4
 
-- [X] T074 [US4] Implement `extract_tables_for_link(link, actor)` in `backend/src/admin_console/services.py`: materialize the stored trace with `artifacts.materialize`, call `domtrack_client.extract_tables` with the constance `min_rows`/`min_cols`/`dedupe` values, persist tables/columns/rows inside a transaction (replacing any previous extraction for that trace), set `pipeline_stage="extracted"`, and flag the link when domtrack returns zero tables (FR-018..FR-020)
-- [X] T075 [US4] Implement the `run_extraction_task` body in `backend/src/admin_console/tasks.py` (module-level task calling the service) and have `ExtractionView` enqueue it, returning the result synchronously under the immediate backend (FR-019)
-- [X] T076 [US4] Implement `ExtractionView` (`POST`) and `LinkTablesView` (`GET`, tables + columns + rows for the workspace) in `backend/src/admin_console/api.py` (FR-018, FR-025)
-- [X] T077 [US4] Wire the extraction routes in `backend/src/admin_console/urls.py` (`links/<int:link_id>/extractions`, `links/<int:link_id>/tables`)
-- [X] T078 [US4] Emit structured events for extraction completed/empty in `backend/src/admin_console/events.py`, using aggregation rather than per-row logging (FR-044, Principle VII anti-noise)
-- [X] T079 [US4] Extend `frontend/src/lib/api/ops.ts` with the extraction run and tables-fetch calls
-- [X] T080 [US4] Build the tables page in `frontend/app/ops/links/[linkId]/tables/page.tsx` with `frontend/src/features/ops/tables/TableList.tsx` (candidate tables with score, columns with their `path`, and the flagged state when zero tables were found) (FR-018, FR-020)
-- [X] T081 [P] [US4] Add Persian/RTL copy for the tables view in `frontend/src/lib/i18n/strings.ts`
-- [X] T082 [P] [US4] Add frontend tests for the tables list and the zero-table flagged state in `frontend/tests/ops-tables.test.tsx`
+- [ ] T065 [US4] Implement `capture_headless` in `domtrack_client.py` (settle + scroll-to-bottom + fixed duration)
+- [ ] T066 [US4] Implement `capture_link(link)` in `backend/src/admin_console/services.py`: create the session, run the headless capture, store the trace via `artifacts.save_trace`, advance the link, and map errors to `failed` (FR-016..FR-019)
+- [ ] T067 [US4] Implement `CaptureStartView` in `backend/src/admin_console/api.py` and wire the route; add `run_capture_task` to `tasks.py`
+- [ ] T068 [P] [US4] Emit masked capture events and build the pipeline stage badge (`frontend/src/features/ops/pipeline/StageBadge.tsx`); no capture UI action is required beyond status
+- [ ] T069 [P] [US4] Add frontend tests for the stage badge and capture status in `frontend/tests/ops-capture.test.tsx`
 
-**Checkpoint**: User Stories 1–4 work independently.
+**Checkpoint**: US1–US4 work independently.
 
 ---
 
-## Phase 7: User Story 5 - Optional LLM labeling (Priority: P5)
+## Phase 7: User Story 5 - Table extraction (domtrack tables extract) (Priority: P5)
 
-**Goal**: Admin-gated, off-by-default table/column labeling through **domtrack's labeling** on
-the server, respecting the model-backed LLM cost ceiling, and never gating another stage.
+**Goal**: Extract tables from each stored trace with domtrack, per page independent; deterministic.
 
-**Independent Test**: With labeling disabled get `403 labeling_disabled` and confirm the pipeline still works; enable it and confirm meaningful labels persist; lower the ceiling and confirm `409 llm_ceiling_exceeded` with no labels written.
+**Independent Test**: Extract from a stored trace, persist tables/columns/rows; re-run and confirm identical rows; a trace with no tabular structure records zero tables.
 
 ### Tests for User Story 5 ⚠️
 
-- [X] T083 [P] [US5] Gating test in `backend/src/admin_console/tests/test_labeling_gate.py`: labeling is disabled by default (403), enabling it as an admin applies labels via `domtrack_client.label_tables` storing `SemanticLabel` rows, and extraction/mapping/cleaning/publishing/replay behave identically with and without labels (FR-021..FR-023, SC-016)
-- [X] T084 [P] [US5] LLM ceiling test in `backend/src/admin_console/tests/test_llm_ceiling.py`: a labeling call that would exceed `ceiling_amount` for the period stops with `409 llm_ceiling_exceeded`, writes no `SemanticLabel` rows, appends no spend row, and raises a ceiling-breach notification (Principle II, FR-024)
+- [ ] T070 [P] [US5] Contract test for `POST /api/v1/ops/links/{id}/extractions` and `GET .../tables` in `backend/src/admin_console/tests/test_extraction.py`: tables persisted with domtrack's `path`/`atype`/`coverage`, `pipeline_stage="extracted"`, 409 without a trace, `table_count=0` records no tables (FR-020..FR-022)
+- [ ] T071 [P] [US5] Determinism test in `backend/src/admin_console/tests/test_extraction_determinism.py`: extracting the same trace twice replaces the previous extraction and yields identical rows (FR-021, SC-010)
 
 ### Implementation for User Story 5
 
-- [X] T085 [US5] Implement `label_tables_for_link(link, actor)` in `backend/src/admin_console/services.py`: refuse when `constants.labeling_enabled()` is false, pre-check `llm_ceiling_status`, call `domtrack_client.label_tables` with `constants.labeling_config()` (provider/model/language/batch size; API key from environment only), upsert `SemanticLabel` rows, and call `record_llm_cost` after the call (FR-021, FR-022, FR-024)
-- [X] T086 [US5] Implement the `run_labeling_task` body in `backend/src/admin_console/tasks.py` and `LabelingView` (`POST`) in `backend/src/admin_console/api.py`, returning `labeling_disabled` / `llm_ceiling_exceeded` error codes as per the contract (FR-021, FR-024)
-- [X] T087 [US5] Wire the labeling route in `backend/src/admin_console/urls.py` (`links/<int:link_id>/labeling`) and add the settings + cost-ceiling endpoints `SettingsView` (`GET`/`PUT`) and `LlmCostCeilingView` (`GET`/`PUT`) in `backend/src/admin_console/api.py` (FR-043, research R16)
-- [X] T088 [US5] Emit structured events for labeling run/skipped/ceiling-blocked with call count and cost in `backend/src/admin_console/events.py` (FR-044, Principle VII)
-- [X] T089 [US5] Extend `frontend/src/lib/api/ops.ts` with the labeling call and the settings/cost-ceiling calls
-- [X] T090 [US5] Add the labeling action to `frontend/src/features/ops/tables/TableList.tsx` (showing labels when present and an admin-only enable prompt when disabled) and build the settings page `frontend/app/ops/settings/page.tsx` with `frontend/src/features/ops/settings/TunablesForm.tsx` and `LlmCeilingForm.tsx` (FR-021, FR-043, SC-015)
-- [X] T091 [P] [US5] Add Persian/RTL copy for labeling and settings in `frontend/src/lib/i18n/strings.ts`
-- [X] T092 [P] [US5] Add frontend tests for the labeling toggle, the disabled state, and the tunables form in `frontend/tests/ops-settings.test.tsx`
+- [ ] T072 [US5] Implement `extract_tables` in `domtrack_client.py` and `extract_link_tables(link)` in `services.py` (transactional replace; per-page independent)
+- [ ] T073 [US5] Implement `ExtractionView`/`LinkTablesView` in `backend/src/admin_console/api.py` and wire routes; add `run_extraction_task`
+- [ ] T074 [P] [US5] Emit masked extraction events and build the tables page (`frontend/app/ops/links/[linkId]/tables/page.tsx`)
 
-**Checkpoint**: User Stories 1–5 work independently.
+**Checkpoint**: US1–US5 work independently.
 
 ---
 
-## Phase 8: User Story 6 - Merge and mapping to the plan schema (Priority: P6)
+## Phase 8: User Story 6 - Table classification (Priority: P6)
 
-**Goal**: A Handsontable workspace where the operator merges tables and connects each schema
-field to a source selector plus an Excel-compatible combination formula, producing the durable
-extraction recipe.
+**Goal**: Classify each extracted table as a plans table or not, with plan type and confidence.
 
-**Independent Test**: Open the workspace, switch tables with the dropdown, combine fields across tables, connect every required field and save; confirm the recipe records a selector and a spreadsheet-valid formula per field; save with a required field unconnected and get `409 recipe_incomplete`; reopen and confirm the mapping is restored.
+**Independent Test**: A plans table and a non-plans table receive correct verdicts with confidence; a page with three tables where one is a plans table yields exactly one true verdict.
 
 ### Tests for User Story 6 ⚠️
 
-- [X] T093 [P] [US6] Contract test for `GET /api/v1/ops/plan-schema`, `GET|PUT /api/v1/ops/links/{id}/recipe` in `backend/src/admin_console/tests/test_mapping_recipe.py`: a 200 save records selector + formula per bound field and sets `pipeline_stage="mapped"`, 409 `recipe_incomplete` while a required field is unconnected (link not mapped), 400 for an invalid formula or unknown field/column, and `GET` restores the saved bindings (FR-025..FR-031, SC-009)
-- [X] T094 [P] [US6] Excel-compatibility unit test in `backend/src/admin_console/tests/test_formula_excel_compat.py`: valid spreadsheet expressions (`=SUM(A2:A9)`, `=IF(B2>0,B2,0)`, `=ROUND(VALUE(SUBSTITUTE(C2,",","")),0)`) validate and evaluate deterministically, while non-spreadsheet constructs, unknown functions, and any `eval`-style input are rejected (FR-028, research R10)
-- [X] T095 [P] [US6] Plan-schema test in `backend/src/admin_console/tests/test_plan_schema.py`: the schema is code-defined and read-only, carries the plan-type dimension (hosting/cdn/virtual_server), and `required_fields(plan_type)` matches the required flags used by the completeness gate (FR-027, FR-030)
+- [ ] T075 [P] [US6] Classification test in `backend/src/admin_console/tests/test_classification.py`: one verdict per table with plan type + confidence, a page may hold several true verdicts, budget exhaustion parks the link (FR-023..FR-025, SC-011)
+- [ ] T076 [P] [US6] Contract test for `POST /api/v1/ops/links/{id}/classifications` in `backend/src/admin_console/tests/test_classification_api.py`
 
 ### Implementation for User Story 6
 
-- [X] T096 [US6] Implement recipe services in `backend/src/admin_console/services.py`: `save_recipe(link, plan_type, bindings, actor)` validating every binding's field against `plan_schema`, formula against `formulas.validate_formula`, and source column against the link's extracted tables, computing `is_complete` from `required_fields(plan_type)`, versioning the recipe with exactly one `is_current`, and setting `pipeline_stage="mapped"` only when complete (FR-028, FR-030); `get_current_recipe(link)` for restore (FR-031)
-- [X] T097 [US6] Implement `PlanSchemaView` (`GET`), `RecipeView` (`GET`/`PUT`), and `LinkTablesView` reuse for the workspace in `backend/src/admin_console/api.py` (FR-025, FR-027, FR-031)
-- [X] T098 [US6] Wire the mapping routes in `backend/src/admin_console/urls.py` (`plan-schema`, `links/<int:link_id>/recipe`)
-- [X] T099 [US6] Emit structured events for recipe saved and link mapped in `backend/src/admin_console/events.py` (FR-044)
-- [X] T100 [US6] Extend `frontend/src/lib/api/ops.ts` with the plan-schema, recipe-fetch, and recipe-save calls
-- [X] T101 [US6] Build the Handsontable mapping workspace in `frontend/app/ops/links/[linkId]/mapping/page.tsx` and `frontend/src/features/ops/mapping/MappingWorkspace.tsx` (+ `TableSwitcher.tsx`, `FieldBindingPanel.tsx`): the grid renders the selected table, the dropdown switches tables, cross-table combination is supported, formulas are spreadsheet-style, required-field completeness is shown, and a reopened workspace restores saved selectors/formulas (FR-025..FR-031)
-- [X] T102 [P] [US6] Add Persian/RTL copy for the mapping workspace in `frontend/src/lib/i18n/strings.ts`
-- [X] T103 [P] [US6] Add frontend tests for the workspace: table switching, cross-table merge, incomplete-required-field blocking, and restore-on-reopen in `frontend/tests/ops-mapping.test.tsx`
+- [ ] T077 [US6] Implement `classify_tables` in `llm.py` (Pydantic output) and `classify_link_tables(link)` in `services.py` (budget-gated)
+- [ ] T078 [US6] Implement `ClassificationView` in `backend/src/admin_console/api.py` and wire the route; add `run_classification_task`
+- [ ] T079 [P] [US6] Emit masked classification events and surface verdicts on the tables page
 
-**Checkpoint**: User Stories 1–6 work independently.
+**Checkpoint**: US1–US6 work independently.
 
 ---
 
-## Phase 9: User Story 7 - Cleaning and publishing (Priority: P7)
+## Phase 9: User Story 7 - Plan schema extraction (data, not formulas) (Priority: P7)
 
-**Goal**: Standardize mapped data so filters can be applied (automatic first, exceptions
-surfaced), then publish through the `catalog` interface with full provenance.
+**Goal**: Extract a list of plan records as data against the fixed schema; no selectors, no
+formulas; skip unmappable tables.
 
-**Independent Test**: Clean mapped data with inconsistent units and confirm standardization with only exceptions returned; publish and confirm records in `catalog` with site/link/trace/recipe provenance; confirm an unconnected required field blocks publishing.
+**Independent Test**: A plans table yields normalized plan records; the output contains no selector/formula; an unmappable table is skipped while a sibling table is extracted.
 
 ### Tests for User Story 7 ⚠️
 
-- [X] T104 [P] [US7] Cleaning test in `backend/src/admin_console/tests/test_cleaning.py`: unit/number/range/category rules standardize values so filters apply, automatically cleanable data needs no operator action, only unresolvable exceptions are surfaced, a record with an exception keeps its other cleaned fields and stays publishable, and rule values come from constance (FR-032, FR-033, FR-043, SC-011)
-- [X] T105 [P] [US7] Publishing test in `backend/src/admin_console/tests/test_publishing.py`: publishing writes `catalog.PublishedRecord` rows **through `CatalogInterface`** with site/link/trace/recipe provenance and upserts by `(source, site, natural_key)`; a replay-reported removal retires the record rather than leaving stale values; publishing is refused with `409 recipe_incomplete` when a required field is unconnected; `catalog` never imports `admin_console` (FR-030, FR-034..FR-036, SC-009)
+- [ ] T080 [P] [US7] Extraction test in `backend/src/admin_console/tests/test_plan_extraction.py`: normalized schema-shaped records, no selector/formula anywhere, per-table skip without dropping the page's mappable tables, idempotent re-extraction (FR-026..FR-031, SC-012, SC-013)
+- [ ] T081 [P] [US7] Contract test for `POST /api/v1/ops/links/{id}/plans` and `GET .../plans` in `backend/src/admin_console/tests/test_plan_api.py`
 
 ### Implementation for User Story 7
 
-- [X] T106 [US7] Implement the cleaning rules engine in `backend/src/admin_console/cleaning.py`: a registry keyed by field/unit family driven by the constance `CLEANING_RULES` / `CLEANING_UNIT_FAMILIES` values (unit standardization such as GB/TB↔numeric and Mbps/Gbps, number and range parsing, currency separators, enum/category normalization via the plan schema's `enum_values`) returning `(cleaned_value, outcome)` per value (FR-032, FR-033)
-- [X] T107 [US7] Implement `clean_link_data(link, actor)` in `backend/src/admin_console/services.py`: evaluate the link's current recipe with `formulas.evaluate` over the extracted rows (no operator re-mapping, FR-029), run every value through the cleaning engine, collect exceptions, set `pipeline_stage="cleaned"` (FR-032, FR-033)
-- [X] T108 [US7] Implement `publish_link_data(link, actor)` in `backend/src/admin_console/services.py`: refuse unless the current recipe `is_complete`, then call `CatalogInterface.upsert_published_record` per item and set `pipeline_stage="published"`; `replay.py` removal handling calls `CatalogInterface.retire_published_record` (FR-030, FR-034..FR-036)
-- [X] T109 [US7] Implement `CleaningView` (`POST`) and `PublishView` (`POST`) in `backend/src/admin_console/api.py` and wire them in `backend/src/admin_console/urls.py` (`links/<int:link_id>/cleaning`, `links/<int:link_id>/publish`)
-- [X] T110 [US7] Emit structured events for cleaning completed/exception and published/removed in `backend/src/admin_console/events.py`, aggregated rather than per row (FR-044, Principle VII anti-noise)
-- [X] T111 [US7] Extend `frontend/src/lib/api/ops.ts` with the cleaning and publish calls
-- [X] T112 [US7] Build the cleaning/publish page in `frontend/app/ops/links/[linkId]/publish/page.tsx` with `frontend/src/features/ops/publishing/CleaningPanel.tsx` (exception list with resolution, publish action, provenance summary) and the stage indicator in `frontend/src/features/ops/pipeline/StageBadge.tsx` (FR-033, FR-035)
-- [X] T113 [P] [US7] Add Persian/RTL copy for cleaning/publishing in `frontend/src/lib/i18n/strings.ts`
-- [X] T114 [P] [US7] Add frontend tests for cleaning exceptions and the publish flow in `frontend/tests/ops-publishing.test.tsx`
+- [ ] T082 [US7] Implement `extract_plans` in `llm.py` (validated against `plan_schema.py`; required-field check; normalized values)
+- [ ] T083 [US7] Implement `extract_link_plans(link)` in `services.py`: extract per plans table, skip unmappable tables, upsert `PlanRecord` by `natural_key`, budget-gated (FR-026..FR-031)
+- [ ] T084 [US7] Implement `PlansView` in `backend/src/admin_console/api.py` and wire the route; add `run_plan_extraction_task`
+- [ ] T085 [P] [US7] Emit masked plan-extraction events and build the plans page (`frontend/app/ops/links/[linkId]/plans/page.tsx`)
 
-**Checkpoint**: User Stories 1–7 work independently.
+**Checkpoint**: US1–US7 work independently.
 
 ---
 
-## Phase 10: User Story 8 - Scheduled replay, diff, and failure alerting (Priority: P8)
+## Phase 10: User Story 8 - Optional LLM labeling (Priority: P8)
 
-**Goal**: Replay maintained links on a configured period with **domtrack replay + compare/diff**,
-apply differences to published data, track a per-link failure rate, and raise naming
-notifications through the `notifications` app when the rate crosses the threshold.
+**Goal**: Keep domtrack's labeling optional and admin-gated; it never gates another stage.
 
-**Independent Test**: Configure a short period, run `python manage.py run_scheduled_replays`, and confirm each due link gets a `ReplayRun` with before/after traces and an applied diff; force a failure rate past the threshold and confirm one alert names the link with an in-app notification (no email by project decision); re-run the flagged link through all stages and see it return to active.
+**Independent Test**: With labeling off the pipeline is unchanged; enabling it labels tables/columns; the pipeline still works when it is off.
 
 ### Tests for User Story 8 ⚠️
 
-- [X] T115 [P] [US8] Contract test for `GET|POST /api/v1/ops/replay-runs`, `GET .../links/{id}/failure`, and `GET .../alerts` in `backend/src/admin_console/tests/test_replay_diff.py`: due links are replayed, each run records before/after traces, a diff summary, `diff_applied=true`, and domtrack stats; the diff is applied to published data and a removal retires the record (FR-037..FR-039, SC-012)
-- [X] T116 [P] [US8] Scheduler test in `backend/src/admin_console/tests/test_replay_scheduler.py`: `run_scheduled_replays` selects only links whose `now - last_replay_at >= REPLAY_PERIOD_HOURS` on an `active` site with a complete recipe, skips `suspended` sites, enqueues one `django.tasks` task per link, and uses no Celery broker (FR-037, FR-043, research R2)
-- [X] T117 [P] [US8] Failure-rate and alerting test in `backend/src/admin_console/tests/test_failure_alerts.py`: the failure rate derives from domtrack's reported failures over `FAILURE_RATE_WINDOW_RUNS`, crossing `FAILURE_RATE_THRESHOLD` creates exactly one `open` alert naming the link, the alert is not repeated on subsequent replays while open, and a later re-crossing after resolution creates a new alert (FR-040, SC-013)
-- [X] T118 [P] [US8] Notifications test in `backend/src/notifications/tests/test_notifications_delivery.py`: each alert produces one `Notification` through `notifications/interfaces.notify` with one `NotificationDelivery` per active recipient on the `in_app` channel, `dedup_key` prevents duplicates, a failed delivery is recorded without blocking others, and recipients can be added/deactivated by an admin only (FR-041, research R15)
+- [ ] T086 [P] [US8] Labeling gate test in `backend/src/admin_console/tests/test_labeling_gate.py`: off by default, enabled only by an admin, budget-gated, and the pipeline behaves identically with or without labels (FR-032..FR-035, SC-019)
 
 ### Implementation for User Story 8
 
-- [X] T119 [US8] Implement replay orchestration in `backend/src/admin_console/replay.py`: `execute_replay_run(link)` materializing the before trace, calling `domtrack_client.compare_replay` with the constance `ReplayConfig`/`RecordingConfig` (clean mode + third-party detection), storing the after trace through `artifacts.save_trace`, recording the `ReplayRun` (stats, failures, diff summary), applying the diff to published data via `CatalogInterface` (upserts and retirements), and recomputing `Link.failure_rate` (FR-037..FR-039)
-- [X] T120 [US8] Implement alert raising in `backend/src/admin_console/services.py`: `evaluate_failure_alert(link)` creates/resolves `FailureAlert` state transitionally and, on opening a new alert, calls `notifications.interfaces.notify(event_type="link_failure_rate_exceeded", ..., dedup_key=<alert key>)` (state-based so it is not re-raised every cycle) (FR-040, FR-041)
-- [X] T121 [US8] Complete the `run_scheduled_replays` management command in `backend/src/admin_console/management/commands/run_scheduled_replays.py`: select due links, enqueue `run_replay_task` per link via `django.tasks`, and print a summary; add the `run_replay_task` body in `backend/src/admin_console/tasks.py` (FR-037, research R2)
-- [X] T122 [US8] Implement `ReplayRunListView`/`ReplayRunCreateView`, `LinkFailureView`, `AlertListView`, `LinkRerunView`, and the recipient endpoints (`NotificationRecipientListCreateView`, `NotificationRecipientDeactivateView`) in `backend/src/admin_console/api.py`, and wire them in `backend/src/admin_console/urls.py` (FR-037..FR-042)
-- [X] T123 [US8] Implement `rerun_link_stages(link, actor)` in `backend/src/admin_console/services.py` resetting the link to `capture` with its prior state preserved for audit, so the operator can re-run capture → extract → map → clean → publish and the link returns to `active` (FR-042, SC-014)
-- [X] T124 [US8] Wire the notifications app API in `backend/src/notifications/api.py` + `backend/src/notifications/urls.py` for the in-app inbox and recipient management, mounted under `/api/v1/ops/` (FR-041)
-- [X] T125 [US8] Emit structured events for replay run completed (with failure rate and staleness), alert raised/resolved, and notification delivery in `backend/src/admin_console/events.py` and `backend/src/notifications/events.py` (FR-044, FR-045, Principle VII)
-- [X] T126 [US8] Extend `frontend/src/lib/api/ops.ts` with the replay-run, failure, alert, rerun, and recipient calls
-- [X] T127 [US8] Build the replay & alerts page in `frontend/app/ops/replay/page.tsx` with `frontend/src/features/ops/replay/ReplayRunsTable.tsx` (before/after traces, diff summary, stats), `FailureRateBadge.tsx`, `AlertsPanel.tsx` (with a re-run action), and `RecipientManager.tsx` (FR-040..FR-042)
-- [X] T128 [P] [US8] Add Persian/RTL copy for replay, alerts, and recipients in `frontend/src/lib/i18n/strings.ts`
-- [X] T129 [P] [US8] Add frontend tests for the replay table, the failure badge, the alerts panel re-run action, and recipient management in `frontend/tests/ops-replay.test.tsx`
+- [ ] T087 [US8] Implement `label_tables` wiring in `domtrack_client.py` and a budget-gated `label_link_tables(link)` in `services.py`
+- [ ] T088 [US8] Implement the labeling toggle endpoint and add `run_labeling_task`; register the toggle in `admin.py`
+- [ ] T089 [P] [US8] Surface labels on the tables page and add Persian/RTL copy
 
-**Checkpoint**: All eight user stories are independently functional.
+**Checkpoint**: US1–US8 work independently.
 
 ---
 
-## Phase 11: Polish & Cross-Cutting Concerns
+## Phase 11: User Story 9 - Publishing to the main site (Priority: P9)
 
-**Purpose**: Guarantees that span every story
+**Goal**: Publish extracted plan records through `catalog` with provenance; retire removed items.
 
-- [X] T130 [P] Add the domtrack-reuse guard test in `backend/src/admin_console/tests/test_domtrack_reuse.py` that walks the backend source tree and fails if `domtrack` is imported anywhere except `backend/src/admin_console/domtrack_client.py` (FR-000, SC-017)
-- [X] T131 [P] Add the log-masking test in `backend/src/admin_console/tests/test_log_masking.py` asserting no captured log record contains an unmasked phone number or trace content (FR-044, SC-018)
-- [X] T132 [P] Add the tunables test in `backend/src/admin_console/tests/test_tunables_runtime.py` asserting replay period, failure threshold, labeling toggle, and cleaning rules all take effect after a runtime change through `PUT /api/v1/ops/settings` with no code change (FR-043, SC-015)
-- [X] T133 [P] Add the interface-boundary test in `backend/src/admin_console/tests/test_module_boundaries.py` asserting `catalog` and `notifications` never import `admin_console` and that published records are written only through `CatalogInterface` (Principle V)
-- [X] T134 Add the operations metrics endpoint `MetricsView` (`GET /api/v1/ops/metrics`) in `backend/src/admin_console/api.py` reporting crawl success rate per provider, per-source latency, LLM call count and cost, replay staleness, and open alert count (FR-045, Principle VII)
-- [X] T135 [P] Add the operator console README section documenting `/ops` vs Django `/admin`, the local `domtrack serve` prerequisite and port guidance, and the `STORAGES` S3-vs-local switch in `specs/003-admin-ops-console/quickstart.md` if gaps remain
-- [X] T136 Update `frontend/src/lib/i18n/strings.ts` and the console nav in `frontend/app/ops/layout.tsx` so every console screen is reachable and localized (Persian/RTL), with sample-path logging kept out of business logic
-- [X] T137 Regenerate the OpenAPI schema with `python manage.py spectacular --file /tmp/schema.yml` and confirm the console endpoints appear under `/api/v1/ops/` with the shared error shape (drf-spectacular contract check)
-- [X] T138 Run the full backend suite (`.venv/bin/python -m pytest backend/src -q`; `catalog` has no test directory) and the frontend suite (`cd frontend && yarn test`), then fix any regressions introduced by this feature — 229 backend passed with 6 pre-existing feature-002 failures; all console frontend tests pass, pre-existing header/main-page failures remain unrelated
-- [X] T139 Run the [quickstart.md](./quickstart.md) validation scenarios V1–V8 end-to-end against a local stack (SQLite/Redis, local `domtrack serve`, local `STORAGES` backend) and record the results — API/domain scenarios validated by the passing feature suite; manual domtrack capture/replay not runnable in this sandbox and recorded as such
+**Independent Test**: Extract → publish and confirm `catalog.PublishedRecord` rows with site/link/trace/classification provenance; a replay removal retires the record; `catalog` never imports `admin_console`.
+
+### Tests for User Story 9 ⚠️
+
+- [ ] T090 [P] [US9] Publishing test in `backend/src/admin_console/tests/test_publishing.py`: publish through `CatalogInterface` with site/link/trace/classification provenance and upsert by `(source, site, natural_key)`; removal retires; a plan with an unpopulated required field is not published (FR-030, FR-036..FR-038, SC-013)
+- [ ] T091 [P] [US9] Contract test for `POST /api/v1/ops/links/{id}/publish` in `backend/src/admin_console/tests/test_publish_api.py`
+
+### Implementation for User Story 9
+
+- [ ] T092 [US9] Implement `publish_link_plans(link)` in `services.py` calling `CatalogInterface.upsert_published_record`/`retire_published_record`; implement `CatalogInterface` in `catalog/interfaces.py`
+- [ ] T093 [US9] Implement `PublishView` in `backend/src/admin_console/api.py` and wire the route
+- [ ] T094 [P] [US9] Emit masked publish/retire events and build the publish/provenance page
+
+**Checkpoint**: US1–US9 work independently.
+
+---
+
+## Phase 12: User Story 10 - Scheduled replay, change detection, conditional re-extraction (Priority: P10)
+
+**Goal**: Replay with domtrack compare, classify changes content/structural, re-extract only when
+a plans table is touched, and alert on failure-rate crossings.
+
+**Independent Test**: Replay due links; a change to a plans table re-extracts while a change elsewhere does not; a structural change re-discovers/re-classifies first; crossing the failure threshold raises one in-app notification naming the link.
+
+### Tests for User Story 10 ⚠️
+
+- [ ] T095 [P] [US10] Replay test in `backend/src/admin_console/tests/test_replay_diff.py`: due links replayed with `compare`, before/after traces recorded, changes classified content/structural, `reextracted=true` only when a plans table is touched, and removals retire published records (FR-039..FR-043, SC-014, SC-015)
+- [ ] T096 [P] [US10] Scheduler test in `backend/src/admin_console/tests/test_replay_scheduler.py`: `run_scheduled_replays` selects due active-site links, skips suspended sites, enqueues one `django.tasks` task per link, no Celery
+- [ ] T097 [P] [US10] Failure-rate/alert test in `backend/src/admin_console/tests/test_failure_alerts.py`: rate derives from domtrack failures over the window, exactly one `open` alert per crossing, resolved on a fall, re-opened on a later rise (FR-044, SC-017)
+
+### Implementation for User Story 10
+
+- [ ] T098 [US10] Implement `compare_replay` wiring in `domtrack_client.py` and `execute_replay_run(link)` in `replay.py`: materialize the before trace, run compare, store the after trace, classify changes (content/structural), map each change to a classification (structural ⇒ re-discover + re-classify first), re-extract only when a plans table is touched, apply updates via `CatalogInterface`, and recompute the failure rate (FR-039..FR-043)
+- [ ] T099 [US10] Implement `evaluate_failure_alert(link)` in `services.py` (state-based; one notification per crossing via `notifications.interfaces.notify`) and `rerun_link_stages(link, actor)` resetting to `discovered` (FR-044..FR-046)
+- [ ] T100 [US10] Complete `run_scheduled_replays` and `run_replay_task`
+- [ ] T101 [US10] Implement `ReplayRunListView`/`ReplayRunCreateView`, `LinkFailureView`, `AlertListView`, `LinkRerunView`, and the recipient endpoints in `api.py`; wire routes
+- [ ] T102 [US10] Wire the `notifications` app API for the in-app inbox and recipient management
+- [ ] T103 [P] [US10] Emit masked replay/alert/delivery events and build the replay & alerts page (`frontend/app/ops/replay/page.tsx`) with a re-run action
+- [ ] T104 [P] [US10] Add Persian/RTL copy and frontend tests in `frontend/tests/ops-replay.test.tsx`
+
+**Checkpoint**: All ten stories work independently; the data self-refreshes with alerting.
+
+---
+
+## Phase 13: Polish & Cross-Cutting Concerns
+
+**Purpose**: Resilience, budget controls, contract, masking, and boundary guarantees
+
+- [ ] T105 [P] Implement per-link isolation + retry/backoff + dead-lettering around every stage in `tasks.py`/`services.py` and add `backend/src/admin_console/tests/test_resilience.py` (FR-051, FR-052, SC-017)
+- [ ] T106 [P] Implement the token-budget controls (admin set/get) and the awaiting-budget queue/resume path; add `backend/src/admin_console/tests/test_budget_gating.py` (FR-047..FR-050, SC-016)
+- [ ] T107 [P] Add the settings page (`frontend/app/ops/settings/page.tsx`) for the token budget, crawl query/bounds, deny list, refilter threshold, capture duration, and replay period
+- [ ] T108 [P] Contract test for the whole API against `contracts/ops-console-api.md`
+- [ ] T109 [P] Masked-log audit across all events (SC-021)
+- [ ] T110 [P] Domtrack/crawl4ai import-boundary test: `domtrack` only in `domtrack_client.py`, `crawl4ai` only in `discovery.py` (SC-020)
+- [ ] T111 Run the quickstart.md validation scenarios and record the results (browser/network stages are manual and recorded as such)
 
 **Checkpoint**: The feature is complete, contract-verified, and validated end-to-end.
 
@@ -352,19 +346,21 @@ notifications through the `notifications` app when the rate crosses the threshol
 
 - **Setup (Phase 1)**: No dependencies — can start immediately
 - **Foundational (Phase 2)**: Depends on Setup — **BLOCKS all user stories**
-- **User Stories (Phases 3–10)**: All depend on Foundational; stories can then proceed in parallel (if staffed) or sequentially P1 → P8
-- **Polish (Phase 11)**: Depends on all desired stories being complete
+- **User Stories (Phases 3–12)**: All depend on Foundational; stories can then proceed in parallel (if staffed) or sequentially P1 → P10
+- **Polish (Phase 13)**: Depends on all desired stories being complete
 
 ### User Story Dependencies
 
-- **US1 (P1)**: No dependencies on other stories — creates the `Site` that later stories use, and is the MVP
-- **US2 (P2)**: Depends on US1 only for an approved company's `Site` (the `Site` model is foundational), so it is independently testable by seeding an approved company
-- **US3 (P3)**: Depends on US2 keeping at least one link (`review_state="kept"`); independently testable with a seeded kept link
-- **US4 (P4)**: Depends on a stored trace (US3); independently testable with a seeded trace + a fake/injected domtrack result
-- **US5 (P5)**: Depends on extracted tables (US4) to have something to label; never blocks US4–US8 (FR-023)
-- **US6 (P6)**: Depends on extracted tables (US4); independent of US5 (labels are optional)
-- **US7 (P7)**: Depends on a complete recipe (US6); publishes through `catalog` (foundational interface)
-- **US8 (P8)**: Depends on a complete recipe and published data (US6, US7); raises alerts through `notifications` (foundational interface)
+- **US1 (P1)**: No dependencies — creates the `Site` later stories use; MVP
+- **US2 (P2)**: Depends on US1 for an approved company's `Site`; independently testable by seeding an approved company and a stubbed crawler
+- **US3 (P3)**: Depends on US2's candidate links; independently testable with a seeded candidate and a stubbed LLM
+- **US4 (P4)**: Depends on US3 keeping a link; independently testable with a seeded kept link and a stubbed capture
+- **US5 (P5)**: Depends on a stored trace (US4); independently testable with a seeded trace
+- **US6 (P6)**: Depends on extracted tables (US5); independently testable with seeded tables
+- **US7 (P7)**: Depends on plans-table classifications (US6)
+- **US8 (P8)**: Depends on extracted tables (US5); independent of US6/US7 (labels optional)
+- **US9 (P9)**: Depends on plan records (US7); publishes through `catalog` (foundational interface)
+- **US10 (P10)**: Depends on plan records + published data (US7, US9); raises alerts through `notifications` (foundational interface)
 
 ### Within Each User Story
 
@@ -376,24 +372,9 @@ notifications through the `notifications` app when the rate crosses the threshol
 ### Parallel Opportunities
 
 - All Setup tasks marked [P] can run in parallel
-- All Foundational model tasks marked [P] can run in parallel (T011–T022), then T023 migrates
-- Once Foundational completes, US1–US8 can be staffed in parallel (subject to the story dependencies above)
+- All Foundational model tasks marked [P] run in parallel (T012–T024), then T025 migrates
+- Once Foundational completes, US1–US10 can be staffed in parallel (subject to the dependencies above)
 - Within a story, all test tasks marked [P] run in parallel, and all frontend copy/tests tasks marked [P] run in parallel
-
----
-
-## Parallel Example: User Story 6
-
-```bash
-# Tests first (all independent files):
-Task: "Contract test for plan-schema and recipe endpoints in backend/src/admin_console/tests/test_mapping_recipe.py"
-Task: "Excel-compatibility unit test in backend/src/admin_console/tests/test_formula_excel_compat.py"
-Task: "Plan-schema test in backend/src/admin_console/tests/test_plan_schema.py"
-
-# Then frontend extras in parallel with the workspace build:
-Task: "Add Persian/RTL copy for the mapping workspace in frontend/src/lib/i18n/strings.ts"
-Task: "Add frontend tests for the workspace in frontend/tests/ops-mapping.test.tsx"
-```
 
 ---
 
@@ -404,28 +385,23 @@ Task: "Add frontend tests for the workspace in frontend/tests/ops-mapping.test.t
 1. Complete Phase 1: Setup
 2. Complete Phase 2: Foundational (CRITICAL — blocks all stories)
 3. Complete Phase 3: User Story 1 (approval queue + decisions)
-4. **STOP and VALIDATE**: run `backend/src/admin_console/tests/test_approval_queue.py` and `test_approval_authorization.py`, then exercise V1 from quickstart.md
+4. **STOP and VALIDATE**: run `test_approval_queue.py` and `test_approval_authorization.py`, then exercise V1 from quickstart.md
 5. Deploy/demo if ready — operators can clear the verification queue
 
 ### Incremental Delivery
 
 1. Setup + Foundational → foundation ready
 2. US1 → validate (MVP: company approval)
-3. US2 → validate (links flowing)
-4. US3 → validate (real traces entering the platform)
-5. US4 → validate (tables persisted, deterministic)
-6. US5 → validate (optional labels, ceiling enforced)
-7. US6 → validate (recipe saved and reproducible)
-8. US7 → validate (clean, published, provenance intact)
-9. US8 → validate (self-refreshing data with alerting)
-10. Polish → contract, masking, tunables, and boundary guarantees
-
-### Parallel Team Strategy
-
-With multiple developers, complete Setup + Foundational together, then assign US1, US2, and
-US3 to separate developers (the earliest pipeline stages), moving later stories forward as
-their upstream stage lands. US5 can be built in parallel with US4/US6 because labeling never
-gates another stage.
+3. US2 → validate (candidate links flowing)
+4. US3 → validate (refilter drops non-plans pages before Chrome)
+5. US4 → validate (headless traces entering the platform)
+6. US5 → validate (tables persisted, deterministic)
+7. US6 → validate (plans tables identified with confidence)
+8. US7 → validate (plan data extracted, no recipes)
+9. US8 → validate (optional labels)
+10. US9 → validate (published with provenance)
+11. US10 → validate (self-refreshing data with alerting)
+12. Polish → resilience, budget, contract, masking, boundary guarantees
 
 ---
 
@@ -434,7 +410,8 @@ gates another stage.
 - [P] tasks = different files, no dependencies
 - [Story] label maps each task to its user story for traceability
 - Every task names an exact file path so it is executable without extra context
-- No Celery anywhere: background work is `django.tasks` (T006) plus `run_scheduled_replays` (T121)
-- domtrack is imported only in `backend/src/admin_console/domtrack_client.py` (T027), locked by T130
-- The operator console is `/api/v1/ops/` and `frontend/app/ops/**` — never `/admin` (a Django admin URL)
-- Published records live in `catalog` (T021/T029), notifications in `notifications` (T022/T030)
+- No Celery anywhere: background work is `django.tasks` (T007) plus `run_scheduled_replays` (T100)
+- domtrack is imported only in `backend/src/admin_console/domtrack_client.py` (T028, locked by T110); crawl4ai only in `discovery.py` (T029)
+- The operator console is `/api/v1/ops/` and `frontend/app/ops/**` — never `/admin`
+- Published records live in `catalog` (T024/T033), notifications in `notifications` (T034)
+- **No recipes, no formulas, no Handsontable, no sitemap** anywhere in this task list

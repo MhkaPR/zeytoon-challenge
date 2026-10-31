@@ -6,33 +6,36 @@
 
 ## Summary
 
-Deliver the operator console for the host/server plan aggregator: a) **company approval** and
-b) **site data maintenance** driven end-to-end by the mandated `domtrack` library. The console
-lists companies awaiting verification with the information needed to decide (including a
-duplicate-domain warning), records exactly one append-only decision per company (approved ⇒
-verified, panel opens, its site's maintenance lifecycle starts; not approved ⇒ stays
-unverified, registration step reopens), and refuses any owner attempt to influence the
-outcome. On approval, the company's single site is onboarded: candidate links are
-auto-discovered from its sitemap (or entered by the operator), reviewed (kept or removed), and
-the kept links enter the pipeline. Each kept link is captured by **domtrack capture** running
-locally on the operator's machine (a Chrome window opens, recording starts and ends
-interactively), and the resulting native trace file is transferred to the platform
-automatically where the browser permits and by operator-confirmed manual upload otherwise.
-The stored trace is mined for tables with **domtrack tables extract**, optionally enriched by
-**domtrack tables label** (admin-gated, LLM cost-ceiling aware), mapped to a code-defined
-**plan schema** in a Handsontable workspace that records, per schema field, the source
-selector (the column's domtrack `path`) and a combination formula — the extraction recipe,
-whose formula is an Excel/spreadsheet-compatible expression so operators work with familiar
-spreadsheet semantics — then cleaned into filterable values and published to the main site
-with full provenance. A scheduled **domtrack replay + record + compare/diff** run refreshes
-published data, applies added/removed/changed differences, tracks a per-link failure rate,
-and raises notifications to an admin-configurable recipient list when a link's failure rate
-crosses the configured threshold, so the operator can re-run that link's stages. Background
-work uses **Django 6's built-in Tasks framework** plus a `run_scheduled_replays` management
-command — **Celery is not used**. Every tunable is a django-constance runtime constant, no
-domtrack capability is reimplemented, and the pipeline runs in a new `admin_console` backend
-module that consumes company state only through `companies/interfaces.py`, writes published
-data into the `catalog` app through its interface, and dispatches all notifications through a
+Deliver the operator console for the host/server plan aggregator: a) **company approval** and the
+operator controls for b) an **automated site-data pipeline** driven by the mandated `domtrack`
+library plus `crawl4ai`. The console lists companies awaiting verification with the information
+needed to decide (including a duplicate-domain warning), records exactly one append-only decision
+per company (approved ⇒ verified, panel opens, its site's maintenance lifecycle starts; not
+approved ⇒ stays unverified, registration step reopens), and refuses any owner attempt to
+influence the outcome. On approval, the company's single site is onboarded by **crawl4ai adaptive
+crawling** (statistical strategy — no embeddings, no LLM) seeded on the company domain; this
+replaces sitemap discovery. Harvested links are reduced by a deterministic host/extension/segment
+policy, then **refiltered by an LLM** that receives only the link URL, its `h1–h3`, and the
+important section (largest text-density block in `<main>`/`<article>`) derived without an LLM;
+only confidently non-plans links are dropped. Each kept link is captured **headlessly by domtrack
+on the server** (fixed-duration recording with a settle/scroll step) and stored as a native
+trace. The trace is mined for tables with **domtrack tables extract** (each page independent),
+each table is **classified by an LLM** as a plans table or not with a confidence, and every plans
+table is **extracted as data by an LLM against the code-defined plan schema** — normalized plan
+records, no selectors and no formulas — optionally enriched by **domtrack tables label**
+(admin-gated). Extracted plan records are published to the main site through the `catalog` app
+with provenance. A scheduled **domtrack compare** run (replay + record + diff in one call)
+classifies each detected change as content or structural; a change touching a plans table
+triggers LLM re-extraction (structural changes re-discover and re-classify first), while a change
+elsewhere triggers no LLM work. An admin-set **LLM token budget** gates
+refilter/classification/extraction/labeling: when it is exhausted the rest of the pipeline
+continues and only LLM-gated work waits. A per-link failure rate raises notifications to an
+admin-configurable recipient list, and every stage is isolated and retried with backoff before
+dead-lettering. Background work uses **Django 6's built-in Tasks framework** plus a
+`run_scheduled_replays` management command — **Celery is not used**. Every tunable is a
+django-constance runtime constant, no domtrack capability is reimplemented, and the pipeline runs
+in `admin_console`, which consumes company state only through `companies/interfaces.py`, writes
+published data into `catalog` through its interface, and dispatches all notifications through a
 dedicated `notifications` app.
 
 ## Technical Context
@@ -42,18 +45,22 @@ dedicated `notifications` app.
 **Primary Dependencies**: Django 6.1.2, Django REST Framework 3.18, **Django Tasks
 (`django.tasks`, the framework's built-in background-work system — Celery is explicitly not
 used)**, django-guardian (role + object permissions), django-constance with the database
-backend (runtime constants), Pydantic (boundary validation + recipe validation),
-drf-spectacular (OpenAPI), **domtrack 2.0.0** (capture, replay, record-during-replay, compare,
-diff, HTML rebuild, table discovery, LLM table labeling — consumed as-is), **django-storages
-+ boto3** for S3-backed artifacts via Django's `STORAGES` setting, and `httpx` + stdlib
-`xml.etree` (sitemap fetching/parsing). Reuses the existing `accounts` JWT auth, `utils`
-shared base/logging, and `companies` module through its interface. Frontend: Next.js 16.4.2,
-React 19.3, Tailwind 4, HeroUI v3, Vitest + Testing Library, and **Handsontable**
-(`handsontable` + `@handsontable/react-wrapper`) for the mapping spreadsheet.
+backend (runtime constants), Pydantic (boundary validation + the plan-schema models the LLM
+extraction fills), drf-spectacular (OpenAPI), **domtrack** (capture, replay,
+record-during-replay, compare, diff, HTML rebuild, table discovery, LLM table labeling —
+consumed as-is; server-side and headless), **crawl4ai** (adaptive crawling with the
+statistical strategy for link discovery), an **OpenAI-compatible client** for the
+refilter/classification/extraction LLM calls (base URL + key from environment; `openai` or
+`compatible`), **django-storages + boto3** for S3-backed artifacts via Django's `STORAGES`
+setting, and `httpx` (the page fetch behind the refilter's deterministic extraction). Reuses
+the existing `accounts` JWT auth, `utils` shared base/logging, and `companies` module through
+its interface. Frontend: Next.js 16.4.2, React 19.3, Tailwind 4, HeroUI v3, and Vitest +
+Testing Library (no mapping spreadsheet).
 
 **Storage**: PostgreSQL is the source of truth for Site, Link, CaptureSession, Trace metadata,
-ExtractedTable/Column/Row, SemanticLabel, ExtractionRecipe/RecipeFieldBinding, ReplayRun, and
-LlmCostLedger (the plan schema is code, not a table). **Published records live in the
+ExtractedTable/Column/Row, TableClassification, PlanRecord, SemanticLabel, ReplayRun,
+LlmCostLedger, and the LLM token budget (the plan schema is code, not a table). **Published
+records live in the
 `catalog` app** and notifications live in the **`notifications` app** (see Project
 Structure). domtrack **trace files and other artifacts are stored through Django's `STORAGES`
 API**, defaulting to S3-compatible object storage (`django-storages`/`boto3`) and
@@ -63,21 +70,26 @@ Redis backs the cache and throttles. Meilisearch is not involved (search/ranking
 elsewhere).
 
 **Testing**: pytest + pytest-django with DRF `APITestCase`/`APIClient` covering approval
-recording and owner refusal, sitemap discovery + manual entry + link review state, capture
-session state machine (no advance without a stored trace), extraction determinism and
-empty-table flagging, labeling gating + ceiling stop, recipe completeness, formula validity at
-the boundary, and restore-on-reopen, cleaning outcomes/exceptions, publishing through the
-`catalog` interface with provenance and removal handling, notification fan-out through the
-`notifications` app (in-app only; email is out of scope by project decision), replay/compare/diff application, failure-rate threshold
-and one-shot alerting, artifact storage through a `STORAGES`-backed backend, constance-driven
-tuning, and log masking (SC-018). A dedicated import test asserts every `domtrack` import lives
-in `admin_console/domtrack_client.py` (SC-017). Frontend: Vitest + Testing Library for the
-approval queue, link review, capture controls, mapping workspace restore/save, and alerts.
+recording and owner refusal, adaptive-crawl link discovery (stubbed crawler) plus the
+deterministic host/extension/segment policy, the refilter input shape (URL + `h1–h3` +
+important section, never HTML) and its recall-biased keep/drop rule, the headless capture state
+machine (no advance without a stored trace), extraction determinism and no-tables recording,
+table classification, schema extraction producing normalized plan data with no
+recipe/selector/formula, per-table skip without dropping a page's mappable tables, budget
+gating and the awaiting-budget queue, replay/content-vs-structural classification and
+conditional re-extraction, resilience (per-link isolation, retry/backoff, dead-letter),
+publishing through the `catalog` interface with provenance and removal handling, notification
+fan-out through the `notifications` app (in-app only; email is out of scope by project
+decision), failure-rate threshold and one-shot alerting, artifact storage through a
+`STORAGES`-backed backend, constance-driven tuning, and log masking (SC-021). Dedicated import
+tests assert every `domtrack` import lives in `admin_console/domtrack_client.py` and every
+`crawl4ai` import lives in the discovery module (SC-020). Frontend: Vitest + Testing Library
+for the approval queue, link/refilter review, and alerts.
 
 **Target Platform**: Linux server (Docker), all services hosted in Iran, including a
 self-hosted S3-compatible object store for artifacts; the operator console is a role-gated
-area of the existing Next.js app. domtrack capture runs as a local FastAPI service on the
-operator's own machine.
+area of the existing Next.js app. **domtrack and crawl4ai run server-side**, with a headless
+Chromium available to the server; no operator machine runs domtrack.
 
 **Project Type**: Web application (backend API + frontend), modular monolith.
 
@@ -88,20 +100,23 @@ staleness bounded by the configured replay period; trace reads/writes served by 
 store rather than the database.
 
 **Constraints**: domtrack MUST be used as-is for every capability it provides and none may be
-reimplemented (FR-000/000a/000b, SC-017); the stored artifact MUST be domtrack's native trace
+reimplemented (FR-000/000a/000b, SC-020); the stored artifact MUST be domtrack's native trace
 (FR-000a); trace bodies MUST NOT be converted into platform tables and MUST NOT be stored in
-the database; capture MUST NOT advance a link without a stored trace (FR-014); a link MUST NOT
-be mapped or published with a required schema field unconnected (FR-030); recipe formulas MUST
-be Excel/spreadsheet-valid expressions over source selectors; labeling MUST be off by default
-and MUST stop at the LLM ceiling rather than overspend (FR-021, FR-024); no unmasked personal
-data in any log (SC-018); no Celery; no hard-coded tunables; crawling must respect robots.txt
-with a transparent user-agent and per-domain rate limiting (Principle X); data and services
-hosted in Iran.
+the database; capture MUST be headless and server-side and MUST NOT advance a link without a
+stored trace (FR-016, FR-018); link discovery MUST use crawl4ai's statistical strategy with no
+embeddings/LLM and MUST NOT fetch a sitemap (FR-008); the refilter MUST send no page HTML to the
+model (FR-012); extraction MUST produce data only, with no selectors, formulas, or recipes
+(FR-028); labeling MUST be off by default and MUST respect the token budget rather than
+overspend (FR-032, FR-035); when the token budget is exhausted only LLM-gated work waits and the
+rest of the pipeline continues (FR-048); each link is isolated and retries with backoff before
+dead-lettering (FR-051, FR-052); no unmasked personal data in any log (SC-021); no Celery; no
+hard-coded tunables; crawling and capture must respect robots.txt with a transparent user-agent
+and per-domain rate limiting (Principle X); data and services hosted in Iran.
 
 **Scale/Scope**: Hundreds of approved companies/sites, each with a maintained link set; a
-console area of ~8 screens (approval queue, site detail, link review, capture, tables, mapping
-workspace, cleaning/publish, replay & alerts, settings); 8 pipeline stories (P1–P8), ~46
-functional requirements, 18 success criteria; a new `admin_console` Django app (~20 endpoints)
+console area of ~7 screens (approval queue, site detail, link/refilter review, tables &
+classifications, plan data, replay & alerts, settings); 10 pipeline stories (P1–P10), ~58
+functional requirements, 21 success criteria; a new `admin_console` Django app (~20 endpoints)
 plus a new `notifications` app and the `catalog` app's published-record model, and role-gated
 operator frontend routes under `/ops`.
 
@@ -112,26 +127,26 @@ operator frontend routes under `/ops`.
 | Principle | Gate | Status |
 |-----------|------|--------|
 | I. Product Domain | Company approval and site data maintenance are the provider data-ingestion path for the plan comparison product; the published records this feature produces are the (plan) data the catalog and search features consume. | PASS |
-| II. Cost and External Resources | LLM cost ceiling stored in a Django model (not settings), checked before each domtrack labeling call; exceeding it stops labeling and alerts rather than overspending (FR-024). | PASS |
+| II. Cost and External Resources | The admin-set LLM token budget is stored in a Django model (not settings) and checked before every LLM-gated call (refilter, classification, schema extraction, labeling); when exhausted, non-LLM stages continue and LLM-gated work waits, with the admin notified (FR-047..FR-049). Per-link/per-table spend is attributed and retried calls are idempotent (FR-049, FR-050). | PASS |
 | III. Security and Secrets | LLM provider and S3 credentials read only from environment; trace metadata validated with Pydantic at the upload boundary; no key in code (including no inline S3 credentials — the storage backend reads them from env). | PASS |
 | IV. Data Governance | Postgres/Redis and the S3-compatible artifact store all run in Iran; `django-storages` is pointed at the self-hosted endpoint, so no external/cloud dependency; Meilisearch untouched here. | PASS |
 | V. Architecture | New `admin_console`, `notifications`, and `catalog` changes are all inside the modular monolith; company state reached only via `companies/interfaces.py`, published records written only via `catalog/interfaces.py`, and notifications dispatched only via `notifications/interfaces.py`; Postgres is the source of truth; Redis used for caching/throttles; single deployable with the operator area inside the existing Next.js app. | PASS |
 | VI. Performance and Scalability | Read-heavy console endpoints targeted at 100 req/s with p95 < 300 ms for queue/list reads; replay job enqueue decoupled from per-link work via Django Tasks; traces served from object storage so large artifacts never hit Postgres; Redis caching for repeated reads. | PASS |
 | VII. Observability | Structured JSON events at debug/info/warning/error for every pipeline transition, with the required metrics (crawl success rate per provider, latency per source, LLM call count + cost, replay staleness) and aggregation/sampling on hot paths. | PASS |
-| VIII. Quality and Testing | Every domain behavior (each stage and each gate) ships with an automated test; a domtrack-import test locks SC-017, and a formula-validation test locks Excel/spreadsheet compatibility so neither can regress. | PASS |
-| IX. Data Retention | Traces, recipes, replay runs, and alerts are retained for auditing (artifacts in object storage, metadata in Postgres); links are never hard-deleted (removal is a recorded state); traces remain the evidence for published data. | PASS |
-| X. Crawling Ethics | Sitemap/link fetching honors robots.txt, uses a transparent user-agent with contact URL, and applies per-domain rate limiting. | PASS |
+| VIII. Quality and Testing | Every domain behavior (each stage and each gate) ships with an automated test; domtrack-import and crawl4ai-import tests lock SC-020, and resilience/budget tests lock the waiting and dead-letter behavior (FR-048, FR-052). | PASS |
+| IX. Data Retention | Traces, table classifications, extracted plan records, replay runs, and alerts are retained for auditing (artifacts in object storage, metadata in Postgres); links are never hard-deleted (removal is a recorded state); traces remain the evidence for published data. | PASS |
+| X. Crawling Ethics | Adaptive crawling and the refilter fetch honor robots.txt, use a transparent user-agent with contact URL, and apply per-domain rate limiting; the deterministic deny list excludes non-content resources. | PASS |
 | XI. Authentication | Operator console reuses the existing JWT auth; every endpoint is operator gated (`ops` group or admin, `is_operator()`) and refuses owner access to decisions (FR-005). | PASS |
-| XII. Prefer Established Libraries and Generators | `startapp` scaffolds `admin_console` and `notifications`; domtrack is used as-is (no reimplementation); `django-storages`/`boto3` provide S3 artifacts instead of hand-written storage code; constance, guardian, DRF, and Handsontable are established libraries; sitemap parsing uses stdlib where no library clearly adds value (research R5). | PASS |
-| XIII. Configurable Values | All tunables are django-constance constants except the LLM ceiling (model-backed per Principle II) and environment-specific values (settings/env), which now explicitly include the artifact storage backend and S3 endpoint/credentials; no hard-coded thresholds or inline storage config. | PASS |
+| XII. Prefer Established Libraries and Generators | `startapp` scaffolds `admin_console` and `notifications`; domtrack is used as-is (no reimplementation), crawl4ai provides adaptive crawling, and the LLM stages use an OpenAI-compatible client; `django-storages`/`boto3` provide S3 artifacts instead of hand-written storage code; constance, guardian, and DRF are established libraries. | PASS |
+| XIII. Configurable Values | All tunables are django-constance constants except the LLM token budget (model-backed per Principle II) and environment-specific values (settings/env): the artifact storage backend, S3 endpoint/credentials, the LLM gateway base URL/key, and the crawl query and bounds; no hard-coded thresholds or inline storage config. | PASS |
 
 **Post-Phase 1 re-check**: PASS. Revised Phase 1 design keeps the module boundaries strict:
 `admin_console` writes published records only through `catalog/interfaces.py` and emits
 notifications only through `notifications/interfaces.py`, so `catalog` and `notifications`
 remain independently owned and reusable (Principle V). The artifact layer is delegated to
-Django's `STORAGES` API with an S3 default configurable from settings (Principle XII, XIII),
-and recipe formulas are constrained to an Excel-compatible grammar (a boundary validation
-rule, not new complexity). Complexity Tracking remains empty.
+Django's `STORAGES` API with an S3 default configurable from settings (Principle XII, XIII), and
+the LLM-token-budget gate is a single checked boundary rather than new complexity. Complexity
+Tracking remains empty.
 
 ## Project Structure
 
@@ -155,8 +170,8 @@ backend/
     ├── config/
     │   ├── settings.py            # register admin_console + notifications; TASKS setting;
     │   │                          #   CONSTANCE_CONFIG additions; STORAGES (S3 default via
-    │   │                          #   django-storages, env-configurable); DOMTRACK_LOCAL_API_URL;
-    │   │                          #   email backend
+    │   │                          #   django-storages, env-configurable); LLM gateway base URL;
+    │   │                          #   crawl query/bounds; email backend
     │   └── urls.py                # mount /api/v1/ops/ (operator console API)
     ├── utils/                     # unchanged (TimestampedModel, logging/masking reused)
     ├── accounts/                  # operator identity; ops/admin groups + is_operator()
@@ -179,25 +194,30 @@ backend/
     │   └── tests/
     ├── admin_console/             # NEW module (python manage.py startapp admin_console)
     │   ├── models.py              # Site, Link, CaptureSession, Trace, ExtractedTable,
-    │   │                          #   ExtractedTableColumn, ExtractedTableRow, SemanticLabel,
-    │   │                          #   ExtractionRecipe, RecipeFieldBinding, ReplayRun,
-    │   │                          #   LlmCostLedger
+    │   │                          #   ExtractedTableColumn, ExtractedTableRow,
+    │   │                          #   TableClassification, PlanRecord, SemanticLabel,
+    │   │                          #   ReplayRun, LlmCostLedger + LLM token budget
     │   ├── interfaces.py          # the only sanctioned entry point for other modules
-    │   ├── domtrack_client.py     # ONLY module that imports domtrack (FR-000, SC-017):
-    │   │                          #   local REST capture + server-side library adapters
+    │   ├── domtrack_client.py     # ONLY module that imports domtrack (FR-000, SC-020):
+    │   │                          #   server-side adapters (headless capture, replay/compare,
+    │   │                          #   tables extract/label)
     │   ├── artifacts.py           # Django STORAGES-backed artifact store (S3 default);
     │   │                          #   uuid-keyed writes/reads/deletes, never touches Postgres
-    │   ├── plan_schema.py         # code-defined plan schema with plan-type dimension (FR-027)
-    │   ├── formulas.py            # Excel/spreadsheet-compatible formula grammar + evaluator
-    │   ├── discovery.py           # robots.txt + sitemap discovery (stdlib xml + httpx)
-    │   ├── cleaning.py            # cleaning rules engine (constance-driven, FR-032..034)
-    │   ├── services.py            # approvals (via interface), onboarding, review, capture
-    │   │                          #   session, extraction, labeling gate, recipe save/validate,
-    │   │                          #   cleaning, publish (via catalog interface),
-    │   │                          #   replay orchestration, alerting (via notifications interface)
+    │   ├── plan_schema.py         # code-defined plan schema (Pydantic models) with plan-type
+    │   │                          #   dimension (FR-027)
+    │   ├── discovery.py           # crawl4ai adaptive crawling (statistical) + deterministic
+    │   │                          #   link policy; ONLY module importing crawl4ai
+    │   ├── refilter.py            # deterministic h1-h3/important-section extraction + LLM
+    │   │                          #   plans-page refilter (FR-012..FR-015)
+    │   ├── llm.py                 # OpenAI-compatible client; classification + schema extraction
+    │   │                          #   with the token-budget gate + awaiting-budget state
+    │   ├── services.py            # approvals (via interface), onboarding/discovery, refilter,
+    │   │                          #   capture session, extraction, classification, plan
+    │   │                          #   extraction, publish (via catalog interface), replay
+    │   │                          #   orchestration, alerting (via notifications interface)
     │   ├── tasks.py               # django.tasks task functions (extract, label, replay link)
-    │   ├── selectors.py           # console reads (queue, site detail, tables, recipes, runs)
-    │   ├── serializers.py         # DRF I/O + Pydantic boundary/recipe schemas
+    │   ├── selectors.py           # console reads (queue, site detail, tables, plans, runs)
+    │   ├── serializers.py         # DRF I/O + Pydantic boundary schemas
     │   ├── api.py                 # DRF views (OperatorOnlyView base) for console endpoints
     │   ├── constants.py           # constance CONSTANCE_CONFIG additions (runtime tunables)
     │   ├── events.py              # structured, masked pipeline events (Principle VII, FR-044)
@@ -209,18 +229,20 @@ backend/
     │   └── tests/
     │       ├── test_approval_queue.py
     │       ├── test_site_onboarding.py
-    │       ├── test_link_review.py
-    │       ├── test_capture_flow.py
+    │       ├── test_link_discovery.py       # adaptive crawl (stubbed) + deterministic policy
+    │       ├── test_link_refilter.py        # input shape + recall-biased keep/drop
+    │       ├── test_capture_flow.py         # headless server capture state machine
     │       ├── test_extraction.py
+    │       ├── test_classification.py
+    │       ├── test_plan_extraction.py      # schema-shaped data, no recipes
     │       ├── test_labeling_gate.py
-    │       ├── test_mapping_recipe.py
-    │       ├── test_formula_excel_compat.py
     │       ├── test_artifact_storage.py     # STORAGES-backed, uuid keys, no DB blobs
-    │       ├── test_cleaning.py
     │       ├── test_publishing.py           # written via catalog interface + provenance
-    │       ├── test_replay_diff.py
+    │       ├── test_replay_diff.py          # content vs structural + conditional re-extract
+    │       ├── test_budget_gating.py        # awaiting-budget queue + no double charge
+    │       ├── test_resilience.py           # isolation, retry/backoff, dead-letter
     │       ├── test_failure_alerts.py       # alerting via notifications interface
-    │       ├── test_domtrack_reuse.py       # asserts domtrack imported only in client
+    │       ├── test_domtrack_reuse.py       # domtrack only in client; crawl4ai only in discovery
     │       └── test_log_masking.py
     └── manage.py
 
@@ -231,18 +253,15 @@ frontend/
 │       ├── page.tsx               # approvals queue
 │       ├── companies/[companyId]/page.tsx
 │       ├── sites/[siteId]/page.tsx            # site detail + pipeline stage
-│       ├── sites/[siteId]/links/page.tsx      # link review
-│       ├── links/[linkId]/capture/page.tsx    # capture trigger + trace upload
-│       ├── links/[linkId]/tables/page.tsx     # extracted tables + labels
-│       ├── links/[linkId]/mapping/page.tsx    # Handsontable mapping workspace
-│       ├── links/[linkId]/publish/page.tsx    # cleaning exceptions + publish
+│       ├── sites/[siteId]/links/page.tsx      # link/refilter review
+│       ├── links/[linkId]/tables/page.tsx     # extracted tables + classifications
+│       ├── links/[linkId]/plans/page.tsx      # extracted plan data
 │       ├── replay/page.tsx                    # replay runs + failure alerts
 │       └── settings/page.tsx                  # labeling toggle, recipients, tunables
 └── src/
     ├── features/
-    │   └── ops/                   # NEW feature slices (approvals, links, capture,
-    │       │                      #   tables, mapping, publishing, replay, settings)
-    │       └── mapping/MappingWorkspace.tsx     # Handsontable-based workspace
+    │   └── ops/                   # NEW feature slices (approvals, links, tables,
+    │       │                      #   plans, replay, settings)
     └── lib/
         ├── api/ops.ts             # console API client (follows api/companies.ts pattern)
         └── i18n/                  # Persian/RTL copy additions
@@ -254,7 +273,8 @@ specs/003-admin-ops-console/       # this feature's design artifacts
 convenience:
 
 - **`admin_console` (new)** owns the site-maintenance pipeline (Site, Link, CaptureSession,
-  Trace metadata, extracted tables, labels, recipes, replay runs, cost ledger), the
+  Trace metadata, extracted tables, classifications, plan records, labels, replay runs, cost
+  ledger + token budget), the
   artifact-store adapter, and the approval *queue* surface. Company verification itself is
   delegated to `companies.services.record_verification_decision` through
   `companies/interfaces.py`, so `VerificationDecision` keeps its single owner and SC-001
@@ -277,10 +297,10 @@ every stored artifact has a unique, non-guessable name independent of its origin
 database stores only the key, backend alias, size, and hash. The operator UI is a role-gated
 frontend area at `frontend/app/ops/**` with slices under `frontend/src/features/ops/**` and an
 `api/ops.ts` client — deliberately **not** `app/admin/**`, so the frontend route never shadows
-or reads like Django's built-in `/admin/`, and the console API is mounted at `/api/v1/ops/`.
-The mapping workspace uses Handsontable as the spec requires, and its formulas are validated
-against an Excel/spreadsheet-compatible grammar so operators can reason about them as
-spreadsheet expressions.
+or reads like Django's built-in `/admin/`, and the console API is mounted at `/api/v1/ops/`. The
+console exposes the automated pipeline's state (discovered/refiltered links, tables and their
+classifications, extracted plan data, replay changes, budget) and the controls (the LLM token
+budget and thresholds); operators no longer map or clean data by hand.
 
 ## Complexity Tracking
 

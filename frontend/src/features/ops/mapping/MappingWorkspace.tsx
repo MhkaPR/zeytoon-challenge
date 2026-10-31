@@ -6,7 +6,9 @@ import "handsontable/styles/ht-theme-main.css";
 import { HotTable } from "@handsontable/react-wrapper";
 import { Button, Card, Label, ListBox, Select, Typography } from "@heroui/react";
 import { useMemo, useState } from "react";
+import { registerAllModules } from 'handsontable/registry';
 
+registerAllModules();
 import type {
   ExtractedTable,
   PlanType,
@@ -41,6 +43,7 @@ export function MappingWorkspace({
   errorText?: string | null;
   onSave: (planType: string, bindings: RecipeBinding[]) => void;
 }) {
+
   const [planType, setPlanType] = useState(
     initialRecipe?.plan_type ?? planTypes[0]?.key ?? "",
   );
@@ -128,7 +131,6 @@ export function MappingWorkspace({
         />
       </div>
 
-      <Card className="flex flex-col gap-[8px] p-[12px]" variant="secondary">
         <Typography className="text-[12px] text-muted">{opsStrings.gridHint}</Typography>
         <div className="overflow-x-auto">
           <HotTable
@@ -138,11 +140,10 @@ export function MappingWorkspace({
             height={240}
             licenseKey="non-commercial-and-evaluation"
             readOnly
-            rowHeaders
+            manualColumnResize={true}
             stretchH="all"
           />
         </div>
-      </Card>
 
       <FieldBindingPanel
         bindings={bindings}
