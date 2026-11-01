@@ -72,7 +72,15 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
     from admin_console.models import Link, Site
 
     logger = logging.getLogger(__name__)
-    site = Site.objects.get(pk=site_id)
+    site = Site.objects.filter(pk=site_id).first()
+    if site is None:
+        # A persisted task can outlive its site (for example after test data or an
+        # operator cleanup). Treat it as stale work instead of retrying forever.
+        logger.warning(
+            "Skipping pipeline task for missing site %s", site_id,
+            extra={"event": "pipeline_site_missing", "site_id": site_id},
+        )
+        return {"site_id": site_id, "discovered": 0, "links": [], "skipped": "site_missing"}
     discovered = {"after_policy": 0}
     if discover and site.last_discovered_at is None:
         discovered = services.discover_and_store_links(site)
@@ -97,12 +105,16 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             continue
         if link.last_error and link.pipeline_task_state != "queued":
             continue
+        Link.objects.filter(pk=link.pk).update(pipeline_task_state="running")
         try:
             if link.pipeline_stage == Link.PipelineStage.DISCOVERED:
                 services.refilter_link(link)
                 link.refresh_from_db()
                 if link.review_state != Link.ReviewState.KEPT:
                     completed.append(link.pk)
+                    Link.objects.filter(pk=link.pk).update(
+                        pipeline_task_state="completed"
+                    )
                     continue
             if link.pipeline_stage == Link.PipelineStage.REFILTERED:
                 try:
@@ -112,6 +124,9 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                         # A duplicate site task may have lost the race to create
                         # the unique non-terminal capture session. The winning
                         # task owns this stage; don't park the link as failed.
+                        Link.objects.filter(pk=link.pk).update(
+                            pipeline_task_state="queued"
+                        )
                         continue
                     raise
                 link.refresh_from_db()
@@ -125,6 +140,9 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                     classification__is_plans_table=True
                 ).exists():
                     completed.append(link.pk)
+                    Link.objects.filter(pk=link.pk).update(
+                        pipeline_task_state="completed"
+                    )
                     continue
             if link.pipeline_stage == Link.PipelineStage.CLASSIFIED:
                 services.extract_link_plans(link)
@@ -132,11 +150,23 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             completed.append(link.pk)
             link.last_error = ""
             link.save(update_fields=["last_error", "updated_at"])
+            waiting_for_capture = (
+                link.pipeline_stage == Link.PipelineStage.REFILTERED
+                and link.capture_sessions.filter(
+                    state__in=link.capture_sessions.model.NON_TERMINAL
+                ).exists()
+            )
+            Link.objects.filter(pk=link.pk).update(
+                pipeline_task_state="queued" if waiting_for_capture else "completed"
+            )
         except Exception as exc:
             link.refresh_from_db()
             if isinstance(exc, services.llm.NoPlanRecordsError):
                 link.last_error = f"no_valid_plans: {exc}"[:512]
                 link.save(update_fields=["last_error", "updated_at"])
+                Link.objects.filter(pk=link.pk).update(
+                    pipeline_task_state="completed"
+                )
                 logger.info(
                     "site_pipeline_no_valid_plans",
                     extra={"event": "site_pipeline_no_valid_plans", "link_id": link.pk},
@@ -151,6 +181,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             }.get(link.pipeline_stage, link.pipeline_stage)
             link.last_error = f"{failed_stage}: {str(exc)[:450]}"
             link.save(update_fields=["last_error", "updated_at"])
+            Link.objects.filter(pk=link.pk).update(pipeline_task_state="failed")
             from notifications.interfaces import NotificationsInterface
 
             NotificationsInterface.notify(
@@ -181,6 +212,10 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                 state = "failed"
             elif target.pipeline_stage in terminal_stages:
                 state = "completed"
+            elif target.pipeline_stage == Link.PipelineStage.REFILTERED and not target.last_error:
+                # A capture may already be running for this link. Leave it eligible
+                # for worker recovery instead of recording a synthetic failure.
+                state = "queued"
             else:
                 state = "failed"
                 target.last_error = f"pipeline_incomplete: stopped at {target.pipeline_stage}"
@@ -199,7 +234,7 @@ def recover_site_pipeline_tasks(backend_name="default"):
     from django_tasks_db.models import DBTaskResult
 
     from admin_console import services
-    from admin_console.models import Link
+    from admin_console.models import CaptureSession, Link
 
     task_path = "admin_console.tasks.run_site_pipeline_task"
     interrupted = DBTaskResult.objects.filter(
@@ -234,6 +269,22 @@ def recover_site_pipeline_tasks(backend_name="default"):
         for result in active_tasks.only("args_kwargs")
         if result.args_kwargs.get("args")
     }
+    # A killed worker can leave a capture session in ``recording`` forever.
+    # Such a session blocks start_capture, which makes the resumed site task
+    # return successfully without advancing the queued link. Only close sessions
+    # when no pipeline task for that site is currently queued or running.
+    CaptureSession.objects.filter(
+        link__is_active=True,
+        link__pipeline_stage=Link.PipelineStage.REFILTERED,
+        link__site_id__in=Link.objects.filter(
+            is_active=True,
+            review_state__in=(Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT),
+            pipeline_stage=Link.PipelineStage.REFILTERED,
+        )
+        .exclude(site_id__in=queued_site_ids)
+        .values("site_id"),
+        state__in=CaptureSession.NON_TERMINAL,
+    ).update(state=CaptureSession.State.FAILED, error="worker_interrupted")
     stale_plan_links = []
     for link in Link.objects.filter(
         is_active=True,
@@ -254,6 +305,20 @@ def recover_site_pipeline_tasks(backend_name="default"):
             pipeline_stage=Link.PipelineStage.CLASSIFIED,
             last_error="",
         )
+    # Older worker runs could leave a synthetic incomplete marker on links whose
+    # persisted stage is still resumable. Clear that marker so startup recovery
+    # can enqueue them; real stage errors remain parked for an operator retry.
+    Link.objects.filter(
+        is_active=True,
+        pipeline_stage__in=(
+            Link.PipelineStage.DISCOVERED,
+            Link.PipelineStage.REFILTERED,
+            Link.PipelineStage.CAPTURED,
+            Link.PipelineStage.EXTRACTED,
+            Link.PipelineStage.CLASSIFIED,
+        ),
+        last_error__startswith="pipeline_incomplete:",
+    ).update(last_error="")
     unfinished_site_ids = set(
         Link.objects.filter(
             is_active=True,

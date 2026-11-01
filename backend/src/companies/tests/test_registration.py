@@ -65,9 +65,9 @@ def test_list_is_owner_scoped(auth_client, owner, other_owner):
     assert response.json()["companies"] == []
 
 
-def test_domain_is_stored_normalized_and_not_deduplicated(owner):
+def test_domain_is_normalized_and_preserves_www_for_site_crawling(owner):
     first = register_company(owner, _payload(domain="WWW.Example.com/path?x=1"))
-    assert first.domain == "example.com"
+    assert first.domain == "www.example.com"
     # A repeated domain is accepted; this feature performs no detection (FR-041/FR-042).
     second = register_company(owner, _payload(company_name="Again"))
     assert second.pk != first.pk

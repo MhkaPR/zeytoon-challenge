@@ -128,10 +128,13 @@ export function LinkList({ links }: { links: Link[] }) {
                     size="sm"
                     variant="secondary"
                   >
-                    {link.pipeline_task_state === "queued" ||
-                    link.pipeline_task_state === "running"
-                      ? opsStrings.retryQueued
-                      : opsStrings.retry}
+                    {({ isPending }) =>
+                      isPending ||
+                      link.pipeline_task_state === "queued" ||
+                      link.pipeline_task_state === "running"
+                        ? opsStrings.retryQueued
+                        : opsStrings.retry
+                    }
                   </Button>
                 </td>
               </tr>

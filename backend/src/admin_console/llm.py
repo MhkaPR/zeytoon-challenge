@@ -12,18 +12,52 @@ developer can subclass them or inject fakes in tests. The module-level defaults
 
 import json
 import logging
+from pathlib import Path
 import uuid
+from typing import Literal
 
 import httpx
 from django.conf import settings
 from django.utils import timezone
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model
 
 from admin_console import plan_schema
 from admin_console.models import Link, LlmCostLedger
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
+PLAN_EXTRACTION_PROMPT_PATH = Path(__file__).with_name("prompts") / "plan_extraction.md"
 logger = logging.getLogger(__name__)
+
+
+def _strict_json_schema(model):
+    """Convert a Pydantic schema to OpenAI Structured Outputs strict form."""
+    schema = model.model_json_schema()
+
+    def normalize(node):
+        if isinstance(node, list):
+            return [normalize(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        node = {key: normalize(value) for key, value in node.items()}
+        if node.get("type") == "object" or "properties" in node:
+            props = node.get("properties", {})
+            node["required"] = list(props)
+            node["additionalProperties"] = False
+        return node
+
+    return normalize(schema)
+
+
+def _plan_extraction_system_prompt(plan_type):
+    try:
+        instructions = PLAN_EXTRACTION_PROMPT_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise LlmError("plan extraction system prompt could not be loaded") from exc
+    guidance = json.dumps(_schema_field_guidance(plan_type), ensure_ascii=False)
+    return (
+        f"{instructions.strip()}\n\n"
+        f"Selected plan type: {plan_type}. Use this field guidance from the active schema: {guidance}"
+    )
 
 
 class LlmError(Exception):
@@ -158,18 +192,30 @@ class LlmClient:
         self.model = model or settings.OPENAI_MODEL
 
     def chat_json(self, system, user, *, stage, idempotency_key=None, model=None,
-                  link=None, table=None):
+                  link=None, table=None, response_model=None, strict_schema=False):
         self.budget.guard(stage, link=link)
         base_url = (settings.OPENAI_BASE_URL or "").rstrip("/")
         if not base_url:
             raise LlmError("OPENAI_BASE_URL is not configured")
+        response_format = {"type": "json_object"}
+        if strict_schema:
+            if response_model is None:
+                raise ValueError("strict_schema requires response_model")
+            response_format = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "plan_extraction",
+                    "strict": True,
+                    "schema": _strict_json_schema(response_model),
+                },
+            }
         payload = {
             "model": model or self.model or "gpt-4o-mini",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "response_format": {"type": "json_object"},
+            "response_format": response_format,
             "temperature": 0,
         }
         headers = {"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
@@ -191,9 +237,15 @@ class LlmClient:
         )
         content = body["choices"][0]["message"]["content"]
         try:
-            return json.loads(content)
+            data = json.loads(content)
         except (ValueError, KeyError) as exc:
             raise LlmError(f"unparseable LLM response: {content[:200]}") from exc
+        if response_model is not None:
+            try:
+                data = response_model.model_validate(data).model_dump(mode="json")
+            except ValidationError as exc:
+                raise LlmError("LLM response did not match the required JSON schema") from exc
+        return data
 
     def refilter_page(self, url, headings, important_section, *, idempotency_key=None,
                       link=None):
@@ -212,44 +264,52 @@ class LlmClient:
         return RefilterVerdict(**data)
 
     def classify_tables(self, table_contexts, *, idempotency_key=None, link=None):
+        plan_type = Literal["", *plan_schema.PLAN_SCHEMA.keys()]
+        classification_model = create_model(
+            "TableClassificationStrict",
+            __config__=ConfigDict(extra="forbid"),
+            table_index=(int, ...),
+            is_plans_table=(bool, ...),
+            plan_type=(plan_type, ...),
+            confidence=(float, ...),
+        )
+        response_model = create_model(
+            "TableClassificationsStrict",
+            __config__=ConfigDict(extra="forbid"),
+            classifications=(list[classification_model], ...),
+        )
         system = (
             "You classify tables. For each table decide if it lists hosting/server plans "
-            '(plans table) or not. Return JSON: {"classifications": [{"table_index": int, '
+            '(plans table) or not. If plans, plan_type MUST be one exact schema key from '
+            f"{sorted(plan_schema.PLAN_SCHEMA)}. If none matches, mark not a plans table and "
+            'return an empty plan_type. Never return a descriptive category label. '
+            'Return JSON: {"classifications": [{"table_index": int, '
             '"is_plans_table": bool, "plan_type": string, "confidence": number}]}.'
         )
         user = json.dumps({"tables": table_contexts}, ensure_ascii=False)
         data = self.chat_json(system, user, stage="classification",
-                              idempotency_key=idempotency_key, link=link)
+                              idempotency_key=idempotency_key, link=link,
+                              response_model=response_model)
         return [TableClassificationOut(**item) for item in data.get("classifications", [])]
 
     def extract_plans(self, table_context, plan_type, field_keys, *, idempotency_key=None,
                       link=None, table=None):
         """Extract a **list of plans** as data against the schema (FR-026, FR-028)."""
-        system = (
-            "You extract hosting/server plan data from a table as JSON. Produce DATA only: "
-            "no selectors and no formulas. Normalize amounts, units, and billing periods. "
-            "Treat each table row as a separate plan; map cells by column headers, not by "
-            "assuming a fixed column order. Headers may be Persian or English and prices "
-            "may include localized digits, separators, or currency words. Normalize those "
-            "to a numeric price_amount, converting Persian and Arabic-Indic digits. "
-            "Every plan must have a non-empty plan_name and a numeric price_amount. "
-            "Never use 0, an empty string, or a guessed value to represent a missing price; "
-            "if a row has no explicit price, omit that row from the plans list. Only return "
-            "a zero price when the source explicitly states that the plan is free. "
-            "Other specifications may be unknown; use null or omit them rather than guessing. "
-            "Set confidence to 1.0 when the plan name and price are explicitly present in "
-            "the corresponding row and mapped unambiguously; optional missing CPU, RAM, "
-            "storage, OS, or billing details do not lower confidence. Use below 1.0 only "
-            "when name or price is ambiguous, inferred, or unsupported. Do not invent plans. "
-            "Every plan item must contain a 'values' object with the schema fields; "
-            "never put plan fields directly at the item top level. "
-            f"The output is a LIST of plans; each plan uses these field keys for plan type "
-            f"'{plan_type}': {sorted(field_keys)}. "
-            'Return JSON: {"plans": [{"values": {field_key: value}, "confidence": number}]}.'
-        )
+        output_model = plan_schema.extraction_model(plan_type)
+        if output_model is None:
+            raise LlmError(f"unknown plan schema: {plan_type}")
+        system = _plan_extraction_system_prompt(plan_type)
         user = json.dumps({"table": table_context}, ensure_ascii=False)
-        data = self.chat_json(system, user, stage="schema_extraction",
-                              idempotency_key=idempotency_key, link=link, table=table)
+        data = self.chat_json(
+            system,
+            user,
+            stage="schema_extraction",
+            idempotency_key=idempotency_key,
+            link=link,
+            table=table,
+            response_model=output_model,
+            strict_schema=True,
+        )
         raw_plans = data.get("plans", [])
         if not isinstance(raw_plans, list):
             raise LlmError("LLM returned plans in an invalid format")
@@ -257,10 +317,6 @@ class LlmClient:
         allowed_fields = plan_schema.all_field_keys(plan_type)
         plans = []
         for index, item in enumerate(raw_plans):
-            if isinstance(item, dict) and "values" not in item:
-                flat_values = {key: value for key, value in item.items() if key in allowed_fields}
-                if flat_values:
-                    item = {"values": flat_values, "confidence": item.get("confidence")}
             try:
                 plan = PlanRecordOut.model_validate(item)
                 if model is not None:
@@ -279,6 +335,25 @@ class LlmClient:
         if raw_plans and not plans:
             raise LlmError("LLM returned no valid plan records")
         return plans
+
+
+def _schema_field_guidance(plan_type):
+    schema = plan_schema.schema_for(plan_type)
+    if schema is None:
+        return []
+    return [
+        {
+            "key": field.key,
+            "label": field.label,
+            "kind": field.kind,
+            "unit_family": field.unit_family,
+            "canonical_unit": field.canonical_unit,
+            "values": list(field.values),
+            "aliases": list(field.aliases),
+        }
+        for field in schema.fields
+        if field.key in plan_schema.all_field_keys(plan_type)
+    ]
 
 
 default_budget = LlmBudget()

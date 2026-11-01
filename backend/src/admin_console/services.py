@@ -142,7 +142,9 @@ def discover_and_store_links(site, actor=None, bounds=None):
     ).netloc
     harvested = []
     for query in constants.link_crawl_queries():
-        harvested.extend(discovery.crawl_candidate_links(site.domain, query, bounds=bounds))
+        harvested.extend(
+            discovery.crawl_candidate_links(site.domain, query, bounds=bounds)
+        )
     reduced = discovery.apply_link_policy(harvested, host=host)
     stored = _store_links(site, reduced, Link.Source.ADAPTIVE_CRAWL)
     site.last_discovered_at = timezone.now()
@@ -477,7 +479,25 @@ def extract_link_plans(link, actor=None):
     pending_records = []
     for table in tables:
         classification = table.classification
-        plan_type = classification.plan_type or "hosting"
+        plan_type = classification.plan_type
+        if plan_type not in plan_schema.PLAN_SCHEMA:
+            # Repair legacy/invalid classifier output by classifying this table again
+            # against the current schema keys. Never silently substitute a schema.
+            verdicts = llm.classify_tables(
+                [{"table_index": 0, **_table_context(table)}],
+                link=link,
+                idempotency_key=f"classify-repair:{table.pk}",
+            )
+            verdict = next((item for item in verdicts if item.table_index == 0), None)
+            if verdict is None or not verdict.is_plans_table:
+                classification.is_plans_table = False
+                classification.plan_type = ""
+                classification.save(update_fields=("is_plans_table", "plan_type"))
+                continue
+            classification.plan_type = verdict.plan_type
+            classification.confidence = verdict.confidence
+            classification.save(update_fields=("plan_type", "confidence"))
+            plan_type = verdict.plan_type
         field_keys = plan_schema.all_field_keys(plan_type)
         plans = llm.extract_plans(
             _table_context(table),

@@ -120,10 +120,15 @@ def duplicate_domain_ids(company):
     """
     if not company.domain:
         return []
+    from companies.domain import canonical_domain
+
+    target = canonical_domain(company.domain)
     return list(
-        Company.objects.filter(domain=company.domain)
-        .exclude(pk=company.pk)
-        .values_list("pk", flat=True)
+        pk
+        for pk, domain in Company.objects.exclude(pk=company.pk).values_list(
+            "pk", "domain"
+        )
+        if canonical_domain(domain) == target
     )
 
 

@@ -1,17 +1,14 @@
 """Domain-value helpers for the companies module."""
 
-import re
 from urllib.parse import urlsplit
-
-_WWW_RE = re.compile(r"^www\.", re.IGNORECASE)
 
 
 def normalize_domain(raw):
     """Return a normalized company domain for storage.
 
-    Lowercases, strips any scheme/path/query, and drops a leading ``www.`` so that the admin
-    panel has a consistent key for duplicate detection (FR-041). This module performs **no**
-    duplicate detection itself (FR-042).
+    Lowercases and strips any scheme/path/query while preserving the hostname, including
+    a leading ``www.``, because the hostname is also used as the crawl seed. Duplicate
+    detection uses :func:`canonical_domain` separately.
     """
     if raw is None:
         return ""
@@ -23,5 +20,10 @@ def normalize_domain(raw):
     # Drop any path/query/port remnants.
     value = value.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
     value = value.split(":", 1)[0]
-    value = _WWW_RE.sub("", value)
     return value.strip(".")
+
+
+def canonical_domain(raw):
+    """Return the duplicate-detection key, treating www and apex as equivalent."""
+    value = normalize_domain(raw)
+    return value[4:] if value.startswith("www.") else value

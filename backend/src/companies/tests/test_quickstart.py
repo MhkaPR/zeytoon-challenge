@@ -282,7 +282,7 @@ def test_v10_ownership_refused_and_archival(auth_client, owner):
     )
     assert dup.status_code == 201
     assert (
-        Company.objects.get(pk=dup.json()["company"]["id"]).domain == "example.com"
+        Company.objects.get(pk=dup.json()["company"]["id"]).domain == "www.example.com"
     )
 
     # Account deletion archives (soft delete); nothing is hard-deleted.

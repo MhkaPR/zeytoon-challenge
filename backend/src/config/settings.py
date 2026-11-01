@@ -311,8 +311,8 @@ CONSTANCE_CONFIG = {
         "English host/server-plans query passed to the adaptive crawler.",
     ),
     "LINK_CRAWL_MAX_PAGES": (60, "Maximum pages the adaptive crawler visits per run."),
-    "LINK_CRAWL_MAX_DEPTH": (3, "Maximum crawl depth from the seed domain."),
-    "LINK_CRAWL_TOP_K": (10, "Top-k links the statistical strategy keeps per frontier step."),
+    "LINK_CRAWL_MAX_DEPTH": (5, "Maximum crawl depth from the seed domain."),
+    "LINK_CRAWL_TOP_K": (50, "Top-k links the statistical strategy keeps per frontier step."),
     "LINK_DENY_EXTENSIONS": (
         [
             "js", "css", "txt", "json", "xml", "pdf", "doc", "docx", "xls", "xlsx",
@@ -330,7 +330,7 @@ CONSTANCE_CONFIG = {
         ],
         "Non-content path segments excluded by the deterministic link policy.",
     ),
-    "LINK_DISCOVERY_MAX_LINKS": (500, "Maximum candidate links stored per discovery run."),
+    "LINK_DISCOVERY_MAX_LINKS": (5000, "Maximum candidate links stored per discovery run."),
     # LLM link refilter (recall-biased).
     "REFILTER_PROVIDER": ("openai", "LLM provider key used by the link refilter."),
     "REFILTER_MODEL": ("", "LLM model used by the link refilter (empty = provider default)."),
