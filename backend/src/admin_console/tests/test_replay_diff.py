@@ -79,9 +79,10 @@ def test_structural_change_rediscovers_and_reclassifies(planned_link, stub_domtr
     assert change.change_kind == ChangeRecord.Kind.STRUCTURAL
     assert change.touches_plans_table is True
     assert run.reextracted is True
-    # A structural change re-ran discovery + classification before extraction.
+    # A structural change re-ran table discovery + labeling before extraction.
     assert stub_domtrack.extract_calls
-    assert stub_llm.classification_calls
+    assert stub_domtrack.label_calls
+    assert stub_llm.combined_classification_calls
 
 
 def test_replay_without_a_before_trace_fails(kept_link):

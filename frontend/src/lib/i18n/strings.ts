@@ -408,13 +408,13 @@ export const opsStrings = {
   qualityAccepted: "پلن‌ها تأیید و منتشر شدند.",
   pipelineFailure: "خطا در این مرحله؛ خط لوله متوقف شده و هشدار ثبت شد.",
   noValidPlansOutcome: "پردازش تمام شد، اما پلنی با نام و قیمت معتبر پیدا نشد؛ داده نادرست ذخیره نشده است. می‌توانید دوباره تلاش کنید.",
+  noPlansOutcome: "پردازش تمام شد، اما هیچ جدولی به‌عنوان جدول پلن پذیرفته نشد؛ پلنی برای انتشار وجود ندارد.",
   pipelineStage: {
     discovered: "کشف‌شده",
-    refiltered: "بازبینی‌شده",
     captured: "ضبط‌شده",
     extracted: "استخراج‌شده",
-    classified: "دسته‌بندی‌شده",
     plans_extracted: "در انتظار تأیید کیفیت",
+    no_plans: "بدون پلن",
     published: "منتشرشده",
   } as Record<string, string>,
   approvalsIntro:
@@ -640,6 +640,7 @@ export const opsStrings = {
   stageMapped: "نگاشت‌شده",
   stageCleaned: "پاک‌شده",
   stagePublished: "منتشرشده",
+  stageNoPlans: "بدون پلن",
   stageFlagged: "علامت‌گذاری",
   stageFailed: "ناموفق",
 } as const;
@@ -661,6 +662,7 @@ export const stageLabels: Record<string, string> = {
   mapped: opsStrings.stageMapped,
   cleaned: opsStrings.stageCleaned,
   published: opsStrings.stagePublished,
+  no_plans: opsStrings.stageNoPlans,
   flagged: opsStrings.stageFlagged,
   failed: opsStrings.stageFailed,
 };

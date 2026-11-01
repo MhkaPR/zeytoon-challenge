@@ -1,5 +1,7 @@
 """US6 — table classification with plan type + confidence (FR-023..FR-025)."""
 
+import json
+
 import pytest
 
 from admin_console import llm, services
@@ -15,15 +17,16 @@ from admin_console.tests.conftest import HOSTING_PLAN_VALUES
 pytestmark = pytest.mark.django_db
 
 
-def test_each_table_gets_one_verdict_with_confidence(classified_link):
-    classification = TableClassification.objects.get(table__link=classified_link)
+def test_each_table_gets_one_verdict_with_confidence(planned_link):
+    classification = TableClassification.objects.get(table__link=planned_link)
     assert classification.is_plans_table is True
     assert classification.plan_type == "hosting"
     assert 0.0 <= classification.confidence <= 1.0
-    assert classified_link.pipeline_stage == Link.PipelineStage.CLASSIFIED
+    assert planned_link.pipeline_stage == Link.PipelineStage.PLANS_EXTRACTED
 
 
-def test_a_page_may_hold_several_plans_tables(extracted_link, stub_llm):
+def test_a_page_may_hold_several_plans_tables(labeled_link, stub_llm):
+    extracted_link = labeled_link
     first = ExtractedTable.objects.get(link=extracted_link)
     ExtractedTable.objects.create(
         trace=first.trace,
@@ -35,71 +38,59 @@ def test_a_page_may_hold_several_plans_tables(extracted_link, stub_llm):
         row_count=2,
     )
     stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": True, "plan_type": "hosting", "confidence": 0.9},
-        {"table_index": 1, "is_plans_table": True, "plan_type": "cdn", "confidence": 0.7},
+        {"table_index": 0, "is_correct": True, "plan_type": "hosting", "confidence": 0.9},
+        {"table_index": 1, "is_correct": True, "plan_type": "cdn", "confidence": 0.7},
     ]
+    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 
-    services.classify_link_tables(extracted_link)
+    services.classify_and_extract_link_tables(extracted_link)
 
     assert TableClassification.objects.filter(
         table__link=extracted_link, is_plans_table=True
     ).count() == 2
 
 
-def test_non_plans_table_is_recorded_but_not_counted(extracted_link, stub_llm):
+def test_non_plans_table_is_recorded_but_not_counted(labeled_link, stub_llm):
+    extracted_link = labeled_link
     stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": False, "plan_type": "", "confidence": 0.95}
+        {"table_index": 0, "is_correct": False, "plan_type": "", "confidence": 0.95}
     ]
+    stub_llm.plans = []
 
-    services.classify_link_tables(extracted_link)
+    services.classify_and_extract_link_tables(extracted_link)
 
     classification = TableClassification.objects.get(table__link=extracted_link)
     assert classification.is_plans_table is False
 
 
-def test_unsupported_classification_type_does_not_discard_valid_verdicts(monkeypatch):
-    client = llm.LlmClient()
-    monkeypatch.setattr(
-        client,
-        "chat_json",
-        lambda *args, **kwargs: {
-            "classifications": [
-                {
-                    "table_index": 0,
-                    "is_plans_table": True,
-                    "plan_type": "hosting",
-                    "confidence": 0.9,
-                },
-                {
-                    "table_index": 1,
-                    "is_plans_table": True,
-                    "plan_type": "email",
-                    "confidence": 0.8,
-                },
-            ]
-        },
-    )
-
-    verdicts = client.classify_tables([])
-
-    assert [(v.is_plans_table, v.plan_type) for v in verdicts] == [
-        (True, "hosting"),
-        (False, ""),
+def test_no_accepted_table_marks_link_as_no_plans(labeled_link, stub_llm):
+    extracted_link = labeled_link
+    stub_llm.classifications = [
+        {"table_index": 0, "is_correct": False, "plan_type": "", "confidence": 0.95}
     ]
+    stub_llm.plans = []
+
+    services.classify_and_extract_link_tables(extracted_link)
+
+    extracted_link.refresh_from_db()
+    assert extracted_link.pipeline_stage == Link.PipelineStage.NO_PLANS
+    assert PlanRecord.objects.filter(link=extracted_link).count() == 0
 
 
-def test_budget_exhaustion_parks_the_link(extracted_link, stub_llm):
+def test_budget_exhaustion_parks_the_link(labeled_link, stub_llm):
+    extracted_link = labeled_link
     stub_llm.exhausted_stages = {"classification"}
 
     with pytest.raises(llm.LlmBudgetExhausted):
-        services.classify_link_tables(extracted_link)
+        services.classify_and_extract_link_tables(extracted_link)
 
     extracted_link.refresh_from_db()
     assert extracted_link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET
     assert TableClassification.objects.filter(table__link=extracted_link).count() == 0
 
 
-def test_combined_step_classifies_and_extracts_in_one_llm_call(extracted_link, stub_llm):
+def test_combined_step_classifies_and_extracts_in_one_llm_call(labeled_link, stub_llm):
+    extracted_link = labeled_link
     first = ExtractedTable.objects.get(link=extracted_link)
     second = ExtractedTable.objects.create(
         trace=first.trace,
@@ -111,22 +102,22 @@ def test_combined_step_classifies_and_extracts_in_one_llm_call(extracted_link, s
         row_count=2,
     )
     stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": True, "plan_type": "hosting", "confidence": 0.99},
-        {"table_index": 1, "is_plans_table": False, "plan_type": "", "confidence": 0.0},
+        {"table_index": 0, "is_correct": True, "plan_type": "hosting", "confidence": 0.99},
+        {"table_index": 1, "is_correct": False, "plan_type": "", "confidence": 0.0},
     ]
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 
     services.classify_and_extract_link_tables(extracted_link)
 
     assert len(stub_llm.combined_classification_calls) == 1
-    assert stub_llm.classification_calls == []
     assert stub_llm.plan_calls == []
     assert TableClassification.objects.get(table=second).is_plans_table is False
     assert PlanRecord.objects.filter(table=first).count() == 1
     assert extracted_link.pipeline_stage == Link.PipelineStage.PLANS_EXTRACTED
 
 
-def test_combined_step_applies_nearest_persian_currency_scale(extracted_link, stub_llm):
+def test_combined_step_applies_nearest_persian_currency_scale(labeled_link, stub_llm):
+    extracted_link = labeled_link
     table = ExtractedTable.objects.get(link=extracted_link)
     table.columns.all().delete()
     table.rows.all().delete()
@@ -220,3 +211,77 @@ def test_combined_llm_response_accepts_classification_confidence_field(monkeypat
     )
 
     assert results[0].classification_confidence == 1.0
+
+
+def test_combined_llm_response_moves_out_of_schema_fields_to_other(monkeypatch):
+    client = llm.LlmClient()
+    values = dict(HOSTING_PLAN_VALUES, location="Tehran", datacenter="DC1")
+    payload = {
+        "tables": [{
+            "table_index": 0,
+            "is_correct": True,
+            "plan_type": "hosting",
+            "classification_confidence": 0.97,
+            "plans": [{"values": values, "confidence": 1.0}],
+        }]
+    }
+    monkeypatch.setattr(client, "chat_json", lambda *args, **kwargs: payload)
+
+    results = client.classify_extract_tables(
+        [{"table_index": 0, "columns": [], "rows": []}]
+    )
+
+    verdict = results[0]
+    assert verdict.is_correct is True
+    kept = verdict.plans[0].values
+    assert "location" not in kept and "datacenter" not in kept
+    assert {"key": "location", "value": "Tehran"} in kept["other"]
+    assert {"key": "datacenter", "value": "DC1"} in kept["other"]
+
+
+def test_combined_pass_batches_large_table_pages(monkeypatch):
+    client = llm.LlmClient()
+    calls = []
+
+    def fake_chat_json(system, user, **kwargs):
+        contexts = json.loads(user)["tables"]
+        calls.append(len(contexts))
+        return {"tables": [
+            {"table_index": context["table_index"], "is_correct": False}
+            for context in contexts
+        ]}
+
+    monkeypatch.setattr(client, "chat_json", fake_chat_json)
+
+    contexts = [
+        {"table_index": index, "columns": [], "rows": []}
+        for index in range(25)
+    ]
+    results = client.classify_extract_tables(contexts)
+
+    assert len(calls) > 1
+    assert all(size <= 10 for size in calls)
+    assert [verdict.table_index for verdict in results] == list(range(25))
+
+
+def test_combined_pass_tolerates_omitted_table_verdicts(monkeypatch):
+    client = llm.LlmClient()
+    payload = {
+        "tables": [{
+            "table_index": 0,
+            "is_correct": True,
+            "plan_type": "hosting",
+            "classification_confidence": 0.9,
+            "plans": [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}],
+        }]
+    }
+    monkeypatch.setattr(client, "chat_json", lambda *args, **kwargs: payload)
+
+    results = client.classify_extract_tables([
+        {"table_index": 0, "columns": [], "rows": []},
+        {"table_index": 1, "columns": [], "rows": []},
+    ])
+
+    by_index = {verdict.table_index: verdict for verdict in results}
+    assert by_index[0].is_correct is True
+    assert by_index[1].is_correct is False

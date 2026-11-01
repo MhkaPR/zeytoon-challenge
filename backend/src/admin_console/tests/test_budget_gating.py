@@ -23,24 +23,24 @@ def test_budget_status_reports_budget_and_spend():
     assert status["tokens_used"] == 0
 
 
-def test_every_llm_stage_is_gated_and_parks_the_link(kept_link):
+def test_every_llm_stage_is_gated_and_parks_the_link(extracted_link, stub_domtrack):
     _exhaust_budget()
     assert llm.default_budget.allows() is False
 
     with pytest.raises(llm.LlmBudgetExhausted):
-        services.refilter_link(kept_link, html="<main><h1>Plans</h1></main>")
+        services.label_link_tables(extracted_link)
 
-    kept_link.refresh_from_db()
-    assert kept_link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET
-    assert kept_link.last_error == "awaiting_llm_budget:refilter"
+    extracted_link.refresh_from_db()
+    assert extracted_link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET
+    assert extracted_link.last_error == "awaiting_llm_budget:labeling"
     assert Notification.objects.filter(event_type="llm_budget_exhausted").exists()
 
 
-def test_no_partial_row_is_written_when_the_budget_is_exhausted(extracted_link):
+def test_no_partial_row_is_written_when_the_budget_is_exhausted(labeled_link):
     _exhaust_budget()
 
     with pytest.raises(llm.LlmBudgetExhausted):
-        services.classify_link_tables(extracted_link)
+        services.classify_and_extract_link_tables(labeled_link)
 
     from admin_console.models import TableClassification
 
@@ -71,27 +71,25 @@ def _fake_chat_response(payload):
     return _Response()
 
 
-def test_a_restored_budget_resumes_the_stage(kept_link, stub_page_html, monkeypatch,
-                                             settings):
+def test_a_restored_budget_resumes_the_stage(labeled_link, monkeypatch, settings):
     settings.OPENAI_BASE_URL = "http://llm.local"
     settings.OPENAI_API_KEY = "test-key"
     _exhaust_budget()
     with pytest.raises(llm.LlmBudgetExhausted):
-        services.refilter_link(kept_link)
+        services.classify_and_extract_link_tables(labeled_link)
 
     # Restore the budget and let the real client run against a stubbed transport.
     monkeypatch.setattr(
         llm.httpx, "post",
         lambda *args, **kwargs: _fake_chat_response(
-            {"is_plans_page": True, "plan_type": "hosting", "confidence": 0.9}
+            {"tables": [{"table_index": 0, "is_correct": False}]}
         ),
     )
     services.set_token_budget(10_000)
-    services.refilter_link(kept_link)
+    services.classify_and_extract_link_tables(labeled_link)
 
-    kept_link.refresh_from_db()
-    assert kept_link.review_state == Link.ReviewState.KEPT
-    assert kept_link.pipeline_stage == Link.PipelineStage.REFILTERED
+    labeled_link.refresh_from_db()
+    assert labeled_link.pipeline_stage == Link.PipelineStage.NO_PLANS
 
 
 def test_budget_can_be_set_by_an_admin_through_the_api(operator_client):
@@ -111,7 +109,7 @@ def test_one_batch_spend_row_is_associated_with_every_link(kept_link):
     )
 
     row, created = llm.default_budget.record_spend(
-        "refilter", 321, links=[kept_link, second], idempotency_key="batch-cost"
+        "labeling", 321, links=[kept_link, second], idempotency_key="batch-cost"
     )
 
     assert created is True

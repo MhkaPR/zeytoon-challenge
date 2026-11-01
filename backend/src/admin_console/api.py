@@ -19,7 +19,6 @@ from admin_console.serializers import (
     ManualLinksInput,
     PlanIgnoreInput,
     PlansInput,
-    RefilterOverrideInput,
     ReplayRunInput,
     SiteCreateInput,
     TokenBudgetInput,
@@ -73,9 +72,6 @@ def _link_payload(link):
         "url": link.url,
         "source": link.source,
         "review_state": link.review_state,
-        "refilter_plan_type": link.refilter_plan_type,
-        "refilter_confidence": link.refilter_confidence,
-        "refilter_flag": link.refilter_flag,
         "pipeline_stage": link.pipeline_stage,
         "failure_rate": link.failure_rate,
         "current_trace_id": link.current_trace_id,
@@ -280,33 +276,6 @@ class SiteLinksView(OperatorOnlyView):
 
 
 # ---------------------------------------------------------------------------
-# US3 — LLM link refilter (FR-012..FR-015)
-# ---------------------------------------------------------------------------
-
-
-class RefilterView(OperatorOnlyView):
-    @extend_schema(responses={200: dict, 202: ConsoleErrorSerializer})
-    def post(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
-        try:
-            services.refilter_link(link)
-        except Exception as exc:  # noqa: BLE001
-            raise _stage_error(exc) from exc
-        return Response({"link": _link_payload(link)})
-
-
-class RefilterOverrideView(OperatorOnlyView):
-    @extend_schema(request=RefilterOverrideInput, responses={200: dict})
-    def post(self, request, link_id):
-        actor = self.caller(request)
-        link = get_link_or_error(link_id)
-        payload = parse_input(RefilterOverrideInput, request.data)
-        services.override_refilter(link, payload.refilter_state, payload.reason, actor=actor)
-        return Response({"link": _link_payload(link)})
-
-
-# ---------------------------------------------------------------------------
 # US4 — server-side headless capture (FR-016..FR-019)
 # ---------------------------------------------------------------------------
 
@@ -390,7 +359,7 @@ class LinkTablesView(OperatorOnlyView):
 
 
 # ---------------------------------------------------------------------------
-# US6 — table classification (FR-023..FR-025)
+# US6/US7 — combined table classification + schema extraction (FR-023..FR-031)
 # ---------------------------------------------------------------------------
 
 
@@ -456,7 +425,7 @@ class PlansView(OperatorOnlyView):
         try:
             if not link.plan_records.exists() and link.pipeline_stage in (
                 Link.PipelineStage.EXTRACTED,
-                Link.PipelineStage.CLASSIFIED,
+                Link.PipelineStage.NO_PLANS,
             ):
                 services.classify_and_extract_link_tables(link)
                 if not link.plan_records.exists():
@@ -634,9 +603,9 @@ def _settings_snapshot():
         "LINK_CRAWL_MAX_PAGES": constants.link_crawl_max_pages(),
         "LINK_DENY_EXTENSIONS": constants.link_deny_extensions(),
         "LINK_DENY_SEGMENTS": constants.link_deny_segments(),
-        "REFILTER_DROP_CONFIDENCE": constants.refilter_drop_confidence(),
         "CAPTURE_FIXED_DURATION_MS": constants.capture_fixed_duration_ms(),
-        "LABELING_ENABLED": constants.labeling_enabled(),
+        "LABELING_PROVIDER": constants.labeling_provider(),
+        "LABELING_MODEL": constants.labeling_model() or "",
     }
 
 

@@ -2,37 +2,37 @@
 
 import pytest
 
+from admin_console import services
 from admin_console.models import Link, PlanRecord
 from admin_console.tests.conftest import HOSTING_PLAN_VALUES
 
 pytestmark = pytest.mark.django_db
 
 
-def test_plan_endpoint_extracts_and_lists(operator_client, classified_link, stub_llm):
+def test_plan_endpoint_extracts_and_lists(operator_client, labeled_link, stub_llm):
     stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": True, "plan_type": "hosting", "confidence": 1.0}
+        {"table_index": 0, "is_correct": True, "plan_type": "hosting", "confidence": 1.0}
     ]
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 
-    response = operator_client.post(f"/api/v1/ops/links/{classified_link.pk}/plans")
+    response = operator_client.post(f"/api/v1/ops/links/{labeled_link.pk}/plans")
 
     assert response.status_code == 201
     body = response.json()
     assert body["plans"][0]["values"]["plan_name"] == "Starter"
     assert body["link"]["pipeline_stage"] == Link.PipelineStage.PLANS_EXTRACTED
 
-    listed = operator_client.get(f"/api/v1/ops/links/{classified_link.pk}/plans")
+    listed = operator_client.get(f"/api/v1/ops/links/{labeled_link.pk}/plans")
     assert listed.json()["plans"][0]["plan_type"] == "hosting"
 
 
-def test_plan_endpoint_requires_a_plans_table(operator_client, extracted_link, stub_llm):
+def test_plan_endpoint_requires_a_plans_table(operator_client, labeled_link, stub_llm):
     stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": False, "plan_type": "", "confidence": 0.9}
+        {"table_index": 0, "is_correct": False, "plan_type": "", "confidence": 0.9}
     ]
-    operator_client.post(f"/api/v1/ops/links/{extracted_link.pk}/classifications",
-                         {}, format="json")
+    services.classify_and_extract_link_tables(labeled_link)
 
-    response = operator_client.post(f"/api/v1/ops/links/{extracted_link.pk}/plans")
+    response = operator_client.post(f"/api/v1/ops/links/{labeled_link.pk}/plans")
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "plans_required"

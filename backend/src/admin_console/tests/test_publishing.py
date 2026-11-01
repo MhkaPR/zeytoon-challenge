@@ -38,10 +38,23 @@ def test_publish_upserts_by_source_site_natural_key(planned_link, stub_llm):
     assert records.first().values["price_amount"] == 99000
 
 
-def test_incomplete_plan_is_not_published(classified_link):
-    table = classified_link.extracted_tables.get()
+def _classified_link(link):
+    from admin_console.models import TableClassification
+
+    table = link.extracted_tables.get()
+    if not TableClassification.objects.filter(table=table).exists():
+        TableClassification.objects.create(
+            table=table, is_plans_table=True, plan_type="hosting", confidence=0.9
+        )
+        table.refresh_from_db()
+    return link
+
+
+def test_incomplete_plan_is_not_published(labeled_link):
+    labeled_link = _classified_link(labeled_link)
+    table = labeled_link.extracted_tables.get()
     PlanRecord.objects.create(
-        link=classified_link,
+        link=labeled_link,
         table=table,
         classification=table.classification,
         plan_type="hosting",
@@ -51,10 +64,10 @@ def test_incomplete_plan_is_not_published(classified_link):
     )
 
     with pytest.raises(ValueError, match="no_plan_records_met_quality_rules"):
-        services.publish_link_plans(classified_link)
+        services.publish_link_plans(labeled_link)
 
-    classified_link.refresh_from_db()
-    assert classified_link.pipeline_stage == Link.PipelineStage.CLASSIFIED
+    labeled_link.refresh_from_db()
+    assert labeled_link.pipeline_stage == Link.PipelineStage.EXTRACTED
     assert PublishedRecord.objects.count() == 0
 
 

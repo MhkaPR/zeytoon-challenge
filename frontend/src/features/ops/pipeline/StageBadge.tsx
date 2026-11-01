@@ -11,6 +11,7 @@ const COLORS: Record<string, "default" | "success" | "warning" | "danger" | "acc
   mapped: "accent",
   cleaned: "success",
   published: "success",
+  no_plans: "warning",
   flagged: "danger",
   failed: "danger",
 };

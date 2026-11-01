@@ -59,7 +59,7 @@ def test_distinct_link_retries_are_enqueued_independently(
         url="https://example.com/servers",
         url_hash="second-kept-hash",
         review_state=Link.ReviewState.KEPT,
-        pipeline_stage=Link.PipelineStage.CLASSIFIED,
+        pipeline_stage=Link.PipelineStage.EXTRACTED,
         last_error="plan_extraction: previous extraction failed",
     )
 

@@ -10,7 +10,7 @@ import pathlib
 
 import pytest
 
-from admin_console import discovery, domtrack_client, llm, plan_schema, refilter, services
+from admin_console import discovery, domtrack_client, llm, plan_schema, services
 
 ADMIN_CONSOLE = pathlib.Path("backend/src/admin_console")
 
@@ -70,7 +70,6 @@ def test_external_stages_are_subclassable_classes():
     assert isinstance(llm.default_budget, llm.LlmBudget)
     assert isinstance(domtrack_client.default_client, domtrack_client.DomtrackClient)
     assert isinstance(discovery.default_discoverer, discovery.LinkDiscoverer)
-    assert isinstance(refilter.default_refilter, refilter.LinkRefilter)
     # Services call the adapters through these instances, so a subclass or fake can be
     # injected without touching the pipeline code.
     assert isinstance(services.domtrack_client.default_client, domtrack_client.DomtrackClient)

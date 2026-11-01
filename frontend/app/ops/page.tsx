@@ -136,11 +136,10 @@ export default function OpsApprovalsPage() {
 function PipelineSiteCard({ site }: { site: Site & { links_count: number } }) {
   const stages = [
     "discovered",
-    "refiltered",
     "captured",
     "extracted",
-    "classified",
     "plans_extracted",
+    "no_plans",
     "published",
   ];
   return (

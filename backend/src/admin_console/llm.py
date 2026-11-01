@@ -57,17 +57,51 @@ class LlmBudgetExhausted(Exception):
     """The token budget is exhausted, so no LLM call may be made (FR-048)."""
 
 
-class RefilterVerdict(BaseModel):
-    is_plans_page: bool
-    plan_type: str = ""
-    confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+def _sanitize_plan_values(raw_values, plan_type):
+    """Coerce one record's fields onto its plan schema without discarding data.
 
-
-class TableClassificationOut(BaseModel):
-    table_index: int
-    is_plans_table: bool
-    plan_type: str = ""
-    confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+    Unknown keys are preserved in ``values.other`` and mismatched types are coerced
+    or dropped, mirroring the standalone extraction path. Returns the cleaned dict,
+    or ``None`` when the record is unusable (no ``plan_name`` or not a mapping).
+    """
+    if not isinstance(raw_values, dict):
+        return None
+    values = dict(raw_values)
+    fields = plan_schema.schema_for(plan_type).field_map()
+    allowed_fields = set(fields)
+    other = values.get("other", [])
+    if not isinstance(other, list):
+        other = []
+    else:
+        other = [
+            entry
+            for entry in other
+            if isinstance(entry, dict)
+            and entry.get("key") not in (None, "")
+            and entry.get("value") not in (None, "")
+        ]
+    for key in list(values):
+        if key not in allowed_fields and key != "other":
+            value = values.pop(key)
+            if value not in (None, ""):
+                other.append({"key": str(key), "value": str(value)})
+    values["other"] = other
+    for key, value in list(values.items()):
+        if key == "other" or value is None:
+            continue
+        field = fields[key]
+        try:
+            if field.kind == "number":
+                values[key] = float(value)
+            elif field.kind == "enum" and field.values and value not in field.values:
+                values.pop(key)
+            elif field.kind == "text" and not isinstance(value, str):
+                values[key] = str(value)
+        except (TypeError, ValueError):
+            values.pop(key)
+    if not values.get("plan_name"):
+        return None
+    return values
 
 
 class PlanRecordOut(BaseModel):
@@ -261,87 +295,35 @@ class LlmClient:
                 raise LlmError("LLM response did not match the required JSON schema") from exc
         return data
 
-    def refilter_page(self, url, headings, important_section, *, idempotency_key=None,
-                      link=None):
-        system = (
-            "Decide whether the page itself presents one or more product or service plans "
-            "or packages for customers. Look for named options with plan-specific features, "
-            "limits, terms, or pricing. This can be any product or service category; do not "
-            "require hosting or servers, and do not accept a general page just because it "
-            "mentions plans. "
-            "You receive only a URL, its headings, and its most important text block. "
-            'Return JSON: {"is_plans_page": bool, "plan_type": string, '
-            '"confidence": number in [0,1]}.'
-        )
-        user = json.dumps(
-            {"url": url, "headings": headings, "important_section": important_section},
-            ensure_ascii=False,
-        )
-        data = self.chat_json(system, user, stage="refilter",
-                              idempotency_key=idempotency_key, link=link)
-        return RefilterVerdict(**data)
+    def classify_extract_tables(self, table_contexts, *, idempotency_key=None, link=None):
+        """Classify and extract every accepted table, batched across LLM requests.
 
-    def refilter_pages(self, pages, *, idempotency_key=None, links=None):
-        """Judge a numbered set of summarized pages in one request."""
-        indexes = [str(page["index"]) for page in pages]
-        model = create_model(
-            "RefilterBatchStrict", __config__=ConfigDict(extra="forbid"),
-            **{key: (bool, ...) for key in indexes},
-        )
-        system = (
-            "For each page, decide whether the page itself presents one or more product or "
-            "service plans or packages for customers. Look for named options with "
-            "plan-specific features, limits, terms, or pricing. This may be any product or "
-            "service category. Use the URL, headings, and important text together. Do not "
-            "accept a general company page, documentation, blog post, or unrelated page just "
-            "because it mentions plans. "
-            "Return one JSON object whose keys are the supplied numeric page indexes as "
-            "strings and whose values are booleans: true means it is a plan page and is "
-            "accepted for continuation; false means it is not a plan page."
-        )
-        user = json.dumps({"pages": pages}, ensure_ascii=False)
-        return self.chat_json(system, user, stage="refilter", idempotency_key=idempotency_key,
-                              links=links,
-                              response_model=model)
+        A page may expose dozens of tables; sending them all in one request makes the
+        model omit verdicts. We reuse the labeling batch size (pass 1) so each request
+        stays small, mirroring how pass 1 already chunks tables.
+        """
+        batch_size = 0
+        try:
+            from admin_console import constants
 
-    def classify_tables(self, table_contexts, *, idempotency_key=None, link=None):
-        classification_model = create_model(
-            "TableClassificationStrict",
-            __config__=ConfigDict(extra="forbid"),
-            table_index=(int, ...),
-            is_plans_table=(bool, ...),
-            plan_type=(str, ...),
-            confidence=(float, ...),
-        )
-        response_model = create_model(
-            "TableClassificationsStrict",
-            __config__=ConfigDict(extra="forbid"),
-            classifications=(list[classification_model], ...),
-        )
-        system = (
-            "You classify tables. For each table decide whether it lists product or service "
-            "plan options that can be represented by a supported plan schema. If it does, "
-            'plan_type MUST be one exact schema key from '
-            f"{sorted(plan_schema.PLAN_SCHEMA)}. If none matches, mark not a plans table and "
-            'return an empty plan_type. Never return a descriptive category label. '
-            'Return JSON: {"classifications": [{"table_index": int, '
-            '"is_plans_table": bool, "plan_type": string, "confidence": number}]}.'
-        )
-        user = json.dumps({"tables": table_contexts}, ensure_ascii=False)
-        data = self.chat_json(system, user, stage="classification",
-                              idempotency_key=idempotency_key, link=link,
-                              response_model=response_model)
+            batch_size = int(constants.labeling_config().get("batch_size") or 0)
+        except (ImportError, AttributeError, TypeError, ValueError):  # pragma: no cover
+            batch_size = 0
+        if batch_size <= 0:
+            batch_size = len(table_contexts) or 1
         verdicts = []
-        for item in data.get("classifications", []):
-            verdict = TableClassificationOut(**item)
-            if verdict.is_plans_table and verdict.plan_type not in plan_schema.PLAN_SCHEMA:
-                verdict.is_plans_table = False
-                verdict.plan_type = ""
-            verdicts.append(verdict)
+        for start in range(0, len(table_contexts), batch_size):
+            chunk = table_contexts[start:start + batch_size]
+            chunk_key = (
+                f"{idempotency_key}:{start}" if idempotency_key else None
+            )
+            verdicts.extend(
+                self._classify_extract_batch(chunk, idempotency_key=chunk_key, link=link)
+            )
         return verdicts
 
-    def classify_extract_tables(self, table_contexts, *, idempotency_key=None, link=None):
-        """Classify and extract every accepted table in one LLM request."""
+    def _classify_extract_batch(self, table_contexts, *, idempotency_key=None, link=None):
+        """Classify and extract the accepted tables in one LLM request."""
         schema_summary = {
             key: [
                 {"key": field.key, "kind": field.kind, "required": field.required,
@@ -351,13 +333,16 @@ class LlmClient:
             for key, schema in plan_schema.PLAN_SCHEMA.items()
         }
         system = (
-            "For each table, determine whether it is a correct plan table for one of the "
-            "supported schema types. A correct table presents named plans/packages and "
-            "their details or pricing that can be mapped to one exact schema key. If it is "
-            "not a plan table or no schema fits, return only table_index and "
-            '"is_correct": false for that table. If it is correct, return table_index, '
-            '"is_correct": true, its exact plan_type, "classification_confidence", and "plans" '
-            "containing extracted data records. Each record must use {values, confidence}; "
+            "You receive every extracted table from one page together with the semantic "
+            "column labels assigned in the table-labeling pass; the column names you see "
+            "are those labels. For each table, determine whether it is a correct plan "
+            "table for one of the supported schema types. A correct table presents named "
+            "plans/packages and their details or pricing that can be mapped to one exact "
+            "schema key. If it is not a plan table or no schema fits, return only "
+            'table_index and "is_correct": false for that table. If it is correct, return '
+            'table_index, "is_correct": true, its exact plan_type, '
+            '"classification_confidence", and "plans" containing extracted data records. '
+            "Each record must use {values, confidence}; "
             "values must follow the selected schema. Do not invent values or plans. Preserve "
             "meaningful unmapped columns in values.other as {key,value} entries. For each "
             "record require an explicit non-empty plan_name and price_amount; omit rows "
@@ -389,15 +374,28 @@ class LlmClient:
         except ValidationError as exc:
             raise LlmError("LLM response did not match combined table schema") from exc
         expected = {context["table_index"] for context in table_contexts}
-        found = {item.table_index for item in response.tables}
-        if found != expected or len(found) != len(response.tables):
-            raise LlmError("LLM response omitted or duplicated a table")
-        raw_by_index = {item["table_index"]: item for item in raw["tables"]}
-        for item in response.tables:
-            source = raw_by_index[item.table_index]
+        by_index = {}
+        raw_by_index = {}
+        for item, raw_item in zip(response.tables, raw["tables"]):
+            if item.table_index in by_index:
+                continue
+            by_index[item.table_index] = item
+            raw_by_index[item.table_index] = raw_item
+        results = []
+        for table_index in sorted(expected):
+            item = by_index.get(table_index)
+            if item is None:
+                # The model skipped this table's verdict; treat it as not a plans table
+                # rather than failing the whole link.
+                results.append(
+                    CombinedTableOut(table_index=table_index, is_correct=False)
+                )
+                continue
+            source = raw_by_index[table_index]
             if not item.is_correct:
                 if set(source) != {"table_index", "is_correct"}:
                     raise LlmError("rejected table response must contain only its Boolean verdict")
+                results.append(item)
                 continue
             if (
                 item.plan_type not in plan_schema.PLAN_SCHEMA
@@ -410,12 +408,26 @@ class LlmClient:
                 item.plan_type = None
                 item.classification_confidence = None
                 item.plans = None
+                results.append(item)
                 continue
-            allowed = plan_schema.all_field_keys(item.plan_type) | {"other"}
+            sanitized = []
             for plan in item.plans:
-                if set(plan.values) - allowed:
-                    raise LlmError("extracted plan included fields outside its schema")
-        return response.tables
+                values = _sanitize_plan_values(plan.values, item.plan_type)
+                if values is None:
+                    continue
+                sanitized.append(
+                    PlanRecordOut(values=values, confidence=plan.confidence)
+                )
+            if not sanitized:
+                item.is_correct = False
+                item.plan_type = None
+                item.classification_confidence = None
+                item.plans = None
+                results.append(item)
+                continue
+            item.plans = sanitized
+            results.append(item)
+        return results
 
     def extract_plans(self, table_context, plan_type, field_keys, *, idempotency_key=None,
                       link=None, table=None):
@@ -484,40 +496,11 @@ class LlmClient:
         if not isinstance(raw_plans, list):
             raise LlmError("LLM returned plans in an invalid format")
         plans = []
-        allowed_fields = plan_schema.all_field_keys(plan_type)
-        fields = plan_schema.schema_for(plan_type).field_map()
         for index, item in enumerate(raw_plans):
             try:
-                values = item.get("values", item) if isinstance(item, dict) else item
-                if not isinstance(values, dict):
-                    continue
-                other = values.get("other", [])
-                if not isinstance(other, list):
-                    other = []
-                else:
-                    other = [entry for entry in other if isinstance(entry, dict)
-                             and entry.get("key") not in (None, "")
-                             and entry.get("value") not in (None, "")]
-                for key in list(values):
-                    if key not in allowed_fields and key != "other":
-                        value = values.pop(key)
-                        if value not in (None, ""):
-                            other.append({"key": str(key), "value": str(value)})
-                values["other"] = other
-                for key, value in list(values.items()):
-                    if key == "other" or value is None:
-                        continue
-                    field = fields[key]
-                    try:
-                        if field.kind == "number":
-                            values[key] = float(value)
-                        elif field.kind == "enum" and field.values and value not in field.values:
-                            values.pop(key)
-                        elif field.kind == "text" and not isinstance(value, str):
-                            values[key] = str(value)
-                    except (TypeError, ValueError):
-                        values.pop(key)
-                if not values.get("plan_name"):
+                raw_values = item.get("values", item) if isinstance(item, dict) else item
+                values = _sanitize_plan_values(raw_values, plan_type)
+                if values is None:
                     continue
                 plan = PlanRecordOut(
                     values=values,
@@ -565,18 +548,6 @@ def budget_exhausted(stage, link=None):
 
 def record_llm_spend(*args, **kwargs):
     return default_budget.record_spend(*args, **kwargs)
-
-
-def refilter_page(*args, **kwargs):
-    return default_client.refilter_page(*args, **kwargs)
-
-
-def refilter_pages(*args, **kwargs):
-    return default_client.refilter_pages(*args, **kwargs)
-
-
-def classify_tables(*args, **kwargs):
-    return default_client.classify_tables(*args, **kwargs)
 
 
 def classify_extract_tables(*args, **kwargs):

@@ -100,6 +100,11 @@ export function LinkList({ links }: { links: Link[] }) {
                         : opsStrings.pipelineFailure}
                     </span>
                   )}
+                  {link.pipeline_stage === "no_plans" && (
+                    <span className="block text-[11px] text-warning" dir="rtl">
+                      {opsStrings.noPlansOutcome}
+                    </span>
+                  )}
                 </td>
                 <td className="py-[10px]">
                   <StageBadge stage={link.pipeline_stage} />

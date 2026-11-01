@@ -50,11 +50,6 @@ class ManualLinksInput(BaseModel):
     urls: list[str] = Field(default_factory=list)
 
 
-class RefilterOverrideInput(BaseModel):
-    refilter_state: str = Field(pattern="^(kept|dropped)$")
-    reason: str = ""
-
-
 class CaptureStartInput(BaseModel):
     duration_ms: int | None = None
 

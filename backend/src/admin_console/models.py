@@ -50,7 +50,7 @@ class Site(TimestampedModel):
 
 
 class Link(TimestampedModel):
-    """A page address within a site: discovery state, refilter verdict, stage."""
+    """A page address within a site: discovery state and pipeline stage."""
 
     class Source(models.TextChoices):
         ADAPTIVE_CRAWL = "adaptive_crawl", "Adaptive crawl"
@@ -64,11 +64,10 @@ class Link(TimestampedModel):
 
     class PipelineStage(models.TextChoices):
         DISCOVERED = "discovered", "Discovered"
-        REFILTERED = "refiltered", "Refiltered"
         CAPTURED = "captured", "Captured"
         EXTRACTED = "extracted", "Extracted"
-        CLASSIFIED = "classified", "Classified"
         PLANS_EXTRACTED = "plans_extracted", "Plans extracted"
+        NO_PLANS = "no_plans", "No plans found"
         PUBLISHED = "published", "Published"
         AWAITING_LLM_BUDGET = "awaiting_llm_budget", "Awaiting LLM budget"
         FLAGGED = "flagged", "Flagged"
@@ -81,11 +80,8 @@ class Link(TimestampedModel):
         max_length=16, choices=Source.choices, default=Source.ADAPTIVE_CRAWL
     )
     review_state = models.CharField(
-        max_length=16, choices=ReviewState.choices, default=ReviewState.CANDIDATE
+        max_length=16, choices=ReviewState.choices, default=ReviewState.KEPT
     )
-    refilter_plan_type = models.CharField(max_length=64, blank=True, default="")
-    refilter_confidence = models.FloatField(null=True, blank=True)
-    refilter_flag = models.BooleanField(default=False)
     pipeline_stage = models.CharField(
         max_length=32, choices=PipelineStage.choices, default=PipelineStage.DISCOVERED
     )
@@ -485,7 +481,6 @@ class LlmCostLedger(TimestampedModel):
         TOTAL = "total", "Total"
 
     class Stage(models.TextChoices):
-        REFILTER = "refilter", "Refilter"
         CLASSIFICATION = "classification", "Classification"
         SCHEMA_EXTRACTION = "schema_extraction", "Schema extraction"
         LABELING = "labeling", "Labeling"

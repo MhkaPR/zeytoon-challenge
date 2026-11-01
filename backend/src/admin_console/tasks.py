@@ -80,6 +80,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
     links = Link.objects.filter(site=site, is_active=True).exclude(
         pipeline_stage__in=(
             Link.PipelineStage.PUBLISHED,
+            Link.PipelineStage.NO_PLANS,
             Link.PipelineStage.FLAGGED,
             Link.PipelineStage.DEAD_LETTERED,
             Link.PipelineStage.AWAITING_LLM_BUDGET,
@@ -88,18 +89,6 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
     if link_id is not None:
         links = links.filter(pk=link_id)
 
-    # Refilter all discovered candidates together so there is one LLM round trip.
-    pending_refilter = [
-        item for item in links
-        if item.pipeline_stage == Link.PipelineStage.DISCOVERED
-        and item.review_state in (Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT)
-        and (not item.last_error or item.pipeline_task_state == "queued")
-    ]
-    if pending_refilter:
-        services.refilter_links(pending_refilter)
-        for item in pending_refilter:
-            item.refresh_from_db()
-
     if link_id is not None:
         Link.objects.filter(pk=link_id).update(pipeline_task_state="running")
 
@@ -107,22 +96,13 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
         link.refresh_from_db()
         if link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET:
             continue
-        if link.review_state not in (Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT):
+        if link.review_state != Link.ReviewState.KEPT:
             continue
         if link.last_error and link.pipeline_task_state != "queued":
             continue
         Link.objects.filter(pk=link.pk).update(pipeline_task_state="running")
         try:
             if link.pipeline_stage == Link.PipelineStage.DISCOVERED:
-                services.refilter_link(link)
-                link.refresh_from_db()
-                if link.review_state != Link.ReviewState.KEPT:
-                    completed.append(link.pk)
-                    Link.objects.filter(pk=link.pk).update(
-                        pipeline_task_state="completed"
-                    )
-                    continue
-            if link.pipeline_stage == Link.PipelineStage.REFILTERED:
                 try:
                     services.start_capture(link)
                 except RuntimeError as exc:
@@ -139,10 +119,9 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             if link.pipeline_stage == Link.PipelineStage.CAPTURED:
                 services.extract_link_tables(link)
                 link.refresh_from_db()
-            if link.pipeline_stage in (
-                Link.PipelineStage.EXTRACTED,
-                Link.PipelineStage.CLASSIFIED,
-            ):
+            if link.pipeline_stage == Link.PipelineStage.EXTRACTED:
+                services.label_link_tables(link)
+                link.refresh_from_db()
                 services.classify_and_extract_link_tables(link)
                 link.refresh_from_db()
                 if not link.plan_records.exists():
@@ -155,7 +134,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             link.last_error = ""
             link.save(update_fields=["last_error", "updated_at"])
             waiting_for_capture = (
-                link.pipeline_stage == Link.PipelineStage.REFILTERED
+                link.pipeline_stage == Link.PipelineStage.DISCOVERED
                 and link.capture_sessions.filter(
                     state__in=link.capture_sessions.model.NON_TERMINAL
                 ).exists()
@@ -177,11 +156,9 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                 )
                 continue
             failed_stage = {
-                Link.PipelineStage.DISCOVERED: "refilter",
-                Link.PipelineStage.REFILTERED: "capture",
+                Link.PipelineStage.DISCOVERED: "capture",
                 Link.PipelineStage.CAPTURED: "extraction",
-                Link.PipelineStage.EXTRACTED: "classification",
-                Link.PipelineStage.CLASSIFIED: "plan_extraction",
+                Link.PipelineStage.EXTRACTED: "labeling",
             }.get(link.pipeline_stage, link.pipeline_stage)
             link.last_error = f"{failed_stage}: {str(exc)[:450]}"
             link.save(update_fields=["last_error", "updated_at"])
@@ -205,6 +182,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
         if target is not None:
             terminal_stages = {
                 Link.PipelineStage.PLANS_EXTRACTED,
+                Link.PipelineStage.NO_PLANS,
                 Link.PipelineStage.PUBLISHED,
                 Link.PipelineStage.FLAGGED,
                 Link.PipelineStage.DEAD_LETTERED,
@@ -216,7 +194,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                 state = "failed"
             elif target.pipeline_stage in terminal_stages:
                 state = "completed"
-            elif target.pipeline_stage == Link.PipelineStage.REFILTERED and not target.last_error:
+            elif target.pipeline_stage == Link.PipelineStage.DISCOVERED and not target.last_error:
                 # A capture may already be running for this link. Leave it eligible
                 # for worker recovery instead of recording a synthetic failure.
                 state = "queued"
@@ -279,11 +257,11 @@ def recover_site_pipeline_tasks(backend_name="default"):
     # when no pipeline task for that site is currently queued or running.
     CaptureSession.objects.filter(
         link__is_active=True,
-        link__pipeline_stage=Link.PipelineStage.REFILTERED,
+        link__pipeline_stage=Link.PipelineStage.DISCOVERED,
         link__site_id__in=Link.objects.filter(
             is_active=True,
-            review_state__in=(Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT),
-            pipeline_stage=Link.PipelineStage.REFILTERED,
+            review_state=Link.ReviewState.KEPT,
+            pipeline_stage=Link.PipelineStage.DISCOVERED,
         )
         .exclude(site_id__in=queued_site_ids)
         .values("site_id"),
@@ -292,7 +270,7 @@ def recover_site_pipeline_tasks(backend_name="default"):
     stale_plan_links = []
     for link in Link.objects.filter(
         is_active=True,
-        review_state__in=(Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT),
+        review_state=Link.ReviewState.KEPT,
         pipeline_stage=Link.PipelineStage.PLANS_EXTRACTED,
         last_error="",
     ).prefetch_related("plan_records"):
@@ -306,7 +284,7 @@ def recover_site_pipeline_tasks(backend_name="default"):
             stale_plan_links.append(link.pk)
     if stale_plan_links:
         Link.objects.filter(pk__in=stale_plan_links).update(
-            pipeline_stage=Link.PipelineStage.CLASSIFIED,
+            pipeline_stage=Link.PipelineStage.EXTRACTED,
             last_error="",
         )
     # Older worker runs could leave a synthetic incomplete marker on links whose
@@ -316,23 +294,19 @@ def recover_site_pipeline_tasks(backend_name="default"):
         is_active=True,
         pipeline_stage__in=(
             Link.PipelineStage.DISCOVERED,
-            Link.PipelineStage.REFILTERED,
             Link.PipelineStage.CAPTURED,
             Link.PipelineStage.EXTRACTED,
-            Link.PipelineStage.CLASSIFIED,
         ),
         last_error__startswith="pipeline_incomplete:",
     ).update(last_error="")
     unfinished_site_ids = set(
         Link.objects.filter(
             is_active=True,
-            review_state__in=(Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT),
+            review_state=Link.ReviewState.KEPT,
             pipeline_stage__in=(
                 Link.PipelineStage.DISCOVERED,
-                Link.PipelineStage.REFILTERED,
                 Link.PipelineStage.CAPTURED,
                 Link.PipelineStage.EXTRACTED,
-                Link.PipelineStage.CLASSIFIED,
             ),
             last_error="",
         ).values_list("site_id", flat=True)

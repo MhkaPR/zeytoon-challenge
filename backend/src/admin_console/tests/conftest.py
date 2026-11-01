@@ -122,7 +122,7 @@ def kept_link(site):
         url_hash="kept-hash",
         source=Link.Source.ADAPTIVE_CRAWL,
         review_state=Link.ReviewState.KEPT,
-        pipeline_stage=Link.PipelineStage.REFILTERED,
+        pipeline_stage=Link.PipelineStage.DISCOVERED,
     )
 
 
@@ -160,17 +160,13 @@ def traced_link(kept_link):
 
 @pytest.fixture
 def stub_llm(monkeypatch):
-    """A scripted LLM double for refilter/classification/plan extraction."""
+    """A scripted LLM double for the single classify+extract pass and plan extraction."""
     from admin_console import llm as llm_mod
 
     stub = SimpleNamespace(
-        refilter_response={"is_plans_page": True, "plan_type": "hosting", "confidence": 0.9},
         classifications=[],
         plans=[],
         exhausted_stages=set(),
-        refilter_calls=[],
-        batch_refilter_calls=[],
-        classification_calls=[],
         combined_classification_calls=[],
         plan_calls=[],
     )
@@ -183,43 +179,6 @@ def stub_llm(monkeypatch):
             for target in targets:
                 llm_mod.default_budget.exhausted(stage, link=target)
             raise llm_mod.LlmBudgetExhausted(stage)
-
-    def refilter_page(url, headings, important_section, *, idempotency_key=None, link=None):
-        stub.refilter_calls.append(
-            {"url": url, "headings": headings, "important_section": important_section}
-        )
-        _raise_if_exhausted("refilter", link)
-        response = stub.refilter_response
-        if callable(response):
-            response = response(url, headings, important_section)
-        return response if isinstance(response, llm_mod.RefilterVerdict) else llm_mod.RefilterVerdict(**response)
-
-    def refilter_pages(pages, *, idempotency_key=None, links=None):
-        stub.batch_refilter_calls.append(pages)
-        _raise_if_exhausted("refilter", links=links)
-        response = stub.refilter_response
-        verdicts = {}
-        for page in pages:
-            result = (
-                response(page["url"], page["headings"], page["important_section"])
-                if callable(response)
-                else response
-            )
-            accepted = getattr(result, "is_plans_page", None)
-            if accepted is None:
-                accepted = result.get("is_plans_page", False)
-            verdicts[str(page["index"])] = bool(accepted)
-        return verdicts
-
-    def classify_tables(table_contexts, *, idempotency_key=None, link=None):
-        stub.classification_calls.append(table_contexts)
-        _raise_if_exhausted("classification", link)
-        return [
-            item
-            if isinstance(item, llm_mod.TableClassificationOut)
-            else llm_mod.TableClassificationOut(**item)
-            for item in stub.classifications
-        ]
 
     def classify_extract_tables(table_contexts, *, idempotency_key=None, link=None):
         stub.combined_classification_calls.append(table_contexts)
@@ -275,28 +234,9 @@ def stub_llm(monkeypatch):
             for item in response
         ]
 
-    monkeypatch.setattr(llm_mod.default_client, "refilter_page", refilter_page)
-    monkeypatch.setattr(llm_mod.default_client, "refilter_pages", refilter_pages)
-    monkeypatch.setattr(llm_mod.default_client, "classify_tables", classify_tables)
     monkeypatch.setattr(llm_mod.default_client, "classify_extract_tables", classify_extract_tables)
     monkeypatch.setattr(llm_mod.default_client, "extract_plans", extract_plans)
     return stub
-
-
-@pytest.fixture
-def stub_page_html(monkeypatch):
-    """Replace the refilter fetch with in-memory HTML; returns a setter."""
-    from admin_console import refilter as refilter_mod
-
-    state = SimpleNamespace(html="<main><h1>Plans</h1><p>Cheap hosting plans</p></main>",
-                            fetched=[])
-
-    def fetch_html(url, timeout=None):
-        state.fetched.append(url)
-        return state.html
-
-    monkeypatch.setattr(refilter_mod.default_summarizer, "fetch_html", fetch_html)
-    return state
 
 
 @pytest.fixture
@@ -384,14 +324,11 @@ def extracted_link(traced_link, stub_domtrack):
 
 
 @pytest.fixture
-def classified_link(extracted_link, stub_llm):
-    """A link whose first extracted table is classified as a hosting plans table."""
+def labeled_link(extracted_link, stub_domtrack):
+    """A link whose extracted tables have been labeled (pass 1)."""
     from admin_console import services
 
-    stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": True, "plan_type": "hosting", "confidence": 0.92}
-    ]
-    services.classify_link_tables(extracted_link)
+    services.label_link_tables(extracted_link)
     return extracted_link
 
 
@@ -408,10 +345,13 @@ HOSTING_PLAN_VALUES = {
 
 
 @pytest.fixture
-def planned_link(classified_link, stub_llm):
-    """A link with one normalized hosting plan record."""
+def planned_link(labeled_link, stub_llm):
+    """A link with one normalized hosting plan record after the combined pass."""
     from admin_console import services
 
+    stub_llm.classifications = [
+        {"table_index": 0, "is_correct": True, "plan_type": "hosting", "confidence": 0.92}
+    ]
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
-    services.extract_link_plans(classified_link)
-    return classified_link
+    services.classify_and_extract_link_tables(labeled_link)
+    return labeled_link

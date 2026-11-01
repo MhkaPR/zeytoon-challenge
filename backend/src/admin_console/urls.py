@@ -23,13 +23,6 @@ urlpatterns = [
         name="site-discover-links",
     ),
     path("sites/<int:site_id>/links", api.SiteLinksView.as_view(), name="site-links"),
-    # US3 — LLM link refilter (FR-012..FR-015)
-    path("links/<int:link_id>/refilter", api.RefilterView.as_view(), name="link-refilter"),
-    path(
-        "links/<int:link_id>/refilter/override",
-        api.RefilterOverrideView.as_view(),
-        name="link-refilter-override",
-    ),
     # US4 — server-side headless capture (FR-016..FR-019)
     path(
         "links/<int:link_id>/captures",

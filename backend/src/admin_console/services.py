@@ -1,11 +1,12 @@
 """The automated site-maintenance pipeline (spec 003).
 
-Every stage is server-side and per-link isolated: discovery → refilter → headless
-capture → table extraction → classification → plan data → publish, with compare-driven
-replay on top. LLM-gated stages are gated by the admin-owned token budget; when it is
-exhausted the link parks in ``awaiting_llm_budget`` and resumes later (FR-047..FR-050).
-Network/provider failures are retried with backoff and dead-lettered on exhaustion
-(FR-051, FR-052).
+Every stage is server-side and per-link isolated: discovery → headless capture →
+table extraction → table labeling → plan data → publish, with compare-driven replay on
+top. crawl4ai's adaptive crawler (statistical strategy) owns link relevance, so
+discovery feeds capture directly. LLM-gated stages are gated by the admin-owned token
+budget; when it is exhausted the link parks in ``awaiting_llm_budget`` and resumes
+later (FR-047..FR-050). Network/provider failures are retried with backoff and
+dead-lettered on exhaustion (FR-051, FR-052).
 """
 
 import hashlib
@@ -27,7 +28,6 @@ from admin_console import (
     llm,
     plan_schema,
 )
-from admin_console import refilter as refilter_mod
 from admin_console.models import (
     CaptureSession,
     ChangeRecord,
@@ -128,7 +128,7 @@ def _store_links(site, urls, source):
             defaults={
                 "url": url,
                 "source": source,
-                "review_state": Link.ReviewState.CANDIDATE,
+                "review_state": Link.ReviewState.KEPT,
                 "pipeline_stage": Link.PipelineStage.DISCOVERED,
             },
         )
@@ -176,101 +176,6 @@ def add_links_manually(site, urls, actor=None):
     stored = _store_links(site, reduced, Link.Source.MANUAL)
     events.links_discovered(site, len(urls), len(reduced), Link.Source.MANUAL)
     return stored
-
-
-# ---------------------------------------------------------------------------
-# US3 — LLM link refilter (FR-012..FR-015)
-# ---------------------------------------------------------------------------
-
-
-def refilter_link(link, actor=None, html=None):
-    """Derive the page summary, ask the LLM, and persist the verdict (FR-012..FR-015)."""
-    page_html = html if html is not None else refilter_mod.fetch_html(link.url)
-    verdict = refilter_mod.refilter_page(
-        link.url, page_html, link=link, idempotency_key=f"refilter:{link.pk}"
-    )
-    drop = refilter_mod.should_drop(verdict)
-    link.refilter_plan_type = verdict.plan_type or ""
-    link.refilter_confidence = verdict.confidence
-    # Borderline (any verdict below the drop threshold that is still kept) is flagged
-    # for review so a provider is never silently lost (FR-014).
-    link.refilter_flag = bool(
-        not drop
-        and verdict.confidence < constants.refilter_drop_confidence()
-    )
-    link.review_state = (
-        Link.ReviewState.DROPPED if drop else Link.ReviewState.KEPT
-    )
-    link.pipeline_stage = (
-        Link.PipelineStage.DISCOVERED if drop else Link.PipelineStage.REFILTERED
-    )
-    link.save()
-    events.refilter_verdict(
-        link, link.review_state, link.refilter_plan_type, link.refilter_confidence
-    )
-    return link
-
-
-def refilter_links(links):
-    """Fetch and summarize eligible pages, then classify them in one LLM call."""
-    links = list(links)
-    summarizer = refilter_mod.default_summarizer
-    pages, indexed_links = [], []
-    for link in links:
-        try:
-            summary = summarizer.summarize(summarizer.fetch_html(link.url), link.url)
-        except Exception as exc:
-            link.last_error = f"refilter_fetch: {exc}"[:512]
-            link.pipeline_task_state = "failed"
-            link.save(update_fields=("last_error", "pipeline_task_state", "updated_at"))
-            continue
-        index = len(pages)
-        pages.append({"index": index, **summary})
-        indexed_links.append(link)
-    if not pages:
-        return links
-    try:
-        verdicts = refilter_mod.refilter_pages(
-            pages, links=indexed_links, idempotency_key="refilter-batch:" + ",".join(
-                str(item.pk) for item in indexed_links
-            ),
-        )
-    except llm.LlmBudgetExhausted:
-        return links
-    except Exception as exc:
-        for item in indexed_links:
-            item.last_error = f"refilter_batch: {exc}"[:512]
-            item.pipeline_task_state = "failed"
-            item.save(update_fields=("last_error", "pipeline_task_state", "updated_at"))
-        return links
-    results = []
-    for index, link in enumerate(indexed_links):
-        accepted = bool(verdicts[str(index)])
-        link.refilter_plan_type = ""
-        link.refilter_confidence = 1.0
-        link.refilter_flag = False
-        link.review_state = Link.ReviewState.KEPT if accepted else Link.ReviewState.DROPPED
-        link.pipeline_stage = (
-            Link.PipelineStage.REFILTERED if accepted else Link.PipelineStage.DISCOVERED
-        )
-        if not accepted:
-            link.pipeline_task_state = "completed"
-        link.save()
-        events.refilter_verdict(link, link.review_state, link.refilter_plan_type, 1.0)
-        results.append(link)
-    return results
-
-
-def override_refilter(link, review_state, reason="", actor=None):
-    link.review_state = review_state
-    link.pipeline_stage = (
-        Link.PipelineStage.REFILTERED
-        if review_state == Link.ReviewState.KEPT
-        else Link.PipelineStage.DISCOVERED
-    )
-    link.last_error = reason[:512]
-    link.save()
-    return link
 
 
 # ---------------------------------------------------------------------------
@@ -443,10 +348,23 @@ def tables_payload(link):
 
 
 def _table_context(table):
-    """A compact table view for the LLM: column labels + rows (no selectors needed)."""
+    """A compact table view for the LLM: column labels + rows (no selectors needed).
+
+    When pass 1 (``domtrack tables label``) has run, its table ``title``/``purpose`` and
+    each column's ``semantic_label`` are attached so pass 2 extracts against the schema
+    using the semantic hints.
+    """
     columns = list(table.columns.all())
+    semantic = {
+        label.column_id: label.label
+        for label in table.semantic_labels.select_related("column").all()
+        if label.column_id and label.label
+    }
     return {
-        "columns": [column.label or column.column_id for column in columns],
+        "columns": [
+            semantic.get(column.pk) or column.label or column.column_id
+            for column in columns
+        ],
         "rows": [
             [row.cells.get(column.column_id, "") for column in columns]
             for row in table.rows.all()
@@ -455,48 +373,18 @@ def _table_context(table):
 
 
 # ---------------------------------------------------------------------------
-# US6 — table classification (FR-023..FR-025)
+# US6/US7 — single-pass classify + schema extraction over labeled tables
+# (FR-023..FR-031)
 # ---------------------------------------------------------------------------
 
 
-def classify_link_tables(link, actor=None):
-    tables = list(link.extracted_tables.all())
-    if not tables:
-        raise ValueError("no_tables_found")
-    contexts = [
-        {"table_index": index, **_table_context(table)}
-        for index, table in enumerate(tables)
-    ]
-    verdicts = llm.classify_tables(
-        contexts, link=link, idempotency_key=f"classify:{link.pk}"
-    )
-    by_index = {verdict.table_index: verdict for verdict in verdicts}
-    plans_count = 0
-    if by_index:
-        TableClassification.objects.filter(table__link=link).delete()
-        for index, table in enumerate(tables):
-            verdict = by_index.get(index)
-            if verdict is None:
-                continue
-            TableClassification.objects.create(
-                table=table,
-                is_plans_table=verdict.is_plans_table,
-                plan_type=verdict.plan_type,
-                confidence=verdict.confidence,
-                provider=constants.refilter_provider(),
-                model=constants.refilter_model() or "",
-                prompt_version=llm.PROMPT_VERSION,
-            )
-            if verdict.is_plans_table:
-                plans_count += 1
-    link.pipeline_stage = Link.PipelineStage.CLASSIFIED
-    link.save()
-    events.classification_completed(link, plans_count, len(tables))
-    return link
-
-
 def classify_and_extract_link_tables(link, actor=None):
-    """Classify every table and extract accepted tables in one model call."""
+    """Classify every table and extract accepted tables in one model call (pass 2).
+
+    Pass 1 is :func:`label_link_tables`; this call receives the domtrack semantic
+    labels through :func:`_table_context` and returns both the classification record
+    and the schema-bound plan data in a single request.
+    """
     tables = list(link.extracted_tables.all())
     if not tables:
         raise ValueError("no_tables_found")
@@ -522,8 +410,8 @@ def classify_and_extract_link_tables(link, actor=None):
                 is_plans_table=verdict.is_correct,
                 plan_type=verdict.plan_type or "",
                 confidence=verdict.classification_confidence or 0.0,
-                provider=constants.refilter_provider(),
-                model=constants.refilter_model() or "",
+                provider=constants.labeling_provider(),
+                model=constants.labeling_model() or "",
                 prompt_version=llm.PROMPT_VERSION,
             )
             if not verdict.is_correct:
@@ -554,11 +442,12 @@ def classify_and_extract_link_tables(link, actor=None):
                 )
         if pending_records:
             PlanRecord.objects.bulk_create(pending_records)
-    link.pipeline_stage = (
-        Link.PipelineStage.PLANS_EXTRACTED
-        if pending_records
-        else Link.PipelineStage.CLASSIFIED
-    )
+    if pending_records:
+        link.pipeline_stage = Link.PipelineStage.PLANS_EXTRACTED
+    elif plans_count:
+        link.pipeline_stage = Link.PipelineStage.EXTRACTED
+    else:
+        link.pipeline_stage = Link.PipelineStage.NO_PLANS
     link.save()
     events.classification_completed(link, plans_count, len(tables))
     if pending_records:
@@ -568,6 +457,8 @@ def classify_and_extract_link_tables(link, actor=None):
             "no plan records met confidence and required-field rules; each needs a "
             "directly supported name, positive price, and confidence 1.0"
         )
+    else:
+        events.no_plans_found(link, len(tables))
     return link
 
 
@@ -661,10 +552,17 @@ def classifications_payload(link):
 
 
 def extract_link_plans(link, actor=None):
+    """Schema-extract plan data from tables pass 2 already classified as plans.
+
+    The pipeline's primary path is the single combined pass
+    (:func:`classify_and_extract_link_tables`); this remains for re-extraction against
+    the schema without repeating classification.
+    """
     tables = [
         table for table in link.extracted_tables.all()
         if getattr(table, "classification", None) is not None
         and table.classification.is_plans_table
+        and table.classification.plan_type in plan_schema.PLAN_SCHEMA
     ]
     if not tables:
         raise ValueError("plans_required")
@@ -673,22 +571,6 @@ def extract_link_plans(link, actor=None):
     for table in tables:
         classification = table.classification
         plan_type = classification.plan_type
-        if plan_type not in plan_schema.PLAN_SCHEMA:
-            verdicts = llm.classify_tables(
-                [{"table_index": 0, **_table_context(table)}],
-                link=link,
-                idempotency_key=f"classify-repair:{table.pk}",
-            )
-            verdict = next((item for item in verdicts if item.table_index == 0), None)
-            if verdict is None or not verdict.is_plans_table:
-                classification.is_plans_table = False
-                classification.plan_type = ""
-                classification.save(update_fields=("is_plans_table", "plan_type"))
-                continue
-            classification.plan_type = verdict.plan_type
-            classification.confidence = verdict.confidence
-            classification.save(update_fields=("plan_type", "confidence"))
-            plan_type = verdict.plan_type
         plans = llm.extract_plans(
             _table_context(table),
             plan_type,
@@ -812,52 +694,102 @@ def unignored_plan_keys(link):
 
 
 # ---------------------------------------------------------------------------
-# US8 — optional LLM labeling (FR-032..FR-035)
+# US8 — mandatory LLM table labeling, pass 1 (FR-032..FR-035)
 # ---------------------------------------------------------------------------
 
 
 def label_link_tables(link, actor=None):
-    if not constants.labeling_enabled():
-        raise PermissionError("labeling_disabled")
+    """Label every extracted table with ``domtrack tables label`` (pass 1).
+
+    The result feeds pass 2 (:func:`classify_and_extract_link_tables`) as semantic
+    column hints. domtrack returns the same table shape it was given with ``meta.title``,
+    ``meta.purpose`` and per-column ``semantic_label`` merged in, so the discovered
+    tables are passed through verbatim rather than rebuilt from our columns.
+    """
     tables = list(link.extracted_tables.all())
     if not tables:
         raise ValueError("no_tables_found")
-    payload = {
-        "tables": [
-            {"table_index": index, **_table_context(table)}
-            for index, table in enumerate(tables)
-        ]
-    }
-    result = domtrack_client.label_tables(
-        payload["tables"], constants.labeling_config()
-    )
+    # domtrack's labeler calls the provider directly, so the admin token budget has to
+    # be enforced here before any spend happens (FR-048).
+    llm.default_budget.guard("labeling", link=link)
+    domtrack_tables = [_domtrack_table(table) for table in tables]
+    config = constants.labeling_config()
+    result = domtrack_client.label_tables(domtrack_tables, config)
+    labeled_tables = (result or {}).get("tables") or []
     labels = []
+    provider = config["provider"]
+    model = config["model"] or ""
+    language = config["language"]
     with transaction.atomic():
         SemanticLabel.objects.filter(table__link=link).delete()
         for index, table in enumerate(tables):
-            entry = (result.get("tables") or [])
-            entry = entry[index] if index < len(entry) else {}
-            for column in table.columns.all():
-                label = _column_label(entry, column)
-                if label:
-                    SemanticLabel.objects.create(
-                        table=table,
-                        column=column,
-                        label=label,
-                        provider=constants.labeling_config()["provider"],
-                        model=constants.labeling_config()["model"] or "",
-                        language=constants.labeling_config()["language"],
-                    )
-                    labels.append({"table_id": table.pk, "column_id": column.column_id,
-                                   "label": label})
+            entry = labeled_tables[index] if index < len(labeled_tables) else {}
+            for column_index, column in enumerate(table.columns.all()):
+                label = _column_label(entry, column_index)
+                if not label:
+                    continue
+                SemanticLabel.objects.create(
+                    table=table,
+                    column=column,
+                    label=label,
+                    provider=provider,
+                    model=model,
+                    language=language,
+                )
+                labels.append(
+                    {"table_id": table.pk, "column_id": column.column_id, "label": label}
+                )
     events.labeling_run(link, len(tables), 0)
     return labels
 
 
-def _column_label(entry, column):
-    for candidate in (entry.get("columns") or []):
-        if isinstance(candidate, dict) and candidate.get("id") == column.column_id:
-            return candidate.get("label") or ""
+def _domtrack_table(table):
+    """Rebuild the domtrack table record stored at extraction time (FR-020).
+
+    ``domtrack tables label`` expects the discovery output shape (``parent``/``meta``/
+    ``columns``/``rows``). Rows are reconstructed from the persisted cells.
+    """
+    columns = list(table.columns.all())
+    return {
+        "parent": {"id": 0, "tag": table.parent, "classes": []},
+        "meta": {
+            "parent_tag": table.parent,
+            "parent_classes": [],
+            "row_count": table.row_count,
+            **{key: value for key, value in (table.meta or {}).items()
+               if key not in ("parent_tag", "parent_classes", "row_count")},
+        },
+        "columns": [
+            {
+                "id": column.column_id,
+                "label": column.label,
+                "path": column.path,
+                "atype": column.atype,
+                "slot": column.slot,
+                "coverage": column.coverage,
+                "row_count": column.row_count,
+            }
+            for column in columns
+        ],
+        "rows": [
+            {column.column_id: row.cells.get(column.column_id, "") for column in columns}
+            for row in table.rows.all()
+        ],
+        "row_count": table.row_count,
+        "column_count": table.column_count,
+        "score": table.score,
+    }
+
+
+def _column_label(entry, column_index):
+    """Read the merged ``semantic_label`` for a table's ``column_index``-th column."""
+    columns = entry.get("columns") or []
+    if column_index >= len(columns):
+        return ""
+    candidate = columns[column_index]
+    if not isinstance(candidate, dict):
+        return ""
+    return candidate.get("semantic_label") or ""
     return ""
 
 
@@ -957,14 +889,18 @@ def rerun_link_stages(link, actor=None):
         link.pipeline_stage = (
             Link.PipelineStage.CAPTURED
             if link.current_trace_id
-            else Link.PipelineStage.REFILTERED
+            else Link.PipelineStage.DISCOVERED
         )
+    elif link.pipeline_stage == Link.PipelineStage.NO_PLANS:
+        # The tables were already extracted; re-run labeling + classification on the
+        # stored tables rather than a fresh capture.
+        link.pipeline_stage = Link.PipelineStage.EXTRACTED
     elif link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET:
         awaiting_stage = link.last_error.rsplit(":", 1)[-1]
         link.pipeline_stage = {
-            "refilter": Link.PipelineStage.DISCOVERED,
+            "labeling": Link.PipelineStage.EXTRACTED,
             "classification": Link.PipelineStage.EXTRACTED,
-            "schema_extraction": Link.PipelineStage.CLASSIFIED,
+            "schema_extraction": Link.PipelineStage.EXTRACTED,
         }.get(awaiting_stage, Link.PipelineStage.DISCOVERED)
     link.last_error = ""
     link.retry_count = 0

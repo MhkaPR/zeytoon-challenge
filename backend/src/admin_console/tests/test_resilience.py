@@ -66,7 +66,7 @@ def test_rerunning_dead_lettered_capture_resumes_at_capture(kept_link):
     services.rerun_link_stages(kept_link)
 
     kept_link.refresh_from_db()
-    assert kept_link.pipeline_stage == Link.PipelineStage.REFILTERED
+    assert kept_link.pipeline_stage == Link.PipelineStage.DISCOVERED
     assert kept_link.retry_count == 0
     assert kept_link.last_error == ""
     session = CaptureSession.objects.get(link=kept_link)
@@ -94,7 +94,7 @@ def test_one_link_failing_does_not_block_another(kept_link, monkeypatch, no_retr
         url="https://example.com/other",
         url_hash="other-hash",
         review_state=Link.ReviewState.KEPT,
-        pipeline_stage=Link.PipelineStage.REFILTERED,
+        pipeline_stage=Link.PipelineStage.DISCOVERED,
     )
     from admin_console import domtrack_client
 

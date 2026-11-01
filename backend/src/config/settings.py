@@ -296,9 +296,9 @@ CONSTANCE_CONFIG = {
         "Failure rate (0..1) over the window that opens a link alert.",
     ),
     "FAILURE_RATE_WINDOW_RUNS": (5, "Trailing replay runs used to derive a failure rate."),
-    "LABELING_ENABLED": (False, "Whether LLM table labeling is allowed (off by default)."),
-    "LABELING_PROVIDER": ("openai", "LLM labeling provider key."),
-    "LABELING_MODEL": ("", "LLM model used for labeling (empty = provider default)."),
+    # Table labeling is the mandatory pass 1 of extraction; pass 2 uses the same LLM.
+    "LABELING_PROVIDER": ("openai", "LLM provider key for table labeling and extraction."),
+    "LABELING_MODEL": ("", "LLM model used for labeling/extraction (empty = provider default)."),
     "LABELING_LANGUAGE": ("fa", "Language requested for generated labels."),
     "LABELING_BATCH_SIZE": (10, "Tables labeled per LLM call."),
     # Adaptive link discovery (crawl4ai statistical strategy; no embeddings/LLM).
@@ -331,13 +331,6 @@ CONSTANCE_CONFIG = {
         "Non-content path segments excluded by the deterministic link policy.",
     ),
     "LINK_DISCOVERY_MAX_LINKS": (5000, "Maximum candidate links stored per discovery run."),
-    # LLM link refilter (recall-biased).
-    "REFILTER_PROVIDER": ("openai", "LLM provider key used by the link refilter."),
-    "REFILTER_MODEL": ("", "LLM model used by the link refilter (empty = provider default)."),
-    "REFILTER_DROP_CONFIDENCE": (
-        0.75,
-        "Confidence above which a non-plans verdict drops the link (recall-biased).",
-    ),
     # Server-side headless capture.
     "CAPTURE_FIXED_DURATION_MS": (15000, "Fixed-duration headless capture length in ms."),
     "CAPTURE_NAV_TIMEOUT_MS": (30000, "Navigation timeout for a headless capture."),

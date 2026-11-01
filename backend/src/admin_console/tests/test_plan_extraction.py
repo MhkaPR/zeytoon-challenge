@@ -189,10 +189,10 @@ def test_re_extraction_is_idempotent(planned_link, stub_llm):
 
 
 def test_no_plans_table_means_nothing_to_extract(extracted_link, stub_llm):
-    stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": False, "plan_type": "", "confidence": 0.9}
-    ]
-    services.classify_link_tables(extracted_link)
+    table = ExtractedTable.objects.get(link=extracted_link)
+    TableClassification.objects.create(
+        table=table, is_plans_table=False, plan_type="", confidence=0.9
+    )
 
     with pytest.raises(ValueError, match="plans_required"):
         services.extract_link_plans(extracted_link)

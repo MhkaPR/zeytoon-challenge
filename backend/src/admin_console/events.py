@@ -36,16 +36,6 @@ def links_discovered(site, discovered, after_policy, source):
     )
 
 
-def refilter_verdict(link, state, plan_type, confidence):
-    _emit(
-        "ops_refilter_verdict",
-        link_id=link.pk,
-        state=state,
-        plan_type=plan_type,
-        confidence=round(float(confidence or 0.0), 4),
-    )
-
-
 def capture_started(link, session):
     _emit("ops_capture_started", link_id=link.pk, session_id=session.pk, mode=session.mode)
 
@@ -83,6 +73,10 @@ def classification_completed(link, plans_tables, total):
 
 def plans_extracted(link, count, skipped):
     _emit("ops_plans_extracted", link_id=link.pk, count=count, skipped=skipped)
+
+
+def no_plans_found(link, total):
+    _emit("ops_no_plans_found", link_id=link.pk, total=total)
 
 
 def labeling_run(link, call_count, tokens):

@@ -31,10 +31,6 @@ def failure_rate_window_runs():
 
 
 # -- labeling ----------------------------------------------------------------
-def labeling_enabled():
-    return bool(config.LABELING_ENABLED)
-
-
 def labeling_config():
     return {
         "provider": str(config.LABELING_PROVIDER),
@@ -43,6 +39,14 @@ def labeling_config():
         "batch_size": int(config.LABELING_BATCH_SIZE),
         "base_url": settings.OPENAI_BASE_URL or None,
     }
+
+
+def labeling_provider():
+    return str(config.LABELING_PROVIDER)
+
+
+def labeling_model():
+    return str(config.LABELING_MODEL) or None
 
 
 # -- link discovery ----------------------------------------------------------
@@ -72,19 +76,6 @@ def link_deny_segments():
 
 def link_discovery_max_links():
     return int(config.LINK_DISCOVERY_MAX_LINKS)
-
-
-# -- refilter ----------------------------------------------------------------
-def refilter_provider():
-    return str(config.REFILTER_PROVIDER)
-
-
-def refilter_model():
-    return str(config.REFILTER_MODEL) or None
-
-
-def refilter_drop_confidence():
-    return float(config.REFILTER_DROP_CONFIDENCE)
 
 
 # -- capture -----------------------------------------------------------------

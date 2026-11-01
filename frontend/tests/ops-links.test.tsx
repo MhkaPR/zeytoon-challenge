@@ -115,4 +115,27 @@ describe("automated site pipeline", () => {
     expect(screen.queryByText(opsStrings.pipelineFailure)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: opsStrings.retry })).toBeEnabled();
   });
+
+  it("explains a finished link that had no accepted plans table", () => {
+    render(
+      <LinkList
+        links={[{
+          id: 5,
+          site_id: 4,
+          url: "https://example.com/no-table",
+          source: "manual",
+          review_state: "kept",
+          pipeline_stage: "no_plans",
+          failure_rate: 0,
+          current_trace_id: 12,
+          last_error: "",
+          pipeline_task_state: "completed",
+        }]}
+      />,
+    );
+
+    expect(screen.getByText(opsStrings.noPlansOutcome)).toBeInTheDocument();
+    expect(screen.queryByText(opsStrings.pipelineFailure)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: opsStrings.retry })).toBeEnabled();
+  });
 });
