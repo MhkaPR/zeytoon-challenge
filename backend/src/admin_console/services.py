@@ -480,7 +480,7 @@ def extract_link_plans(link, actor=None):
     for table in tables:
         classification = table.classification
         plan_type = classification.plan_type
-        if plan_type not in plan_schema.PLAN_MODELS:
+        if plan_type not in plan_schema.PLAN_SCHEMA:
             # Repair legacy/invalid classifier output by classifying this table again
             # against the current schema keys. Never silently substitute a schema.
             verdicts = llm.classify_tables(

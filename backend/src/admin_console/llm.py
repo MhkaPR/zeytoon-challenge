@@ -12,7 +12,6 @@ developer can subclass them or inject fakes in tests. The module-level defaults
 
 import json
 import logging
-from pathlib import Path
 import uuid
 
 import httpx
@@ -23,8 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model
 from admin_console import plan_schema
 from admin_console.models import Link, LlmCostLedger
 
-PROMPT_VERSION = "v2"
-PLAN_EXTRACTION_PROMPT_PATH = Path(__file__).with_name("prompts") / "plan_extraction.md"
+PROMPT_VERSION = "v1"
 logger = logging.getLogger(__name__)
 
 
@@ -45,18 +43,6 @@ def _strict_json_schema(model):
         return node
 
     return normalize(schema)
-
-
-def _plan_extraction_system_prompt(plan_type):
-    try:
-        instructions = PLAN_EXTRACTION_PROMPT_PATH.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise LlmError("plan extraction system prompt could not be loaded") from exc
-    guidance = json.dumps(_schema_field_guidance(plan_type), ensure_ascii=False)
-    return (
-        f"{instructions.strip()}\n\n"
-        f"Selected plan type: {plan_type}. Use this field guidance from the active schema: {guidance}"
-    )
 
 
 class LlmError(Exception):
@@ -288,15 +274,68 @@ class LlmClient:
         data = self.chat_json(system, user, stage="classification",
                               idempotency_key=idempotency_key, link=link,
                               response_model=response_model)
-        return [TableClassificationOut(**item) for item in data.get("classifications", [])]
+        verdicts = []
+        for item in data.get("classifications", []):
+            verdict = TableClassificationOut(**item)
+            if verdict.is_plans_table and verdict.plan_type not in plan_schema.PLAN_SCHEMA:
+                verdict.is_plans_table = False
+                verdict.plan_type = ""
+            verdicts.append(verdict)
+        return verdicts
 
     def extract_plans(self, table_context, plan_type, field_keys, *, idempotency_key=None,
                       link=None, table=None):
         """Extract a **list of plans** as data against the schema (FR-026, FR-028)."""
-        output_model = plan_schema.extraction_model(plan_type)
-        if output_model is None:
+        model = plan_schema.list_model(plan_type)
+        if model is None:
             raise LlmError(f"unknown plan schema: {plan_type}")
-        system = _plan_extraction_system_prompt(plan_type)
+        system = (
+            "You extract hosting/server plan data from a table as JSON. Produce DATA only: "
+            "no selectors and no formulas. Normalize amounts, units, and billing periods. "
+            "Treat each table row as a separate plan; map cells by column headers, not by "
+            "assuming a fixed column order. Headers may be Persian or English and prices "
+            "may include localized digits, separators, or currency words. Normalize those "
+            "to a numeric price_amount in toman, converting Persian and Arabic-Indic digits. "
+            "The price_amount unit is always toman: if a price is stated in thousand toman "
+            "(including هزار تومان or هزار تومن), multiply the stated number by 1,000; "
+            "if stated in million toman, multiply by 1,000,000. Do not leave the scale implicit. "
+            "Price amount and scale may be in separate adjacent columns: combine the amount "
+            "with its unit/scale columns before normalizing (for example 15,490 under a "
+            "million toman scale means 15,490,000,000 toman; do not multiply by both thousand "
+            "and million when both labels describe the same price). Headers such as قیمت ماهیانه, "
+            "هزار تومان, and میلیون تومان may jointly describe one price. "
+            "Every plan must have a non-empty plan_name and a numeric price_amount. "
+            "Never use 0, an empty string, or a guessed value to represent a missing price; "
+            "if a row has no explicit price, omit that row from the plans list. Only return "
+            "a zero price when the source explicitly states that the plan is free. "
+            "Other specifications may be unknown; use null or omit them rather than guessing. "
+            "For virtual_server plans, map hardware into these named fields whenever present: "
+            "CPU model to cpu_model, core count to cpu_cores, RAM size as a number to "
+            "ram_amount and its unit to ram_unit, RAM generation to ram_type, disk capacity "
+            "per disk as a number to disk_amount and its unit to disk_unit, disk count to "
+            "disk_count, and SSD/NVMe/HDD/SAS technology to disk_type. For example, "
+            "'2 * 512GB SSD' means disk_count=2, disk_amount=512, disk_unit='GB', "
+            "disk_type='SSD'; '32GB DDR4' means ram_amount=32, ram_unit='GB', "
+            "ram_type='DDR4'; 'Intel Core i7-6700 (4 Core)' means cpu_model='Intel Core i7-6700' "
+            "and cpu_cores=4. Use these fields instead of placing those facts in other. "
+            "Set confidence to 1.0 when the plan name and price are explicitly present in "
+            "the corresponding row and mapped unambiguously; optional missing CPU, RAM, "
+            "storage, OS, or billing details do not lower confidence. Use below 1.0 only "
+            "when name or price is ambiguous, inferred, or unsupported. Do not invent plans. "
+            "Every plan item must contain a 'values' object with the schema fields; "
+            "never put plan fields directly at the item top level. Any meaningful table "
+            "column that does not map to a field in the selected schema must be preserved "
+            "in values.other as an array of {key, value} objects. Use the original column "
+            "header as key (preserve Persian headers in Persian) and the cell content as "
+            "value; do not translate, discard, or invent these facts. In particular, keep "
+            "each server specification such as CPU, RAM (e.g. 32GB DDR4), disks (e.g. "
+            "2 * 512GB SSD), location, traffic, setup fee, support, datacenter, and delivery "
+            "time in other when it is not represented by a schema field. Never omit these "
+            "technical facts just because their source headers are unusual or machine-generated. "
+            f"The output is a LIST of plans; each plan uses these field keys for plan type "
+            f"'{plan_type}': {sorted(field_keys)}. "
+            'Return JSON: {"plans": [{"values": {field_key: value}, "confidence": number}]}.'
+        )
         user = json.dumps({"table": table_context}, ensure_ascii=False)
         data = self.chat_json(
             system,
@@ -305,20 +344,50 @@ class LlmClient:
             idempotency_key=idempotency_key,
             link=link,
             table=table,
-            response_model=output_model,
-            strict_schema=True,
         )
         raw_plans = data.get("plans", [])
         if not isinstance(raw_plans, list):
             raise LlmError("LLM returned plans in an invalid format")
-        model = plan_schema.list_model(plan_type)
-        allowed_fields = plan_schema.all_field_keys(plan_type)
         plans = []
+        allowed_fields = plan_schema.all_field_keys(plan_type)
+        fields = plan_schema.schema_for(plan_type).field_map()
         for index, item in enumerate(raw_plans):
             try:
-                plan = PlanRecordOut.model_validate(item)
-                if model is not None:
-                    model.model_validate({"plans": [plan.values]})
+                values = item.get("values", item) if isinstance(item, dict) else item
+                if not isinstance(values, dict):
+                    continue
+                other = values.get("other", [])
+                if not isinstance(other, list):
+                    other = []
+                else:
+                    other = [entry for entry in other if isinstance(entry, dict)
+                             and entry.get("key") not in (None, "")
+                             and entry.get("value") not in (None, "")]
+                for key in list(values):
+                    if key not in allowed_fields and key != "other":
+                        value = values.pop(key)
+                        if value not in (None, ""):
+                            other.append({"key": str(key), "value": str(value)})
+                values["other"] = other
+                for key, value in list(values.items()):
+                    if key == "other" or value is None:
+                        continue
+                    field = fields[key]
+                    try:
+                        if field.kind == "number":
+                            values[key] = float(value)
+                        elif field.kind == "enum" and field.values and value not in field.values:
+                            values.pop(key)
+                        elif field.kind == "text" and not isinstance(value, str):
+                            values[key] = str(value)
+                    except (TypeError, ValueError):
+                        values.pop(key)
+                if not values.get("plan_name"):
+                    continue
+                plan = PlanRecordOut(
+                    values=values,
+                    confidence=item.get("confidence", 1.0) if isinstance(item, dict) else 1.0,
+                )
             except (ValidationError, TypeError):
                 logger.warning(
                     "llm_plan_record_skipped",
@@ -333,21 +402,6 @@ class LlmClient:
         if raw_plans and not plans:
             raise LlmError("LLM returned no valid plan records")
         return plans
-
-
-def _schema_field_guidance(plan_type):
-    schema = plan_schema.schema_for(plan_type)
-    if schema is None:
-        return []
-    properties = schema.model_json_schema().get("properties", {})
-    return [
-        {
-            "key": key,
-            **definition,
-        }
-        for key, definition in properties.items()
-        if key in plan_schema.all_field_keys(plan_type)
-    ]
 
 
 default_budget = LlmBudget()
