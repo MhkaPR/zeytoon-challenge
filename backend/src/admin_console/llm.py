@@ -17,7 +17,7 @@ import uuid
 import httpx
 from django.conf import settings
 from django.utils import timezone
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, create_model
 
 from admin_console import plan_schema
 from admin_console.models import Link, LlmCostLedger
@@ -75,6 +75,27 @@ class PlanRecordOut(BaseModel):
     confidence: float | None = None
 
 
+class CombinedTableOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    table_index: int
+    is_correct: bool
+    plan_type: str | None = None
+    classification_confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices("classification_confidence", "confidence"),
+    )
+    plans: list[PlanRecordOut] | None = None
+
+
+class CombinedTablesOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tables: list[CombinedTableOut]
+
+
 class LlmBudget:
     """Token budget + spend ledger (FR-047..FR-050)."""
 
@@ -129,7 +150,7 @@ class LlmBudget:
         )
 
     def record_spend(self, stage, tokens_used, amount=None, link=None, table=None,
-                     idempotency_key=None, period=None, scope=None):
+                     idempotency_key=None, period=None, scope=None, links=None):
         key = idempotency_key or f"{stage}-{uuid.uuid4()}"
         row, created = LlmCostLedger.objects.get_or_create(
             idempotency_key=key,
@@ -144,14 +165,17 @@ class LlmBudget:
                 "timestamp": timezone.now(),
             },
         )
+        if links is not None:
+            row.links.set(links)
         return row, created
 
-    def exhausted(self, stage, link=None):
+    def exhausted(self, stage, link=None, links=None):
         """Park ``link`` and notify the admin (FR-048, FR-049)."""
         from notifications.interfaces import NotificationsInterface
 
-        if link is not None:
-            Link.objects.filter(pk=link.pk).update(
+        affected = list(links or ([] if link is None else [link]))
+        if affected:
+            Link.objects.filter(pk__in=[item.pk for item in affected]).update(
                 pipeline_stage=Link.PipelineStage.AWAITING_LLM_BUDGET,
                 last_error=f"awaiting_llm_budget:{stage}",
             )
@@ -159,13 +183,17 @@ class LlmBudget:
             event_type="llm_budget_exhausted",
             subject="LLM token budget exhausted",
             body=f"Stage '{stage}' is waiting for the token budget to be restored.",
-            related_object=f"admin_console.Link:{link.pk}" if link else "",
+            related_object=(
+                f"admin_console.LinkBatch:{','.join(str(item.pk) for item in affected)}"
+                if len(affected) > 1
+                else f"admin_console.Link:{affected[0].pk}" if affected else ""
+            ),
             dedup_key=f"budget:{stage}:{timezone.now().date()}",
         )
 
-    def guard(self, stage, link=None, scope=None, period=None):
+    def guard(self, stage, link=None, links=None, scope=None, period=None):
         if not self.allows(scope, period):
-            self.exhausted(stage, link=link)
+            self.exhausted(stage, link=link, links=links)
             raise LlmBudgetExhausted(stage)
 
 
@@ -177,8 +205,8 @@ class LlmClient:
         self.model = model or settings.OPENAI_MODEL
 
     def chat_json(self, system, user, *, stage, idempotency_key=None, model=None,
-                  link=None, table=None, response_model=None, strict_schema=False):
-        self.budget.guard(stage, link=link)
+                  link=None, table=None, links=None, response_model=None, strict_schema=False):
+        self.budget.guard(stage, link=link, links=links)
         base_url = (settings.OPENAI_BASE_URL or "").rstrip("/")
         if not base_url:
             raise LlmError("OPENAI_BASE_URL is not configured")
@@ -218,6 +246,7 @@ class LlmClient:
             usage.get("total_tokens", 0),
             link=link,
             table=table,
+            links=links,
             idempotency_key=idempotency_key,
         )
         content = body["choices"][0]["message"]["content"]
@@ -235,7 +264,11 @@ class LlmClient:
     def refilter_page(self, url, headings, important_section, *, idempotency_key=None,
                       link=None):
         system = (
-            "You decide whether a web page lists hosting/server plans for sale. "
+            "Decide whether the page itself presents one or more product or service plans "
+            "or packages for customers. Look for named options with plan-specific features, "
+            "limits, terms, or pricing. This can be any product or service category; do not "
+            "require hosting or servers, and do not accept a general page just because it "
+            "mentions plans. "
             "You receive only a URL, its headings, and its most important text block. "
             'Return JSON: {"is_plans_page": bool, "plan_type": string, '
             '"confidence": number in [0,1]}.'
@@ -247,6 +280,29 @@ class LlmClient:
         data = self.chat_json(system, user, stage="refilter",
                               idempotency_key=idempotency_key, link=link)
         return RefilterVerdict(**data)
+
+    def refilter_pages(self, pages, *, idempotency_key=None, links=None):
+        """Judge a numbered set of summarized pages in one request."""
+        indexes = [str(page["index"]) for page in pages]
+        model = create_model(
+            "RefilterBatchStrict", __config__=ConfigDict(extra="forbid"),
+            **{key: (bool, ...) for key in indexes},
+        )
+        system = (
+            "For each page, decide whether the page itself presents one or more product or "
+            "service plans or packages for customers. Look for named options with "
+            "plan-specific features, limits, terms, or pricing. This may be any product or "
+            "service category. Use the URL, headings, and important text together. Do not "
+            "accept a general company page, documentation, blog post, or unrelated page just "
+            "because it mentions plans. "
+            "Return one JSON object whose keys are the supplied numeric page indexes as "
+            "strings and whose values are booleans: true means it is a plan page and is "
+            "accepted for continuation; false means it is not a plan page."
+        )
+        user = json.dumps({"pages": pages}, ensure_ascii=False)
+        return self.chat_json(system, user, stage="refilter", idempotency_key=idempotency_key,
+                              links=links,
+                              response_model=model)
 
     def classify_tables(self, table_contexts, *, idempotency_key=None, link=None):
         classification_model = create_model(
@@ -263,8 +319,9 @@ class LlmClient:
             classifications=(list[classification_model], ...),
         )
         system = (
-            "You classify tables. For each table decide if it lists hosting/server plans "
-            '(plans table) or not. If plans, plan_type MUST be one exact schema key from '
+            "You classify tables. For each table decide whether it lists product or service "
+            "plan options that can be represented by a supported plan schema. If it does, "
+            'plan_type MUST be one exact schema key from '
             f"{sorted(plan_schema.PLAN_SCHEMA)}. If none matches, mark not a plans table and "
             'return an empty plan_type. Never return a descriptive category label. '
             'Return JSON: {"classifications": [{"table_index": int, '
@@ -283,6 +340,83 @@ class LlmClient:
             verdicts.append(verdict)
         return verdicts
 
+    def classify_extract_tables(self, table_contexts, *, idempotency_key=None, link=None):
+        """Classify and extract every accepted table in one LLM request."""
+        schema_summary = {
+            key: [
+                {"key": field.key, "kind": field.kind, "required": field.required,
+                 "allowed_values": list(field.values)}
+                for field in schema.fields
+            ]
+            for key, schema in plan_schema.PLAN_SCHEMA.items()
+        }
+        system = (
+            "For each table, determine whether it is a correct plan table for one of the "
+            "supported schema types. A correct table presents named plans/packages and "
+            "their details or pricing that can be mapped to one exact schema key. If it is "
+            "not a plan table or no schema fits, return only table_index and "
+            '"is_correct": false for that table. If it is correct, return table_index, '
+            '"is_correct": true, its exact plan_type, "classification_confidence", and "plans" '
+            "containing extracted data records. Each record must use {values, confidence}; "
+            "values must follow the selected schema. Do not invent values or plans. Preserve "
+            "meaningful unmapped columns in values.other as {key,value} entries. For each "
+            "record require an explicit non-empty plan_name and price_amount; omit rows "
+            "without an explicit price. Normalize Persian/Arabic digits and currency to toman. "
+            "Price scale is essential: a number followed by or associated with هزار تومان "
+            "(thousand toman) must be multiplied by 1,000; a number associated with "
+            "میلیون تومان (million toman) must be multiplied by 1,000,000. For example, "
+            "990 with میلیون تومان means price_amount=990000000 toman, while 990 with "
+            "هزار تومان means price_amount=990000 toman. When scale text appears in a "
+            "separate table cell, associate the closest preceding currency scale cell with "
+            "the price; if multiple scale labels precede it, use the nearest one. Return "
+            "price_amount already normalized to toman and never multiply a normalized value "
+            "a second time. "
+            "For virtual_server, map CPU, RAM, disk count/capacity/type to their schema "
+            "fields when present. Use confidence 1.0 only when name and price are explicit "
+            "and unambiguous. Supported schemas: "
+            f"{json.dumps(schema_summary, ensure_ascii=False)}. Return JSON with a tables "
+            "array containing exactly one result per supplied table."
+        )
+        raw = self.chat_json(
+            system,
+            json.dumps({"tables": table_contexts}, ensure_ascii=False),
+            stage="classification",
+            idempotency_key=idempotency_key,
+            link=link,
+        )
+        try:
+            response = CombinedTablesOut.model_validate(raw)
+        except ValidationError as exc:
+            raise LlmError("LLM response did not match combined table schema") from exc
+        expected = {context["table_index"] for context in table_contexts}
+        found = {item.table_index for item in response.tables}
+        if found != expected or len(found) != len(response.tables):
+            raise LlmError("LLM response omitted or duplicated a table")
+        raw_by_index = {item["table_index"]: item for item in raw["tables"]}
+        for item in response.tables:
+            source = raw_by_index[item.table_index]
+            if not item.is_correct:
+                if set(source) != {"table_index", "is_correct"}:
+                    raise LlmError("rejected table response must contain only its Boolean verdict")
+                continue
+            if (
+                item.plan_type not in plan_schema.PLAN_SCHEMA
+                or item.plans is None
+                or item.classification_confidence is None
+                or not {"plan_type", "plans"}.issubset(source)
+                or not ({"classification_confidence", "confidence"} & set(source))
+            ):
+                item.is_correct = False
+                item.plan_type = None
+                item.classification_confidence = None
+                item.plans = None
+                continue
+            allowed = plan_schema.all_field_keys(item.plan_type) | {"other"}
+            for plan in item.plans:
+                if set(plan.values) - allowed:
+                    raise LlmError("extracted plan included fields outside its schema")
+        return response.tables
+
     def extract_plans(self, table_context, plan_type, field_keys, *, idempotency_key=None,
                       link=None, table=None):
         """Extract a **list of plans** as data against the schema (FR-026, FR-028)."""
@@ -290,7 +424,8 @@ class LlmClient:
         if model is None:
             raise LlmError(f"unknown plan schema: {plan_type}")
         system = (
-            "You extract hosting/server plan data from a table as JSON. Produce DATA only: "
+            "You extract product or service plan data from a table as JSON using the selected "
+            "plan schema. Produce DATA only: "
             "no selectors and no formulas. Normalize amounts, units, and billing periods. "
             "Treat each table row as a separate plan; map cells by column headers, not by "
             "assuming a fixed column order. Headers may be Persian or English and prices "
@@ -436,8 +571,16 @@ def refilter_page(*args, **kwargs):
     return default_client.refilter_page(*args, **kwargs)
 
 
+def refilter_pages(*args, **kwargs):
+    return default_client.refilter_pages(*args, **kwargs)
+
+
 def classify_tables(*args, **kwargs):
     return default_client.classify_tables(*args, **kwargs)
+
+
+def classify_extract_tables(*args, **kwargs):
+    return default_client.classify_extract_tables(*args, **kwargs)
 
 
 def extract_plans(*args, **kwargs):

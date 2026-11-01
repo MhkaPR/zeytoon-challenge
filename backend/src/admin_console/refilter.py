@@ -149,3 +149,8 @@ def refilter_page(url, html, *, idempotency_key=None, link=None):
 
 def should_drop(verdict):
     return LinkRefilter.should_drop(verdict)
+
+
+def refilter_pages(pages, *, links=None, idempotency_key=None):
+    """Submit already summarized pages in one LLM call; return index-to-bool verdicts."""
+    return llm.refilter_pages(pages, links=links, idempotency_key=idempotency_key)

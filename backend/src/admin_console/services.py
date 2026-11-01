@@ -10,6 +10,7 @@ Network/provider failures are retried with backoff and dead-lettered on exhausti
 
 import hashlib
 import math
+import re
 import time
 import urllib.parse
 from datetime import timedelta
@@ -208,6 +209,56 @@ def refilter_link(link, actor=None, html=None):
         link, link.review_state, link.refilter_plan_type, link.refilter_confidence
     )
     return link
+
+
+def refilter_links(links):
+    """Fetch and summarize eligible pages, then classify them in one LLM call."""
+    links = list(links)
+    summarizer = refilter_mod.default_summarizer
+    pages, indexed_links = [], []
+    for link in links:
+        try:
+            summary = summarizer.summarize(summarizer.fetch_html(link.url), link.url)
+        except Exception as exc:
+            link.last_error = f"refilter_fetch: {exc}"[:512]
+            link.pipeline_task_state = "failed"
+            link.save(update_fields=("last_error", "pipeline_task_state", "updated_at"))
+            continue
+        index = len(pages)
+        pages.append({"index": index, **summary})
+        indexed_links.append(link)
+    if not pages:
+        return links
+    try:
+        verdicts = refilter_mod.refilter_pages(
+            pages, links=indexed_links, idempotency_key="refilter-batch:" + ",".join(
+                str(item.pk) for item in indexed_links
+            ),
+        )
+    except llm.LlmBudgetExhausted:
+        return links
+    except Exception as exc:
+        for item in indexed_links:
+            item.last_error = f"refilter_batch: {exc}"[:512]
+            item.pipeline_task_state = "failed"
+            item.save(update_fields=("last_error", "pipeline_task_state", "updated_at"))
+        return links
+    results = []
+    for index, link in enumerate(indexed_links):
+        accepted = bool(verdicts[str(index)])
+        link.refilter_plan_type = ""
+        link.refilter_confidence = 1.0
+        link.refilter_flag = False
+        link.review_state = Link.ReviewState.KEPT if accepted else Link.ReviewState.DROPPED
+        link.pipeline_stage = (
+            Link.PipelineStage.REFILTERED if accepted else Link.PipelineStage.DISCOVERED
+        )
+        if not accepted:
+            link.pipeline_task_state = "completed"
+        link.save()
+        events.refilter_verdict(link, link.review_state, link.refilter_plan_type, 1.0)
+        results.append(link)
+    return results
 
 
 def override_refilter(link, review_state, reason="", actor=None):
@@ -444,6 +495,149 @@ def classify_link_tables(link, actor=None):
     return link
 
 
+def classify_and_extract_link_tables(link, actor=None):
+    """Classify every table and extract accepted tables in one model call."""
+    tables = list(link.extracted_tables.all())
+    if not tables:
+        raise ValueError("no_tables_found")
+    contexts = [
+        {"table_index": index, **_table_context(table)}
+        for index, table in enumerate(tables)
+    ]
+    context_by_index = {context["table_index"]: context for context in contexts}
+    verdicts = llm.classify_extract_tables(
+        contexts, link=link, idempotency_key=f"classify-extract:{link.pk}"
+    )
+    by_index = {verdict.table_index: verdict for verdict in verdicts}
+    plans_count = 0
+    skipped = 0
+    pending_records = []
+    with transaction.atomic():
+        TableClassification.objects.filter(table__link=link).delete()
+        PlanRecord.objects.filter(link=link).delete()
+        for index, table in enumerate(tables):
+            verdict = by_index[index]
+            TableClassification.objects.create(
+                table=table,
+                is_plans_table=verdict.is_correct,
+                plan_type=verdict.plan_type or "",
+                confidence=verdict.classification_confidence or 0.0,
+                provider=constants.refilter_provider(),
+                model=constants.refilter_model() or "",
+                prompt_version=llm.PROMPT_VERSION,
+            )
+            if not verdict.is_correct:
+                continue
+            plans_count += 1
+            classification = table.classification
+            for plan in verdict.plans or []:
+                confidence = 1.0 if plan.confidence is None else plan.confidence
+                values = _normalize_price_scale(
+                    plan.values, context_by_index[index]
+                )
+                if not _plan_is_complete(values, verdict.plan_type, confidence):
+                    skipped += 1
+                    continue
+                pending_records.append(
+                    PlanRecord(
+                        link=link,
+                        table=table,
+                        classification=classification,
+                        plan_type=verdict.plan_type,
+                        natural_key=_natural_key(
+                            values, verdict.plan_type, len(pending_records)
+                        ),
+                        values=values,
+                        confidence=confidence,
+                        prompt_version=llm.PROMPT_VERSION,
+                    )
+                )
+        if pending_records:
+            PlanRecord.objects.bulk_create(pending_records)
+    link.pipeline_stage = (
+        Link.PipelineStage.PLANS_EXTRACTED
+        if pending_records
+        else Link.PipelineStage.CLASSIFIED
+    )
+    link.save()
+    events.classification_completed(link, plans_count, len(tables))
+    if pending_records:
+        events.plans_extracted(link, len(pending_records), skipped)
+    elif plans_count:
+        raise llm.NoPlanRecordsError(
+            "no plan records met confidence and required-field rules; each needs a "
+            "directly supported name, positive price, and confidence 1.0"
+        )
+    return link
+
+
+_PRICE_SCALE_FACTORS = (
+    (re.compile(r"(?:میلیون|million)", re.IGNORECASE), 1_000_000),
+    (re.compile(r"(?:هزار|thousand)", re.IGNORECASE), 1_000),
+    (re.compile(r"(?:میلیارد|billion)", re.IGNORECASE), 1_000_000_000),
+)
+_LOCALIZED_DIGITS = str.maketrans(
+    "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"
+)
+
+
+def _numeric_cell(value):
+    text = str(value).translate(_LOCALIZED_DIGITS).strip()
+    text = text.replace(",", "").replace("٬", "")
+    if not re.fullmatch(r"\d+(?:\.\d+)?", text):
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _normalize_price_scale(values, table_context):
+    """Normalize a model price using the closest explicit unit in its source row.
+
+    The combined LLM prompt requests normalized toman values. This source check is a
+    guard against providers returning the displayed number without applying its scale.
+    """
+    result = dict(values)
+    price = _numeric_cell(result.get("price_amount"))
+    plan_name = " ".join(str(result.get("plan_name") or "").split()).casefold()
+    if price is None or not plan_name:
+        return result
+
+    for row in table_context.get("rows", []):
+        row_text = [" ".join(str(cell).split()) for cell in row]
+        if not any(plan_name == cell.casefold() for cell in row_text):
+            continue
+        for cell_index, cell in enumerate(row_text):
+            source_amount = _numeric_cell(cell)
+            if source_amount is None or source_amount <= 0:
+                continue
+            ratio = price / source_amount
+            recognized_scales = (1, 1_000, 1_000_000, 1_000_000_000)
+            if not any(
+                math.isclose(ratio, scale, rel_tol=1e-9)
+                for scale in recognized_scales
+            ):
+                continue
+            for unit_cell in reversed(row_text[:cell_index]):
+                unit = unit_cell.casefold()
+                factor = next(
+                    (
+                        scale
+                        for pattern, scale in _PRICE_SCALE_FACTORS
+                        if pattern.search(unit)
+                    ),
+                    None,
+                )
+                if factor is not None:
+                    normalized = source_amount * factor
+                    result["price_amount"] = (
+                        int(normalized) if normalized.is_integer() else normalized
+                    )
+                    return result
+    return result
+
+
 def classifications_payload(link):
     results = []
     for table in link.extracted_tables.all():
@@ -468,8 +662,7 @@ def classifications_payload(link):
 
 def extract_link_plans(link, actor=None):
     tables = [
-        table
-        for table in link.extracted_tables.all()
+        table for table in link.extracted_tables.all()
         if getattr(table, "classification", None) is not None
         and table.classification.is_plans_table
     ]
@@ -481,8 +674,6 @@ def extract_link_plans(link, actor=None):
         classification = table.classification
         plan_type = classification.plan_type
         if plan_type not in plan_schema.PLAN_SCHEMA:
-            # Repair legacy/invalid classifier output by classifying this table again
-            # against the current schema keys. Never silently substitute a schema.
             verdicts = llm.classify_tables(
                 [{"table_index": 0, **_table_context(table)}],
                 link=link,
@@ -498,18 +689,16 @@ def extract_link_plans(link, actor=None):
             classification.confidence = verdict.confidence
             classification.save(update_fields=("plan_type", "confidence"))
             plan_type = verdict.plan_type
-        field_keys = plan_schema.all_field_keys(plan_type)
         plans = llm.extract_plans(
             _table_context(table),
             plan_type,
-            field_keys,
+            plan_schema.all_field_keys(plan_type),
             link=link,
             table=table,
             idempotency_key=f"plans:{table.pk}",
         )
         valid = [
-            plan
-            for plan in plans
+            plan for plan in plans
             if _plan_is_complete(plan.values, plan_type, plan.confidence)
         ]
         skipped += len(plans) - len(valid)
@@ -538,10 +727,9 @@ def extract_link_plans(link, actor=None):
     with transaction.atomic():
         PlanRecord.objects.filter(link=link).delete()
         PlanRecord.objects.bulk_create(pending_records)
-    extracted = len(pending_records)
     link.pipeline_stage = Link.PipelineStage.PLANS_EXTRACTED
     link.save()
-    events.plans_extracted(link, extracted, skipped)
+    events.plans_extracted(link, len(pending_records), skipped)
     return link
 
 

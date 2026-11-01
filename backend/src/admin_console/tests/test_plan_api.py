@@ -9,6 +9,9 @@ pytestmark = pytest.mark.django_db
 
 
 def test_plan_endpoint_extracts_and_lists(operator_client, classified_link, stub_llm):
+    stub_llm.classifications = [
+        {"table_index": 0, "is_plans_table": True, "plan_type": "hosting", "confidence": 1.0}
+    ]
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 
     response = operator_client.post(f"/api/v1/ops/links/{classified_link.pk}/plans")

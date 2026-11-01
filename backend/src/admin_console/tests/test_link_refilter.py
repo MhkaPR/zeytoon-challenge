@@ -102,3 +102,32 @@ def test_confident_plans_link_keeps_plan_type(candidate_link, stub_llm, stub_pag
     assert candidate_link.review_state == Link.ReviewState.KEPT
     assert candidate_link.refilter_plan_type == "hosting"
     assert candidate_link.refilter_flag is False
+
+
+def test_batch_refilter_sends_all_page_summaries_in_one_call(
+    candidate_link, site, stub_llm, stub_page_html
+):
+    second = Link.objects.create(
+        site=site,
+        url="https://example.com/about",
+        url_hash="second-candidate-hash",
+        review_state=Link.ReviewState.CANDIDATE,
+        pipeline_stage=Link.PipelineStage.DISCOVERED,
+    )
+    stub_llm.refilter_response = lambda url, headings, text: {
+        "is_plans_page": url.endswith("hosting"),
+        "plan_type": "hosting" if url.endswith("hosting") else "",
+        "confidence": 0.99,
+    }
+
+    services.refilter_links([candidate_link, second])
+
+    assert len(stub_llm.batch_refilter_calls) == 1
+    pages = stub_llm.batch_refilter_calls[0]
+    assert [page["index"] for page in pages] == [0, 1]
+    assert all(set(page) == {"index", "url", "headings", "important_section"} for page in pages)
+    candidate_link.refresh_from_db()
+    second.refresh_from_db()
+    assert candidate_link.review_state == Link.ReviewState.KEPT
+    assert second.review_state == Link.ReviewState.DROPPED
+    assert second.pipeline_task_state == "completed"

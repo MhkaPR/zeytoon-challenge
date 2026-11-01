@@ -71,8 +71,7 @@ def execute_replay_run(link, actor=None):
         try:
             if structural:
                 services.extract_link_tables(link)
-                services.classify_link_tables(link)
-            services.extract_link_plans(link)
+            services.classify_and_extract_link_tables(link)
             services.publish_link_plans(link)
             services.retire_missing_plans(link, services.unignored_plan_keys(link))
             reextracted = True

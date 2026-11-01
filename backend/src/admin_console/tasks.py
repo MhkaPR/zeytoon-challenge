@@ -29,20 +29,11 @@ def run_extraction_task(link_id):
 
 @task
 def run_classification_task(link_id):
-    """Classify tables for a link (FR-023..FR-025)."""
+    """Run combined table classification and plan data extraction."""
     from admin_console.models import Link
-    from admin_console.services import classify_link_tables
+    from admin_console.services import classify_and_extract_link_tables
 
-    return classify_link_tables(Link.objects.get(pk=link_id))
-
-
-@task
-def run_plan_extraction_task(link_id):
-    """Extract plan data for a link (FR-026..FR-031)."""
-    from admin_console.models import Link
-    from admin_console.services import extract_link_plans
-
-    return extract_link_plans(Link.objects.get(pk=link_id))
+    return classify_and_extract_link_tables(Link.objects.get(pk=link_id))
 
 
 @task
@@ -97,10 +88,25 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
     if link_id is not None:
         links = links.filter(pk=link_id)
 
+    # Refilter all discovered candidates together so there is one LLM round trip.
+    pending_refilter = [
+        item for item in links
+        if item.pipeline_stage == Link.PipelineStage.DISCOVERED
+        and item.review_state in (Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT)
+        and (not item.last_error or item.pipeline_task_state == "queued")
+    ]
+    if pending_refilter:
+        services.refilter_links(pending_refilter)
+        for item in pending_refilter:
+            item.refresh_from_db()
+
     if link_id is not None:
         Link.objects.filter(pk=link_id).update(pipeline_task_state="running")
 
     for link in links:
+        link.refresh_from_db()
+        if link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET:
+            continue
         if link.review_state not in (Link.ReviewState.CANDIDATE, Link.ReviewState.KEPT):
             continue
         if link.last_error and link.pipeline_task_state != "queued":
@@ -133,20 +139,18 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             if link.pipeline_stage == Link.PipelineStage.CAPTURED:
                 services.extract_link_tables(link)
                 link.refresh_from_db()
-            if link.pipeline_stage == Link.PipelineStage.EXTRACTED:
-                services.classify_link_tables(link)
+            if link.pipeline_stage in (
+                Link.PipelineStage.EXTRACTED,
+                Link.PipelineStage.CLASSIFIED,
+            ):
+                services.classify_and_extract_link_tables(link)
                 link.refresh_from_db()
-                if not link.extracted_tables.filter(
-                    classification__is_plans_table=True
-                ).exists():
+                if not link.plan_records.exists():
                     completed.append(link.pk)
                     Link.objects.filter(pk=link.pk).update(
                         pipeline_task_state="completed"
                     )
                     continue
-            if link.pipeline_stage == Link.PipelineStage.CLASSIFIED:
-                services.extract_link_plans(link)
-                link.refresh_from_db()
             completed.append(link.pk)
             link.last_error = ""
             link.save(update_fields=["last_error", "updated_at"])

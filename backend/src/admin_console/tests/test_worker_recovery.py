@@ -123,7 +123,7 @@ def test_no_acceptable_plans_is_handled_as_completed_quality_outcome(
     kept_link.save(update_fields=["pipeline_stage", "pipeline_task_state", "updated_at"])
     monkeypatch.setattr(
         services,
-        "extract_link_plans",
+        "classify_and_extract_link_tables",
         lambda link: (_ for _ in ()).throw(
             services.llm.NoPlanRecordsError("no plan met the quality gate")
         ),

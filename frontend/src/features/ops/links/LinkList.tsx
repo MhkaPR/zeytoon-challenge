@@ -23,13 +23,15 @@ export function LinkList({ links }: { links: Link[] }) {
   const [retryError, setRetryError] = useState<string | null>(null);
 
   useEffect(() => {
-    const settled = links
-      .filter((link) => link.pipeline_task_state === "failed" || link.pipeline_task_state === "completed")
+    const reported = links
+      .filter((link) =>
+        ["queued", "running", "failed", "completed"].includes(link.pipeline_task_state ?? ""),
+      )
       .map((link) => link.id);
-    if (settled.length) {
+    if (reported.length) {
       setQueued((current) => {
         const next = new Set(current);
-        settled.forEach((id) => next.delete(id));
+        reported.forEach((id) => next.delete(id));
         return next;
       });
     }
@@ -78,8 +80,14 @@ export function LinkList({ links }: { links: Link[] }) {
             </tr>
           </thead>
           <tbody>
-            {links.map((link) => (
-              <tr className="border-b border-[var(--ds-border)]" key={link.id}>
+            {links.map((link) => {
+              const isPending =
+                retrying.has(link.id) ||
+                queued.has(link.id) ||
+                link.pipeline_task_state === "queued" ||
+                link.pipeline_task_state === "running";
+              return (
+                <tr className="border-b border-[var(--ds-border)]" key={link.id}>
                 <td className="max-w-[420px] truncate py-[10px]" dir="ltr" title={link.url}>
                   {link.url}
                   {link.last_error && (
@@ -114,31 +122,24 @@ export function LinkList({ links }: { links: Link[] }) {
                 <td className="py-[10px]">
                   <Button
                     isDisabled={
-                      retrying.has(link.id) ||
-                      link.pipeline_task_state === "queued" ||
-                      link.pipeline_task_state === "running" ||
+                      isPending ||
                       ["published", "flagged"].includes(link.pipeline_stage)
                     }
-                    isPending={
-                      retrying.has(link.id) ||
-                      link.pipeline_task_state === "queued" ||
-                      link.pipeline_task_state === "running"
-                    }
+                    isPending={isPending}
                     onPress={() => retry(link.id)}
                     size="sm"
                     variant="secondary"
                   >
                     {({ isPending }) =>
-                      isPending ||
-                      link.pipeline_task_state === "queued" ||
-                      link.pipeline_task_state === "running"
+                      isPending
                         ? opsStrings.retryQueued
                         : opsStrings.retry
                     }
                   </Button>
                 </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

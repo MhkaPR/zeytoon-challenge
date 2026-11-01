@@ -101,3 +101,21 @@ def test_budget_can_be_set_by_an_admin_through_the_api(operator_client):
     assert response.status_code == 200
     assert response.json()["token_budget"] == 1234
     assert LlmCostLedger.objects.filter(token_budget=1234).exists()
+
+
+def test_one_batch_spend_row_is_associated_with_every_link(kept_link):
+    second = Link.objects.create(
+        site=kept_link.site,
+        url="https://example.com/second",
+        url_hash="second-cost-link",
+    )
+
+    row, created = llm.default_budget.record_spend(
+        "refilter", 321, links=[kept_link, second], idempotency_key="batch-cost"
+    )
+
+    assert created is True
+    assert row.tokens_used == 321
+    assert row.link_ref is None
+    assert set(row.links.values_list("pk", flat=True)) == {kept_link.pk, second.pk}
+    assert LlmCostLedger.objects.filter(idempotency_key="batch-cost").count() == 1

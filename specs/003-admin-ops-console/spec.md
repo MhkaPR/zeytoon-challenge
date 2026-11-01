@@ -74,17 +74,17 @@ For an approved company, the system onboards the company's single site by crawli
 
 ### User Story 3 - LLM link refilter before capture (Priority: P3)
 
-Before any browser capture, each candidate link is fetched cheaply and reduced **deterministically** — with no LLM — to its URL, its `h1–h3` headings, and its important section: the largest text-density block inside `<main>` or `<article>`. Only that compact, non-HTML summary is sent to an LLM, which judges whether the page is a host/server plans page, returns the plan type it matches, and reports a confidence. The filter is recall-biased: only links that are confidently **not** plans pages are dropped; borderline links are kept and flagged for review, so a provider is never silently lost.
+Before any browser capture, all candidate links in a pipeline batch are fetched cheaply and reduced **deterministically** — with no LLM — to each URL, its `h1–h3` headings, and its important section: the largest text-density block inside `<main>` or `<article>`. All summaries are sent to the LLM together in one request. The LLM returns one JSON object keyed by numeric link indexes, with a Boolean acceptance verdict for every link. A link marked false is dropped before capture; a true link continues. The model judges whether a page presents plans in any supported category, not only hosting or servers.
 
 **Why this priority**: Refiltering keeps Chrome work and LLM cost down by discarding non-plans pages before capture, and it is the first stage that needs the LLM budget.
 
-**Independent Test**: Feed a plans page and a non-plans page through the deterministic extraction and the LLM refilter; confirm only the URL, headings, and important section are sent (no HTML), that the plans page is kept with its plan type and confidence, and that a confidently non-plans page is dropped.
+**Independent Test**: Feed multiple plan and non-plan pages through deterministic extraction and one LLM refilter request; confirm every URL, heading set, and important section is included without HTML, and every numeric key receives the correct Boolean verdict.
 
 **Acceptance Scenarios**:
 
-1. **Given** a candidate link, **When** it is prepared for refiltering, **Then** the model receives only the URL, the `h1–h3` headings, and the important section (the largest text-density block in `<main>`/`<article>`), and never the page HTML.
-2. **Given** the model's judgement, **When** the link is confidently not a plans page, **Then** the link is dropped and recorded as not-a-plans-page.
-3. **Given** the model's judgement, **When** the link is a plans page or its confidence is not conclusive, **Then** the link is kept (with its plan type and confidence when available) and borderline cases are flagged for review.
+1. **Given** multiple candidate links, **When** they are prepared for refiltering, **Then** one LLM request receives each link's URL, `h1–h3` headings, and important section, never page HTML.
+2. **Given** the model's judgement, **When** a link's numeric index maps to false, **Then** that link is dropped before capture.
+3. **Given** the model's judgement, **When** a link's numeric index maps to true, **Then** that link is accepted for continuation.
 4. **Given** the LLM budget is exhausted, **When** a candidate link still needs refiltering, **Then** the link waits in an awaiting-budget state and is retried when budget is restored, without blocking the rest of the pipeline.
 
 ---
@@ -124,11 +124,11 @@ Each stored trace is passed to **domtrack's table extraction**, which discovers 
 
 ### User Story 6 - Table classification with confidence (Priority: P6)
 
-Each extracted table is classified by an LLM as a **plans table** or not, together with the plan type it matches and a **confidence**. Classification is per table and per page: a page may contribute one, several, or no plans tables. The classification is persisted and is the anchor used later by replay to decide whether a detected change is relevant.
+Each extracted table is classified and handled in one LLM step. For a table that does not match a supported plan schema, the model returns only its table index and a Boolean saying its class is incorrect. For a table that matches, the same response includes its plan type, confidence, and extracted plan data in the corresponding schema. Classification is per table and per page: a page may contribute one, several, or no plans tables. The classification is persisted and is the anchor used later by replay to decide whether a detected change is relevant.
 
 **Why this priority**: Classification isolates the plans tables that carry plan data, so the expensive schema extraction and the replay re-extraction run only where they matter.
 
-**Independent Test**: Feed a plans table and a non-plans table to classification and confirm each is labelled with its verdict, plan type, and confidence; confirm a page with three tables where only one is a plans table produces exactly one plans-table classification.
+**Independent Test**: Feed several plan and non-plan tables in one classification/extraction request; confirm rejected tables return only a false verdict and accepted tables return schema-shaped plan data.
 
 **Acceptance Scenarios**:
 
@@ -140,7 +140,7 @@ Each extracted table is classified by an LLM as a **plans table** or not, togeth
 
 ### User Story 7 - Plan schema extraction (data, not formulas) (Priority: P7)
 
-For each table classified as a plans table, an LLM extracts the plans **as data** against the single, code-defined plan schema and returns a normalized list of plan records in the standard format. The model produces and normalizes the values themselves — units, amounts, and billing periods — for the matched plan type. **No selectors and no formulas are produced or stored**; the schema is the only durable contract. If a table cannot be mapped to the schema, that table is skipped; the page's other mappable tables are still published.
+Accepted plan tables return normalized plan records **as data** against the single, code-defined plan schema in the same LLM request that classifies them. The model produces and normalizes the values themselves — units, amounts, and billing periods — for the matched plan type. **No selectors and no formulas are produced or stored**; the schema is the only durable contract. Tables that do not match a schema return only an incorrect-class Boolean; accepted sibling tables still return their data.
 
 **Why this priority**: This is the value of the whole pipeline — turning a provider's plans table into clean, structured, comparable plan data with no manual mapping.
 
@@ -255,10 +255,10 @@ In the background, the system replays maintained sites on a period configured fr
 
 **LLM link refilter**
 
-- **FR-012**: For each candidate link, the system MUST derive, deterministically and without an LLM, the link URL, its `h1–h3` headings, and its important section — the largest text-density block inside `<main>` or `<article>` — from the normal HTML returned by the crawler, and MUST send only that summary (never the page HTML) to an LLM.
-- **FR-013**: The LLM MUST judge whether the page is a host/server plans page and MUST return the matched plan type (hosting, CDN, virtual server, and similar) and a confidence.
-- **FR-014**: The filter MUST be recall-biased: the system MUST drop a link only when the LLM is confidently certain it is not a plans page, and MUST keep and flag borderline links so providers are not silently lost.
-- **FR-015**: The system MUST record each link's refilter verdict (kept/dropped, plan type, confidence, and flag) before capture.
+- **FR-012**: For each candidate link, the system MUST derive, deterministically and without an LLM, the link URL, its `h1–h3` headings, and its important section — the largest text-density block inside `<main>` or `<article>` — from normal HTML, and MUST send only that summary (never page HTML) to an LLM. All eligible links in one pipeline batch MUST be sent in one request.
+- **FR-013**: The LLM MUST judge whether each page presents a plan in any supported product/service category and MUST return one JSON object keyed by each numeric link index, with a Boolean value for acceptance.
+- **FR-014**: The system MUST drop each link whose verdict is false before capture and continue each link whose verdict is true.
+- **FR-015**: The system MUST record each link's refilter verdict (kept/dropped) before capture.
 
 **Server-side headless capture (domtrack capture)**
 
@@ -275,13 +275,13 @@ In the background, the system replays maintained sites on a period configured fr
 
 **Table classification (plans / not plans)**
 
-- **FR-023**: The system MUST classify each extracted table by an LLM as a plans table or not, together with the matched plan type and a confidence, and MUST persist the verdict against the table.
+- **FR-023**: In one LLM request, the system MUST classify every extracted table and extract plan data for accepted tables. A rejected table's response MUST contain only its table index and a Boolean indicating its class is incorrect; an accepted table's response MUST also contain its matched plan type, confidence, and extracted plan data. The system MUST persist classifications and extracted data.
 - **FR-024**: Classification MUST be per table and per page: a page may hold zero, one, or several plans-table verdicts.
 - **FR-025**: The persisted classification MUST be the anchor by which replay decides whether a detected change is relevant to plan data.
 
 **Plan schema extraction (data, not formulas)**
 
-- **FR-026**: For each table classified as a plans table, the system MUST extract the plans as data with an LLM against the single plan schema and MUST return a list of plan records in the standard format.
+- **FR-026**: For each table classified as a plans table, the combined classification request MUST extract plans as data against the single plan schema and return records in the standard format.
 - **FR-027**: The plan schema MUST be a single, code-defined schema (defined in code, edited by hand) that represents a host or server plan and is not editable by users. It MUST carry a plan-type dimension so that the applicable data is selected per plan type (for example hosting, CDN, virtual server).
 - **FR-028**: The LLM MUST produce the data values itself, including normalizing amounts, units, and billing periods — the system MUST NOT produce or store source selectors, combination formulas, or any extraction recipe.
 - **FR-029**: When a re-extraction is required (initial extraction or replay), the system MUST re-run the LLM schema extraction against the plan data; no formula or selector replay is performed.

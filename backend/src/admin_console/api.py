@@ -400,7 +400,7 @@ class ClassificationView(OperatorOnlyView):
         self.caller(request)
         link = get_link_or_error(link_id)
         try:
-            services.classify_link_tables(link)
+            services.classify_and_extract_link_tables(link)
         except Exception as exc:  # noqa: BLE001
             raise _stage_error(exc) from exc
         return Response(
@@ -454,7 +454,13 @@ class PlansView(OperatorOnlyView):
         self.caller(request)
         link = get_link_or_error(link_id)
         try:
-            services.extract_link_plans(link)
+            if not link.plan_records.exists() and link.pipeline_stage in (
+                Link.PipelineStage.EXTRACTED,
+                Link.PipelineStage.CLASSIFIED,
+            ):
+                services.classify_and_extract_link_tables(link)
+                if not link.plan_records.exists():
+                    raise ValueError("plans_required")
         except Exception as exc:  # noqa: BLE001
             raise _stage_error(exc) from exc
         return Response(

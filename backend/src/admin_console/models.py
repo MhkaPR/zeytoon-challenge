@@ -517,6 +517,11 @@ class LlmCostLedger(TimestampedModel):
         blank=True,
         related_name="llm_spend_rows",
     )
+    links = models.ManyToManyField(
+        Link,
+        blank=True,
+        related_name="batch_llm_spend_rows",
+    )
     table_ref = models.ForeignKey(
         ExtractedTable,
         on_delete=models.SET_NULL,

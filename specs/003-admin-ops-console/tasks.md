@@ -89,7 +89,7 @@ plumbing that every user story depends on
 - [ ] T036 Implement the operator API base in `backend/src/admin_console/api.py`: an `OperatorOnlyView` (mirroring the `companies` pattern) requiring `user.is_admin()` and a shared error shape (FR-005)
 - [ ] T037 [P] Add constance readers in `backend/src/admin_console/constants.py` for every constant in T009 so no business-logic module reads constance directly (FR-054)
 - [ ] T038 [P] Implement the budget gate in `backend/src/admin_console/llm.py`: `budget_allows(stage, scope, period)`, `record_llm_spend(...)` keyed by `idempotency_key`, and `budget_exhausted(stage)` marking a link `awaiting_llm_budget` and raising a `notifications` alert (FR-047..FR-050)
-- [ ] T039 [P] Scaffold `backend/src/admin_console/tasks.py` with `django.tasks` task functions (`run_capture_task`, `run_extraction_task`, `run_classification_task`, `run_plan_extraction_task`, `run_labeling_task`, `run_replay_task`) and the management command skeleton `backend/src/admin_console/management/commands/run_scheduled_replays.py`
+- [ ] T039 [P] Scaffold `backend/src/admin_console/tasks.py` with `django.tasks` task functions (`run_capture_task`, `run_extraction_task`, `run_classification_task` for combined table classification and plan extraction, `run_labeling_task`, `run_replay_task`) and the management command skeleton `backend/src/admin_console/management/commands/run_scheduled_replays.py`
 - [ ] T040 Register the new models in `backend/src/admin_console/admin.py` and `backend/src/notifications/admin.py` for operator-side reads (labeling toggle, token budget, recipients)
 
 **Checkpoint**: Models, artifact store, domtrack/crawl4ai/LLM adapters, plan schema, interfaces, budget gate, and shared plumbing exist.
@@ -249,7 +249,7 @@ formulas; skip unmappable tables.
 
 - [ ] T082 [US7] Implement `extract_plans` in `llm.py` (validated against `plan_schema.py`; required-field check; normalized values)
 - [ ] T083 [US7] Implement `extract_link_plans(link)` in `services.py`: extract per plans table, skip unmappable tables, upsert `PlanRecord` by `natural_key`, budget-gated (FR-026..FR-031)
-- [ ] T084 [US7] Implement `PlansView` in `backend/src/admin_console/api.py` and wire the route; add `run_plan_extraction_task`
+- [ ] T084 [US7] Implement `PlansView` in `backend/src/admin_console/api.py` and wire the route to the combined `run_classification_task`; do not add a separate plan-extraction task
 - [ ] T085 [P] [US7] Emit masked plan-extraction events and build the plans page (`frontend/app/ops/links/[linkId]/plans/page.tsx`)
 
 **Checkpoint**: US1–US7 work independently.
@@ -335,6 +335,10 @@ a plans table is touched, and alert on failure-rate crossings.
 - [ ] T109 [P] Masked-log audit across all events (SC-021)
 - [ ] T110 [P] Domtrack/crawl4ai import-boundary test: `domtrack` only in `domtrack_client.py`, `crawl4ai` only in `discovery.py` (SC-020)
 - [ ] T111 Run the quickstart.md validation scenarios and record the results (browser/network stages are manual and recorded as such)
+- [X] T112 [US10] Fix the link retry button so a successful rerun request immediately displays and disables as queued; reconcile the optimistic state when fresh link data arrives.
+- [X] T113 [US3] Refilter all eligible links in one LLM request using numeric indexes, including each link's URL, h1–h3 headings, and important text; persist each Boolean verdict and stop rejected links before capture.
+- [X] T114 [US6][US7] Combine table classification and plan extraction in one LLM request: rejected tables return only an incorrect-class Boolean; accepted tables also return schema-validated extracted plan data.
+- [X] T115 [US3][US6][US7] Update regression coverage and API/task documentation for retry feedback, batched refilter, and combined table classification/extraction.
 
 **Checkpoint**: The feature is complete, contract-verified, and validated end-to-end.
 

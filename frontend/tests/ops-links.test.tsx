@@ -69,6 +69,30 @@ describe("automated site pipeline", () => {
     });
   });
 
+  it("shows a retry as queued immediately after the request succeeds", async () => {
+    const user = userEvent.setup();
+    vi.mocked(rerunLink).mockResolvedValue({} as never);
+    render(
+      <LinkList
+        links={[{
+          id: 9,
+          site_id: 4,
+          url: "https://example.com/retry",
+          source: "manual",
+          review_state: "kept",
+          pipeline_stage: "classified",
+          failure_rate: 0,
+          current_trace_id: 12,
+          last_error: "plan_extraction: failed",
+        }]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: opsStrings.retry }));
+
+    expect(await screen.findByRole("button", { name: opsStrings.retryQueued })).toBeDisabled();
+  });
+
   it("explains an empty quality result without showing a pipeline error", () => {
     render(
       <LinkList

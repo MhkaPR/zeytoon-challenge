@@ -169,15 +169,19 @@ def stub_llm(monkeypatch):
         plans=[],
         exhausted_stages=set(),
         refilter_calls=[],
+        batch_refilter_calls=[],
         classification_calls=[],
+        combined_classification_calls=[],
         plan_calls=[],
     )
 
-    def _raise_if_exhausted(stage, link=None):
+    def _raise_if_exhausted(stage, link=None, links=None):
         if stage in stub.exhausted_stages:
             # Mirror the real client: parking the link and notifying are side effects
             # of the budget guard, so a scripted exhaustion behaves like the real one.
-            llm_mod.default_budget.exhausted(stage, link=link)
+            targets = list(links or ([] if link is None else [link]))
+            for target in targets:
+                llm_mod.default_budget.exhausted(stage, link=target)
             raise llm_mod.LlmBudgetExhausted(stage)
 
     def refilter_page(url, headings, important_section, *, idempotency_key=None, link=None):
@@ -190,6 +194,23 @@ def stub_llm(monkeypatch):
             response = response(url, headings, important_section)
         return response if isinstance(response, llm_mod.RefilterVerdict) else llm_mod.RefilterVerdict(**response)
 
+    def refilter_pages(pages, *, idempotency_key=None, links=None):
+        stub.batch_refilter_calls.append(pages)
+        _raise_if_exhausted("refilter", links=links)
+        response = stub.refilter_response
+        verdicts = {}
+        for page in pages:
+            result = (
+                response(page["url"], page["headings"], page["important_section"])
+                if callable(response)
+                else response
+            )
+            accepted = getattr(result, "is_plans_page", None)
+            if accepted is None:
+                accepted = result.get("is_plans_page", False)
+            verdicts[str(page["index"])] = bool(accepted)
+        return verdicts
+
     def classify_tables(table_contexts, *, idempotency_key=None, link=None):
         stub.classification_calls.append(table_contexts)
         _raise_if_exhausted("classification", link)
@@ -199,6 +220,40 @@ def stub_llm(monkeypatch):
             else llm_mod.TableClassificationOut(**item)
             for item in stub.classifications
         ]
+
+    def classify_extract_tables(table_contexts, *, idempotency_key=None, link=None):
+        stub.combined_classification_calls.append(table_contexts)
+        _raise_if_exhausted("classification", link)
+        configured = {item["table_index"]: item for item in stub.classifications}
+        results = []
+        for context in table_contexts:
+            verdict = configured.get(context["table_index"], {
+                "is_plans_table": False, "plan_type": "", "confidence": 0.0,
+            })
+            accepted = verdict.get("is_correct", verdict.get("is_plans_table", False))
+            if not accepted or verdict.get("plan_type") not in llm_mod.plan_schema.PLAN_SCHEMA:
+                results.append(llm_mod.CombinedTableOut(
+                    table_index=context["table_index"], is_correct=False
+                ))
+                continue
+            response = stub.plans
+            if callable(response):
+                response = response(
+                    {"columns": context["columns"], "rows": context["rows"]},
+                    verdict["plan_type"],
+                )
+            results.append(llm_mod.CombinedTableOut(
+                table_index=context["table_index"],
+                is_correct=True,
+                plan_type=verdict["plan_type"],
+                confidence=verdict.get("confidence", 1.0),
+                plans=[
+                    item if isinstance(item, llm_mod.PlanRecordOut)
+                    else llm_mod.PlanRecordOut(**item)
+                    for item in response
+                ],
+            ))
+        return results
 
     def extract_plans(table_context, plan_type, field_keys, *, idempotency_key=None,
                       link=None, table=None):
@@ -221,7 +276,9 @@ def stub_llm(monkeypatch):
         ]
 
     monkeypatch.setattr(llm_mod.default_client, "refilter_page", refilter_page)
+    monkeypatch.setattr(llm_mod.default_client, "refilter_pages", refilter_pages)
     monkeypatch.setattr(llm_mod.default_client, "classify_tables", classify_tables)
+    monkeypatch.setattr(llm_mod.default_client, "classify_extract_tables", classify_extract_tables)
     monkeypatch.setattr(llm_mod.default_client, "extract_plans", extract_plans)
     return stub
 
