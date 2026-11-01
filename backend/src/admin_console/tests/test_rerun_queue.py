@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from django.db import transaction
+from django.tasks.base import TASK_MAX_PRIORITY
 
 from admin_console import tasks
 from admin_console.models import Link
@@ -17,7 +18,9 @@ def test_link_rerun_is_accepted_once_while_already_queued(
         tasks,
         "run_site_pipeline_task",
         SimpleNamespace(
-            enqueue=lambda *args, **kwargs: enqueued.append((args, kwargs))
+            using=lambda **options: SimpleNamespace(
+                enqueue=lambda *args, **kwargs: enqueued.append((args, kwargs, options))
+            )
         ),
     )
     monkeypatch.setattr(transaction, "on_commit", lambda callback: callback())
@@ -34,6 +37,7 @@ def test_link_rerun_is_accepted_once_while_already_queued(
     assert first.json()["queued"] is True
     assert second.json()["link"]["pipeline_task_state"] == "queued"
     assert len(enqueued) == 1
+    assert enqueued[0][2] == {"priority": TASK_MAX_PRIORITY}
 
 
 def test_distinct_link_retries_are_enqueued_independently(
@@ -44,7 +48,9 @@ def test_distinct_link_retries_are_enqueued_independently(
         tasks,
         "run_site_pipeline_task",
         SimpleNamespace(
-            enqueue=lambda *args, **kwargs: enqueued.append((args, kwargs))
+            using=lambda **options: SimpleNamespace(
+                enqueue=lambda *args, **kwargs: enqueued.append((args, kwargs, options))
+            )
         ),
     )
     monkeypatch.setattr(transaction, "on_commit", lambda callback: callback())
@@ -63,7 +69,10 @@ def test_distinct_link_retries_are_enqueued_independently(
         assert response.json()["link"]["pipeline_task_state"] == "queued"
 
     assert len(enqueued) == 2
-    assert {kwargs["link_id"] for _, kwargs in enqueued} == {
+    assert {kwargs["link_id"] for _, kwargs, _ in enqueued} == {
         kept_link.pk,
         second_link.pk,
     }
+    assert all(
+        options == {"priority": TASK_MAX_PRIORITY} for _, _, options in enqueued
+    )

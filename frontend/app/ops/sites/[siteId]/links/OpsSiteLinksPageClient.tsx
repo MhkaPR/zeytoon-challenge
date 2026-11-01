@@ -43,12 +43,17 @@ export default function OpsSiteLinksPageClient({
           {opsStrings.automaticPipelineHint}
         </Typography>
       </div>
-      {loading ? (
-        <Skeleton className="h-[220px] rounded-[var(--radius)]" />
-      ) : error || !data ? (
-        <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+      {!data ? (
+        loading ? (
+          <Skeleton className="h-[220px] rounded-[var(--radius)]" />
+        ) : (
+          <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+        )
       ) : (
-        <LinkList links={data.links} />
+        <>
+          {error && <Typography role="alert">{error}</Typography>}
+          <LinkList links={data.links} />
+        </>
       )}
     </main>
   );

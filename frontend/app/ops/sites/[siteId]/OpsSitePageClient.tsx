@@ -43,12 +43,15 @@ export default function OpsSitePageClient({
         <Typography className="text-[13px] text-muted">{opsStrings.siteIntro}</Typography>
       </div>
 
-      {loading ? (
-        <Skeleton className="h-[220px] rounded-[var(--radius)]" />
-      ) : error || !data ? (
-        <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+      {!data ? (
+        loading ? (
+          <Skeleton className="h-[220px] rounded-[var(--radius)]" />
+        ) : (
+          <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+        )
       ) : (
         <>
+          {error && <Typography role="alert">{error}</Typography>}
           <SiteOnboarding linksCount={data.links.length} site={data.site} />
           <LinkList links={data.links} />
         </>

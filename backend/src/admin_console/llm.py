@@ -14,7 +14,6 @@ import json
 import logging
 from pathlib import Path
 import uuid
-from typing import Literal
 
 import httpx
 from django.conf import settings
@@ -264,13 +263,12 @@ class LlmClient:
         return RefilterVerdict(**data)
 
     def classify_tables(self, table_contexts, *, idempotency_key=None, link=None):
-        plan_type = Literal["", *plan_schema.PLAN_SCHEMA.keys()]
         classification_model = create_model(
             "TableClassificationStrict",
             __config__=ConfigDict(extra="forbid"),
             table_index=(int, ...),
             is_plans_table=(bool, ...),
-            plan_type=(plan_type, ...),
+            plan_type=(str, ...),
             confidence=(float, ...),
         )
         response_model = create_model(
@@ -341,18 +339,14 @@ def _schema_field_guidance(plan_type):
     schema = plan_schema.schema_for(plan_type)
     if schema is None:
         return []
+    properties = schema.model_json_schema().get("properties", {})
     return [
         {
-            "key": field.key,
-            "label": field.label,
-            "kind": field.kind,
-            "unit_family": field.unit_family,
-            "canonical_unit": field.canonical_unit,
-            "values": list(field.values),
-            "aliases": list(field.aliases),
+            "key": key,
+            **definition,
         }
-        for field in schema.fields
-        if field.key in plan_schema.all_field_keys(plan_type)
+        for key, definition in properties.items()
+        if key in plan_schema.all_field_keys(plan_type)
     ]
 
 

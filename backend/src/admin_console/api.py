@@ -567,6 +567,7 @@ class AlertListView(OperatorOnlyView):
 class LinkRerunView(OperatorOnlyView):
     def post(self, request, link_id):
         from django.db import transaction
+        from django.tasks.base import TASK_MAX_PRIORITY
 
         from admin_console.tasks import run_site_pipeline_task
 
@@ -583,7 +584,9 @@ class LinkRerunView(OperatorOnlyView):
             link.pipeline_task_state = "queued"
             link.save(update_fields=["pipeline_task_state", "updated_at"])
             transaction.on_commit(
-                lambda site_id=link.site_id, retry_link_id=link.pk: run_site_pipeline_task.enqueue(
+                lambda site_id=link.site_id, retry_link_id=link.pk: run_site_pipeline_task.using(
+                    priority=TASK_MAX_PRIORITY
+                ).enqueue(
                     site_id, discover=False, link_id=retry_link_id
                 )
             )

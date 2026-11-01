@@ -50,6 +50,37 @@ def test_non_plans_table_is_recorded_but_not_counted(extracted_link, stub_llm):
     assert classification.is_plans_table is False
 
 
+def test_unsupported_classification_type_does_not_discard_valid_verdicts(monkeypatch):
+    client = llm.LlmClient()
+    monkeypatch.setattr(
+        client,
+        "chat_json",
+        lambda *args, **kwargs: {
+            "classifications": [
+                {
+                    "table_index": 0,
+                    "is_plans_table": True,
+                    "plan_type": "hosting",
+                    "confidence": 0.9,
+                },
+                {
+                    "table_index": 1,
+                    "is_plans_table": True,
+                    "plan_type": "email",
+                    "confidence": 0.8,
+                },
+            ]
+        },
+    )
+
+    verdicts = client.classify_tables([])
+
+    assert [(v.is_plans_table, v.plan_type) for v in verdicts] == [
+        (True, "hosting"),
+        (False, ""),
+    ]
+
+
 def test_budget_exhaustion_parks_the_link(extracted_link, stub_llm):
     stub_llm.exhausted_stages = {"classification"}
 

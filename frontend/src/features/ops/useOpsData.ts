@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AuthApiError } from "@/src/lib/api/auth";
 import { opsStrings } from "@/src/lib/i18n/strings";
@@ -44,15 +44,20 @@ export function useOpsData<T>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const activeKey = useRef(key);
 
   const reload = useCallback(() => {
-    setLoading(true);
     setError(null);
     setVersion((value) => value + 1);
   }, []);
 
   useEffect(() => {
     let active = true;
+    if (activeKey.current !== key) {
+      activeKey.current = key;
+      setData(null);
+      setLoading(true);
+    }
     loader(getAccessToken())
       .then((result) => {
         if (active) setData(result);
