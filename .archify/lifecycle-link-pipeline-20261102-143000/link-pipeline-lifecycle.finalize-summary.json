@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "lifecycle",
+  "quality": "showcase",
+  "specification": {
+    "path": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/lifecycle-link-pipeline-20261102-143000/candidate.json",
+    "sha256": "ae2d74dd6b397497f83e36a5616499fc663c70fe9efa7ad59220ac77d5f7f73b",
+    "bytes": 6592
+  },
+  "artifact": {
+    "path": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/lifecycle-link-pipeline-20261102-143000/link-pipeline-lifecycle.html",
+    "sha256": "2930a30a8e5ba08d466a24d39945cc516b75bdda6d698423016cfa065691cee7",
+    "bytes": 850608
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/lifecycle-link-pipeline-20261102-143000/link-pipeline-lifecycle.finalize.json",
+    "summaryReceipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/lifecycle-link-pipeline-20261102-143000/link-pipeline-lifecycle.finalize-summary.json",
+    "browserCheckReceipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/lifecycle-link-pipeline-20261102-143000/link-pipeline-lifecycle.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-02T13:11:45.533Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 4579,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}
