@@ -1,9 +1,7 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CompanyCard } from "@/src/features/company/CompanyCard";
-import { FilterBox, EMPTY_FILTERS } from "@/src/features/home/FilterBox";
 import { SearchBox } from "@/src/features/home/SearchBox";
 import { MainBody } from "@/src/features/home/MainBody";
 import { strings } from "@/src/lib/i18n/strings";
@@ -18,7 +16,7 @@ afterEach(() => {
 });
 
 describe("MainBody", () => {
-  it("renders the search box, service chips, and filter box", () => {
+  it("renders the hero, service categories, and reference sections", () => {
     render(<MainBody />);
     expect(screen.getByRole("search")).toBeInTheDocument();
     // Four service-type chips, host selected by default. HeroUI renders the single-select
@@ -34,16 +32,9 @@ describe("MainBody", () => {
     ]) {
       expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();
     }
-    expect(screen.getByLabelText(strings.serverLocationLabel)).toBeInTheDocument();
-  });
-
-  it("shows only a traffic chooser for the CDN service type", async () => {
-    const user = userEvent.setup();
-    render(<MainBody />);
-    await user.click(screen.getByRole("radio", { name: strings.serviceCdn }));
-    expect(screen.getByLabelText(strings.resourceTraffic)).toBeInTheDocument();
-    expect(screen.queryByLabelText(strings.resourceRam)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(strings.resourceCpu)).not.toBeInTheDocument();
+    expect(document.getElementById("pricing")).toBeInTheDocument();
+    expect(document.getElementById("providers")).toBeInTheDocument();
+    expect(document.getElementById("steps")).toBeInTheDocument();
   });
 });
 
@@ -51,24 +42,6 @@ describe("SearchBox", () => {
   it("has an accessible search field", () => {
     render(<SearchBox />);
     expect(screen.getByRole("searchbox")).toBeInTheDocument();
-  });
-});
-
-describe("FilterBox", () => {
-  it("opens the price range field on demand", async () => {
-    const user = userEvent.setup();
-    render(
-      <FilterBox serviceType="host" value={EMPTY_FILTERS} onChange={() => {}} />,
-    );
-    expect(screen.queryByLabelText(strings.priceFrom)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: new RegExp(strings.priceRangeLabel) }));
-    // NumberField labels its input plus the increment/decrement buttons, so target the input.
-    expect(
-      screen.getByLabelText(strings.priceFrom, { selector: "input" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(strings.priceTo, { selector: "input" }),
-    ).toBeInTheDocument();
   });
 });
 

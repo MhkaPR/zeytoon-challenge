@@ -10,8 +10,11 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(Path(__file__).resolve().parents[3] / ".env", override=False)
 
 
 def env(name, default=None):
@@ -61,10 +64,15 @@ INSTALLED_APPS = [
     "guardian",
     "constance",
     "drf_spectacular",
+    "storages",
+    "admin_console",
+    "django_tasks_db.apps.TasksAppConfig",
     # Local
     "utils",
     "accounts",
     "companies",
+    "catalog",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -121,6 +129,7 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": env("SQLITE_PATH", str(BASE_DIR / "db.sqlite3")),
+            "OPTIONS": {"timeout": float(env("SQLITE_TIMEOUT", "20"))},
         }
     }
 
@@ -135,7 +144,9 @@ AUTHENTICATION_BACKENDS = (
 # Password validation (kept for the Django admin operator accounts)
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -240,7 +251,10 @@ CONSTANCE_DATABASE_CACHE_BACKEND = "default"
 CONSTANCE_CONFIG = {
     "OTP_LENGTH": (6, "Number of digits in the one-time code."),
     "OTP_TTL_SECONDS": (120, "One-time code validity window in seconds."),
-    "MAX_VERIFY_ATTEMPTS": (5, "Failed verification attempts per code before invalidation."),
+    "MAX_VERIFY_ATTEMPTS": (
+        5,
+        "Failed verification attempts per code before invalidation.",
+    ),
     "LOCKOUT_THRESHOLD": (5, "Failed attempts before a temporary lockout."),
     "LOCKOUT_DURATION_SECONDS": (900, "Temporary lockout length in seconds."),
     "REQUEST_COOLDOWN_SECONDS": (60, "Minimum gap between code requests per phone."),
@@ -252,7 +266,7 @@ CONSTANCE_CONFIG = {
         "Communication channels shown to a blocked user.",
     ),
     "RETURN_URL_ALLOWLIST": (
-        ["/", "/plans", "/compare", "/search"],
+        ["/", "/plans", "/compare", "/search", "/panel", "/ops"],
         "Allowed relative return targets after login.",
     ),
     "DEFAULT_RETURN_PATH": ("/", "Fallback page when the return target is invalid."),
@@ -280,14 +294,147 @@ CONSTANCE_CONFIG = {
         "You have no companies yet. Register a new company to get started.",
         "Copy for the company panel empty state.",
     ),
+    # Admin Console — Company Approval & Automated Site Data Pipeline (spec 003)
+    "REPLAY_PERIOD_HOURS": (24, "Hours between scheduled replays for one link."),
+    "REPLAY_BATCH_SIZE": (50, "Maximum links selected per scheduled replay cycle."),
+    "FAILURE_RATE_THRESHOLD": (
+        0.5,
+        "Failure rate (0..1) over the window that opens a link alert.",
+    ),
+    "FAILURE_RATE_WINDOW_RUNS": (
+        5,
+        "Trailing replay runs used to derive a failure rate.",
+    ),
+    # Table labeling is the mandatory pass 1 of extraction; pass 2 uses the same LLM.
+    "LABELING_PROVIDER": (
+        "openai",
+        "LLM provider key for table labeling and extraction.",
+    ),
+    "LABELING_MODEL": (
+        "",
+        "LLM model used for labeling/extraction (empty = provider default).",
+    ),
+    "LABELING_LANGUAGE": ("fa", "Language requested for generated labels."),
+    "LABELING_BATCH_SIZE": (10, "Tables labeled per LLM call."),
+    # Adaptive link discovery (crawl4ai statistical strategy; no embeddings/LLM).
+    "LINK_CRAWL_QUERY_FA": (
+        "پلن هاست و سرور و قیمت",
+        "Persian host/server-plans query passed to the adaptive crawler.",
+    ),
+    "LINK_CRAWL_QUERY_EN": (
+        "hosting server plans pricing",
+        "English host/server-plans query passed to the adaptive crawler.",
+    ),
+    "LINK_CRAWL_MAX_PAGES": (60, "Maximum pages the adaptive crawler visits per run."),
+    "LINK_CRAWL_MAX_DEPTH": (5, "Maximum crawl depth from the seed domain."),
+    "LINK_CRAWL_TOP_K": (
+        50,
+        "Top-k links the statistical strategy keeps per frontier step.",
+    ),
+    "LINK_DENY_EXTENSIONS": (
+        [
+            "js",
+            "css",
+            "txt",
+            "json",
+            "xml",
+            "pdf",
+            "doc",
+            "docx",
+            "xls",
+            "xlsx",
+            "ppt",
+            "pptx",
+            "zip",
+            "rar",
+            "7z",
+            "gz",
+            "tar",
+            "png",
+            "jpg",
+            "jpeg",
+            "gif",
+            "svg",
+            "webp",
+            "ico",
+            "mp4",
+            "mp3",
+            "wav",
+            "woff",
+            "woff2",
+            "ttf",
+            "eot",
+            "csv",
+            "rss",
+            "atom",
+        ],
+        "File extensions excluded by the deterministic link policy.",
+    ),
+    "LINK_DENY_SEGMENTS": (
+        [
+            "blog",
+            "docs",
+            "support",
+            "help",
+            "login",
+            "signup",
+            "register",
+            "auth",
+            "cart",
+            "checkout",
+            "privacy",
+            "terms",
+            "legal",
+            "about",
+            "contact",
+            "careers",
+            "jobs",
+            "news",
+            "faq",
+            "ticket",
+            "tickets",
+        ],
+        "Non-content path segments excluded by the deterministic link policy.",
+    ),
+    "LINK_DISCOVERY_MAX_LINKS": (
+        5000,
+        "Maximum candidate links stored per discovery run.",
+    ),
+    # Server-side headless capture.
+    "CAPTURE_FIXED_DURATION_MS": (
+        15000,
+        "Fixed-duration headless capture length in ms.",
+    ),
+    "CAPTURE_NAV_TIMEOUT_MS": (30000, "Navigation timeout for a headless capture."),
+    # Resilience.
+    "RETRY_MAX_ATTEMPTS": (3, "Maximum attempts before a link is dead-lettered."),
+    "RETRY_BACKOFF_SECONDS": (5, "Base backoff between retries, in seconds."),
+    "PUBLISH_AUTO_THRESHOLD": (
+        0.0,
+        "Extraction confidence at/above which publication is automatic.",
+    ),
+    "TABLE_DISCOVERY_MIN_ROWS": (2, "Minimum rows for a domtrack table candidate."),
+    "TABLE_DISCOVERY_MIN_COLS": (2, "Minimum columns for a domtrack table candidate."),
+    "TABLE_DISCOVERY_DEDUPE": (
+        True,
+        "Whether domtrack de-duplicates discovered tables.",
+    ),
+    "REPLAY_MODE": (
+        "clean",
+        "domtrack replay mode (clean keeps widgets from false diffs).",
+    ),
+    "REPLAY_SPEED": (1.0, "domtrack replay speed multiplier."),
+    "REPLAY_TIME_POLICY": ("replay", "domtrack replay time policy."),
+    "REPLAY_THIRD_PARTY_DETECTION": (
+        True,
+        "Whether domtrack's third-party detector suppresses chat/support widget noise.",
+    ),
 }
 
 
 # SMS gateway (credentials from environment only)
 
-SMS_GATEWAY_BACKEND = env(
-    "SMS_GATEWAY_BACKEND", "accounts.sms.ConsoleSmsGateway"
-)
+SMS_GATEWAY_BACKEND = env("SMS_GATEWAY_BACKEND", "accounts.sms.ConsoleSmsGateway")
 SMS_GATEWAY_API_KEY = env("SMS_GATEWAY_API_KEY")
 SMS_GATEWAY_SENDER = env("SMS_GATEWAY_SENDER")
 SMS_GATEWAY_BASE_URL = env("SMS_GATEWAY_BASE_URL")
@@ -326,3 +473,58 @@ MAILERS = {
         "BACKEND": "django.core.mail.backends.console.EmailBackend",
     },
 }
+
+
+# Artifact storage (spec 003, research R4): domtrack traces and related artifacts are
+# written through Django's STORAGES API. S3-compatible object storage is the default;
+# a developer/devops can switch the backend purely from settings (no code change) by
+# setting ARTIFACT_STORAGE_BACKEND=filesystem (see the commented alternative below).
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", "torob-artifacts")
+AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL")
+AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "ir-thr-ba1")
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
+AWS_S3_FILE_OVERWRITE = False
+AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", False)
+
+ARTIFACT_STORAGE_BACKEND = env("ARTIFACT_STORAGE_BACKEND", "file")
+
+STORAGES = {
+    "default": {
+        "BACKEND": (
+            "storages.backends.s3.S3Storage"
+            if ARTIFACT_STORAGE_BACKEND == "s3"
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+# Local-filesystem alternative (select with ARTIFACT_STORAGE_BACKEND=filesystem):
+#     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage",
+#                 "OPTIONS": {"location": env("MEDIA_ROOT", str(BASE_DIR / "media"))}},
+
+
+# Django Tasks framework (Django 6). No Celery anywhere (research R2).
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks_db.DatabaseBackend",
+        "QUEUES": ["default"],
+    }
+}
+
+
+# domtrack and crawl4ai run server-side; a headless Chromium must be available to the
+# worker (research R3). No operator-machine endpoint exists.
+OPENAI_BASE_URL = env("OPENAI_BASE_URL", "")
+OPENAI_API_KEY = env("OPENAI_API_KEY", "")
+OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-mini")
+
+# Transparent crawler user-agent with a contact URL (Principle X).
+CRAWLER_USER_AGENT = env(
+    "CRAWLER_USER_AGENT",
+    "TorobPlanBot/1.0 (+https://example.com/bot; contact: support@example.com)",
+)
+CRAWLER_REQUEST_DELAY_SECONDS = float(env("CRAWLER_REQUEST_DELAY_SECONDS", "1.0"))
+PRICE_TABLE_MIN_MATCHING_ROWS = max(2, int(env("PRICE_TABLE_MIN_MATCHING_ROWS", "2")))

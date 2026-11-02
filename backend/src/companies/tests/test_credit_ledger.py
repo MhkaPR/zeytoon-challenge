@@ -75,9 +75,7 @@ def test_projection_equals_running_total(owner):
         record_credit_movement(company, "charge", amount, "payment")
     record_credit_movement(company, "decharge", 30, "platform_view")
     entries = list(company.credit_entries.all())
-    total = sum(
-        e.amount if e.direction == "charge" else -e.amount for e in entries
-    )
+    total = sum(e.amount if e.direction == "charge" else -e.amount for e in entries)
     assert credit_projection(company) == total == 145
 
 

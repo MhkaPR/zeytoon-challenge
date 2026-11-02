@@ -102,7 +102,7 @@ Return the current identity and role, or an explicit guest result.
 
 | Status | Meaning | Body                                                                               |
 |--------|---------|------------------------------------------------------------------------------------|
-| 200 | Authenticated | `{ "authenticated": true, "user": { "phone": "09123456789", "role": "regular" } }` |
+| 200 | Authenticated | `{ "authenticated": true, "role": "regular", "user": { "phone": "09123456789", "role": "regular" } }` |
 | 200 | Guest | `{ "authenticated": false, "role": "guest" }`                                      |
 
 This endpoint is the canonical guest-vs-authenticated signal for the frontend (FR-010).

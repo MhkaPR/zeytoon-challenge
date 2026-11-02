@@ -13,7 +13,9 @@ PHONE = "+989123456789"
 def test_verify_success_returns_tokens_and_redirect(api_client, issued_code):
     code = issued_code(PHONE)
     response = api_client.post(
-        URL, {"phone_number": PHONE, "code": code, "return_url": "/plans"}, format="json"
+        URL,
+        {"phone_number": PHONE, "code": code, "return_url": "/plans"},
+        format="json",
     )
     assert response.status_code == 200
     assert response.data["token_type"] == "Bearer"

@@ -62,5 +62,9 @@ def ownership_transfer_refused(company, actor=None):
 def companies_archived(user, count):
     logger.info(
         "company_archived_for_user",
-        extra={"event": "company_archived_for_user", "actor_id": getattr(user, "pk", None), "count": count},
+        extra={
+            "event": "company_archived_for_user",
+            "actor_id": getattr(user, "pk", None),
+            "count": count,
+        },
     )

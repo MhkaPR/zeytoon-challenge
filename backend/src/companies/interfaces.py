@@ -36,10 +36,26 @@ class CompaniesInterface:
     def can_manage_plans(company):
         return services.can_manage_plans(company)
 
+    @staticmethod
+    def companies_awaiting_verification():
+        return selectors.companies_awaiting_verification()
+
+    @staticmethod
+    def pending_approval_payload(company):
+        return selectors.pending_approval_payload(company)
+
+    @staticmethod
+    def company_or_error(company_id):
+        return selectors.company_or_error(company_id)
+
     # --- write ---
     @staticmethod
     def record_credit_movement(company, **kwargs):
         return services.record_credit_movement(company, **kwargs)
+
+    @staticmethod
+    def record_verification_decision(company, actor, outcome, note=""):
+        return services.record_verification_decision(company, actor, outcome, note=note)
 
 
 __all__ = ["CompaniesInterface"]

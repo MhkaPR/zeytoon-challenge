@@ -31,10 +31,15 @@ def test_create_company_pending_unverified(auth_client, owner):
     assert company.owner_id == owner.pk
 
 
+def test_create_company_without_trailing_slash(auth_client):
+    response = auth_client.post(LIST_URL.rstrip("/"), _payload(), format="json")
+
+    assert response.status_code == 201
+    assert response.json()["company"]["verification_status"] == "pending"
+
+
 def test_internal_number_is_optional(auth_client):
-    response = auth_client.post(
-        LIST_URL, _payload(internal_number=""), format="json"
-    )
+    response = auth_client.post(LIST_URL, _payload(internal_number=""), format="json")
     assert response.status_code == 201
 
 
@@ -58,9 +63,9 @@ def test_list_is_owner_scoped(auth_client, owner, other_owner):
     assert response.json()["companies"] == []
 
 
-def test_domain_is_stored_normalized_and_not_deduplicated(owner):
+def test_domain_is_normalized_and_preserves_www_for_site_crawling(owner):
     first = register_company(owner, _payload(domain="WWW.Example.com/path?x=1"))
-    assert first.domain == "example.com"
+    assert first.domain == "www.example.com"
     # A repeated domain is accepted; this feature performs no detection (FR-041/FR-042).
     second = register_company(owner, _payload(company_name="Again"))
     assert second.pk != first.pk

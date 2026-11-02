@@ -29,3 +29,28 @@ def test_admin_wins_over_regular(role_groups):
     user.groups.add(Group.objects.get(name=User.REGULAR_GROUP))
     user.groups.add(Group.objects.get(name=User.ADMIN_GROUP))
     assert user.role() == "admin"
+
+
+def test_ops_group_is_an_operator_but_not_an_admin(role_groups):
+    from django.contrib.auth.models import Group
+
+    user = User.objects.create_user(
+        username="+989120000002", phone_number="+989120000002", password="x"
+    )
+    user.groups.add(Group.objects.get(name=User.OPS_GROUP))
+
+    assert user.role() == "ops"
+    assert user.is_operator() is True
+    assert user.is_admin() is False
+
+
+def test_admin_wins_over_ops(role_groups):
+    from django.contrib.auth.models import Group
+
+    user = User.objects.create_user(
+        username="+989120000003", phone_number="+989120000003", password="x"
+    )
+    user.groups.add(Group.objects.get(name=User.OPS_GROUP))
+    user.groups.add(Group.objects.get(name=User.ADMIN_GROUP))
+
+    assert user.role() == "admin"

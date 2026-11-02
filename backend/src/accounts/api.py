@@ -81,7 +81,7 @@ class OtpVerifyView(APIView):
             "token_type": "Bearer",
             "expires_in": result["tokens"]["expires_in"],
             "redirect_to": result["redirect_to"],
-            "user": {"phone": user.phone_number, "role": user.role()},
+            "user": {"phone": mask_phone(user.phone_number), "role": user.role()},
         }
         response = Response(body, status=status.HTTP_200_OK)
         return _set_refresh_cookie(response, result["tokens"]["refresh_token"])
@@ -121,7 +121,9 @@ class TokenRefreshView(APIView):
         body = {
             "access_token": access,
             "token_type": "Bearer",
-            "expires_in": int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
+            "expires_in": int(
+                settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()
+            ),
         }
         response = Response(body, status=status.HTTP_200_OK)
         return _set_refresh_cookie(response, str(refresh))

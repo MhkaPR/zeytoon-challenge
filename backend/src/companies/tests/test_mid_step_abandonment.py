@@ -23,9 +23,12 @@ def _register(owner):
 def test_abandon_clears_only_that_step_draft(owner):
     company = _register(owner)
     save_step(owner, company, "company_information", {"domain": "example.com"})
-    assert CompanyRegistrationDraft.objects.filter(
-        owner=owner, company=company, step_key="company_information"
-    ).count() == 1
+    assert (
+        CompanyRegistrationDraft.objects.filter(
+            owner=owner, company=company, step_key="company_information"
+        ).count()
+        == 1
+    )
 
     # A second, different step draft must be preserved.
     CompanyRegistrationDraft.objects.create(

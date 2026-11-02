@@ -49,7 +49,7 @@ def hash_code(code):
 def generate_code():
     """Generate a random numeric code of the configured length."""
     length = int(config.OTP_LENGTH)
-    upper = 10 ** length
+    upper = 10**length
     return str(secrets.randbelow(upper)).zfill(length)
 
 
@@ -116,12 +116,16 @@ def clear_lockout(phone_number):
 
 
 def lockout_ttl(phone_number):
-    return 0 if not is_locked_out(phone_number) else int(config.LOCKOUT_DURATION_SECONDS)
+    return (
+        0 if not is_locked_out(phone_number) else int(config.LOCKOUT_DURATION_SECONDS)
+    )
 
 
 def bump_failed_attempts(phone_number, ttl_seconds=None):
     """Increment and return the rolling failed-verification count for a phone."""
-    window = int(ttl_seconds if ttl_seconds is not None else config.LOCKOUT_DURATION_SECONDS)
+    window = int(
+        ttl_seconds if ttl_seconds is not None else config.LOCKOUT_DURATION_SECONDS
+    )
     key = _failure_key(phone_number)
     current = cache.get(key, 0) + 1
     cache.set(key, current, timeout=window)

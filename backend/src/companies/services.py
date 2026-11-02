@@ -34,8 +34,8 @@ def _seed_step_progress(company):
         if index == 0:
             state = CompanyStepProgress.State.APPROVED
         elif index == 1:
-            state = CompanyStepProgress.State.OPEN
-        else :
+            state = CompanyStepProgress.State.LOCKED
+        else:
             state = CompanyStepProgress.State.LOCKED
 
         CompanyStepProgress.objects.create(
@@ -121,9 +121,7 @@ def abandon_step(user, company, step_key):
     CompanyRegistrationDraft.objects.filter(
         owner=user, company=company, step_key=step_key
     ).delete()
-    row = CompanyStepProgress.objects.filter(
-        company=company, step_key=step_key
-    ).first()
+    row = CompanyStepProgress.objects.filter(company=company, step_key=step_key).first()
     if row is not None and row.state == CompanyStepProgress.State.SAVED:
         row.state = CompanyStepProgress.State.OPEN
         row.save(update_fields=["state", "updated_at"])
@@ -192,7 +190,9 @@ def can_manage_plans(company):
 
 
 @transaction.atomic
-def record_credit_movement(company, direction, amount, reason, reference="", actor=None):
+def record_credit_movement(
+    company, direction, amount, reason, reference="", actor=None
+):
     """Append exactly one ledger entry and return the recomputed projection (FR-034)."""
     if direction not in dict(CreditLedgerEntry.Direction.choices):
         raise ApiError("invalid_movement", "Unknown credit direction.")
@@ -200,7 +200,7 @@ def record_credit_movement(company, direction, amount, reason, reference="", act
         raise ApiError("invalid_movement", "Unknown credit reason.")
     try:
         amount = int(amount)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise ApiError("invalid_movement", "The credit amount is not valid.")
     if amount <= 0:
         raise ApiError("invalid_movement", "The credit amount must be positive.")

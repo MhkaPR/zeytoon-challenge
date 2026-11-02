@@ -11,7 +11,9 @@ import re
 # Mask any run of 7+ digits that looks like a phone number, keeping a short prefix/suffix.
 _PHONE_RE = re.compile(r"(\+?\d{2,4})\d{3,}(\d{3,4})")
 # Redact bearer tokens / long opaque strings.
-_TOKEN_RE = re.compile(r"\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b")
+_TOKEN_RE = re.compile(
+    r"\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b"
+)
 # Redact explicit key: value pairs for codes/tokens/phone numbers.
 _KV_RE = re.compile(
     r"(?i)\b(code|otp|token|access_token|refresh_token|phone|phone_number)"
@@ -63,9 +65,15 @@ class SensitiveDataFilter(logging.Filter):
         record.msg = mask_text(record.msg)
         if record.args:
             if isinstance(record.args, dict):
-                record.args = {k: mask_text(v) for k, v in record.args.items()}
+                record.args = {
+                    key: mask_text(value) if isinstance(value, str) else value
+                    for key, value in record.args.items()
+                }
             else:
-                record.args = tuple(mask_text(a) for a in record.args)
+                record.args = tuple(
+                    mask_text(value) if isinstance(value, str) else value
+                    for value in record.args
+                )
         return True
 
 
@@ -84,5 +92,5 @@ class JsonFormatter(logging.Formatter):
         for key in ("event", "phone", "provider", "duration_ms"):
             value = getattr(record, key, None)
             if value is not None:
-                payload[key] = value
+                payload[key] = mask_phone(value) if key == "phone" else value
         return json.dumps(payload, ensure_ascii=False)

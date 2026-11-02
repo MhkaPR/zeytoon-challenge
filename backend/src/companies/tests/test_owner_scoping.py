@@ -19,9 +19,7 @@ def _register(owner, domain):
     )
 
 
-def test_other_owners_company_is_not_found_on_every_endpoint(
-    auth_client, other_owner
-):
+def test_other_owners_company_is_not_found_on_every_endpoint(auth_client, other_owner):
     company = _register(other_owner, "theirs.com")
     pk = company.pk
     for url in [

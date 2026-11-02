@@ -15,96 +15,262 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Company',
+            name="Company",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('domain', models.CharField(db_index=True, max_length=255)),
-                ('company_name', models.CharField(max_length=255)),
-                ('representative_name', models.CharField(max_length=255)),
-                ('phone_number', models.CharField(max_length=32)),
-                ('internal_number', models.CharField(blank=True, default='', max_length=32)),
-                ('verification_status', models.CharField(choices=[('pending', 'Pending verification'), ('verified', 'Verified'), ('rejected', 'Rejected')], default='pending', max_length=16)),
-                ('charge_status', models.CharField(choices=[('charged', 'Charged'), ('not_charged', 'Not charged')], default='not_charged', max_length=16)),
-                ('crawl_enabled', models.BooleanField(default=False)),
-                ('is_archived', models.BooleanField(db_index=True, default=False)),
-                ('archived_at', models.DateTimeField(blank=True, null=True)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='companies', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("domain", models.CharField(db_index=True, max_length=255)),
+                ("company_name", models.CharField(max_length=255)),
+                ("representative_name", models.CharField(max_length=255)),
+                ("phone_number", models.CharField(max_length=32)),
+                (
+                    "internal_number",
+                    models.CharField(blank=True, default="", max_length=32),
+                ),
+                (
+                    "verification_status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending verification"),
+                            ("verified", "Verified"),
+                            ("rejected", "Rejected"),
+                        ],
+                        default="pending",
+                        max_length=16,
+                    ),
+                ),
+                (
+                    "charge_status",
+                    models.CharField(
+                        choices=[
+                            ("charged", "Charged"),
+                            ("not_charged", "Not charged"),
+                        ],
+                        default="not_charged",
+                        max_length=16,
+                    ),
+                ),
+                ("crawl_enabled", models.BooleanField(default=False)),
+                ("is_archived", models.BooleanField(db_index=True, default=False)),
+                ("archived_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="companies",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'companies_company',
-                'ordering': ('-created_at',),
+                "db_table": "companies_company",
+                "ordering": ("-created_at",),
             },
         ),
         migrations.CreateModel(
-            name='CompanyRegistrationDraft',
+            name="CompanyRegistrationDraft",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('step_key', models.CharField(max_length=64)),
-                ('payload', models.JSONField(blank=True, default=dict)),
-                ('expires_at', models.DateTimeField(blank=True, null=True)),
-                ('company', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='registration_drafts', to='companies.company')),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='company_registration_drafts', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("step_key", models.CharField(max_length=64)),
+                ("payload", models.JSONField(blank=True, default=dict)),
+                ("expires_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "company",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="registration_drafts",
+                        to="companies.company",
+                    ),
+                ),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="company_registration_drafts",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'companies_registration_draft',
-                'ordering': ('-created_at',),
+                "db_table": "companies_registration_draft",
+                "ordering": ("-created_at",),
             },
         ),
         migrations.CreateModel(
-            name='CreditLedgerEntry',
+            name="CreditLedgerEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('direction', models.CharField(choices=[('charge', 'Charge'), ('decharge', 'Decharge')], max_length=16)),
-                ('amount', models.PositiveIntegerField()),
-                ('reason', models.CharField(choices=[('payment', 'Payment'), ('platform_view', 'Platform view'), ('adjustment', 'Adjustment')], max_length=32)),
-                ('reference', models.CharField(blank=True, default='', max_length=255)),
-                ('actor', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='credit_entries', to=settings.AUTH_USER_MODEL)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='credit_entries', to='companies.company')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "direction",
+                    models.CharField(
+                        choices=[("charge", "Charge"), ("decharge", "Decharge")],
+                        max_length=16,
+                    ),
+                ),
+                ("amount", models.PositiveIntegerField()),
+                (
+                    "reason",
+                    models.CharField(
+                        choices=[
+                            ("payment", "Payment"),
+                            ("platform_view", "Platform view"),
+                            ("adjustment", "Adjustment"),
+                        ],
+                        max_length=32,
+                    ),
+                ),
+                ("reference", models.CharField(blank=True, default="", max_length=255)),
+                (
+                    "actor",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="credit_entries",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "company",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="credit_entries",
+                        to="companies.company",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'companies_credit_ledger_entry',
-                'ordering': ('-created_at',),
+                "db_table": "companies_credit_ledger_entry",
+                "ordering": ("-created_at",),
             },
         ),
         migrations.CreateModel(
-            name='VerificationDecision',
+            name="VerificationDecision",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('outcome', models.CharField(choices=[('approved', 'Approved'), ('not_approved', 'Not approved')], max_length=16)),
-                ('decided_at', models.DateTimeField()),
-                ('note', models.TextField(blank=True, default='')),
-                ('actor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='verification_decisions', to=settings.AUTH_USER_MODEL)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='verification_decisions', to='companies.company')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "outcome",
+                    models.CharField(
+                        choices=[
+                            ("approved", "Approved"),
+                            ("not_approved", "Not approved"),
+                        ],
+                        max_length=16,
+                    ),
+                ),
+                ("decided_at", models.DateTimeField()),
+                ("note", models.TextField(blank=True, default="")),
+                (
+                    "actor",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="verification_decisions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "company",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="verification_decisions",
+                        to="companies.company",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'companies_verification_decision',
-                'ordering': ('-decided_at',),
+                "db_table": "companies_verification_decision",
+                "ordering": ("-decided_at",),
             },
         ),
         migrations.CreateModel(
-            name='CompanyStepProgress',
+            name="CompanyStepProgress",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('step_key', models.CharField(max_length=64)),
-                ('order', models.PositiveSmallIntegerField()),
-                ('state', models.CharField(choices=[('locked', 'Locked'), ('open', 'Open'), ('saved', 'Saved'), ('approved', 'Approved'), ('rejected', 'Rejected')], default='locked', max_length=16)),
-                ('last_saved_at', models.DateTimeField(blank=True, null=True)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='step_progress', to='companies.company')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("step_key", models.CharField(max_length=64)),
+                ("order", models.PositiveSmallIntegerField()),
+                (
+                    "state",
+                    models.CharField(
+                        choices=[
+                            ("locked", "Locked"),
+                            ("open", "Open"),
+                            ("saved", "Saved"),
+                            ("approved", "Approved"),
+                            ("rejected", "Rejected"),
+                        ],
+                        default="locked",
+                        max_length=16,
+                    ),
+                ),
+                ("last_saved_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "company",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="step_progress",
+                        to="companies.company",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'companies_step_progress',
-                'ordering': ('order',),
-                'constraints': [models.UniqueConstraint(fields=('company', 'step_key'), name='uniq_company_step_key')],
+                "db_table": "companies_step_progress",
+                "ordering": ("order",),
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("company", "step_key"), name="uniq_company_step_key"
+                    )
+                ],
             },
         ),
     ]

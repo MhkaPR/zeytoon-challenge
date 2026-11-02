@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { LoginButton } from "@/src/features/auth/LoginButton";
 import { useSession } from "@/src/features/auth/SessionProvider";
@@ -34,7 +34,9 @@ export function Header() {
       <div className="relative mx-auto grid w-full max-w-[1200px] grid-cols-[auto_1fr_auto] items-center gap-[12px] px-[16px] py-[12px] sm:px-[24px] md:flex md:gap-[32px] md:px-[32px] md:py-[16px]">
         {/* Mobile: menu button first (left in RTL). Desktop: hidden. */}
         <div className="order-1 justify-self-start">
-          <MobileMenu />
+          <Suspense fallback={<div aria-hidden="true" className="h-10 w-10" />}>
+            <MobileMenu />
+          </Suspense>
         </div>
 
         {/* Brand: centered on mobile, leading on desktop. */}
@@ -42,7 +44,9 @@ export function Header() {
 
         {/* Desktop links, just after the brand. */}
         <div className="hidden md:order-2 md:block md:ms-auto">
-          <SiteMenu />
+          <Suspense fallback={<div aria-hidden="true" className="h-10 w-10" />}>
+            <SiteMenu />
+          </Suspense>
         </div>
 
         {/* The one call to action — login, or the user's account. Always on the right. */}

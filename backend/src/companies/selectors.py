@@ -38,7 +38,8 @@ def step_progress_payload(company):
             "step_key": row.step_key,
             "order": row.order,
             "state": row.state,
-            "completed": row.state in {
+            "completed": row.state
+            in {
                 CompanyStepProgress.State.APPROVED,
                 CompanyStepProgress.State.SAVED,
             },
@@ -103,3 +104,57 @@ def credit_entries_payload(company):
         }
         for entry in company.credit_entries.all()
     ]
+
+
+def companies_awaiting_verification():
+    """Return non-archived companies still awaiting a verification decision (FR-001)."""
+    return Company.objects.filter(
+        is_archived=False,
+        verification_status=Company.VerificationStatus.PENDING,
+    ).order_by("created_at")
+
+
+def duplicate_domain_ids(company):
+    """Return ids of other companies sharing this normalized domain (FR-004).
+
+    Advisory only — the caller never auto-rejects or auto-merges on a match.
+    """
+    if not company.domain:
+        return []
+    from companies.domain import canonical_domain
+
+    target = canonical_domain(company.domain)
+    return list(
+        pk
+        for pk, domain in Company.objects.exclude(pk=company.pk).values_list(
+            "pk", "domain"
+        )
+        if canonical_domain(domain) == target
+    )
+
+
+def company_or_error(company_id):
+    """Return a company by id or raise a ``not_found`` ``ApiError``."""
+    from accounts.exceptions import ApiError
+
+    company = Company.objects.filter(pk=company_id).first()
+    if company is None:
+        raise ApiError("not_found", "Company not found.", http_status=404)
+    return company
+
+
+def pending_approval_payload(company):
+    """Serialize one approval-queue row with the duplicate-domain warning (FR-001, FR-004)."""
+    from utils.logging import mask_phone
+
+    duplicates = duplicate_domain_ids(company)
+    return {
+        "company_id": company.pk,
+        "company_name": company.company_name,
+        "representative_name": company.representative_name,
+        "domain": company.domain,
+        "phone_masked": mask_phone(company.phone_number),
+        "registered_at": company.created_at.isoformat(),
+        "duplicate_domain_warning": bool(duplicates),
+        "duplicate_of": duplicates,
+    }

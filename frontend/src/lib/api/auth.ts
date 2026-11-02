@@ -5,10 +5,12 @@
  * refresh token lives in an httpOnly cookie set by the backend.
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Empty base = same origin. In development Next proxies ``/api/*`` to the backend (see
+// next.config.ts), so the httpOnly refresh cookie is first-party and survives reloads. Set
+// ``NEXT_PUBLIC_API_BASE_URL`` to an absolute origin only for a split-host deployment.
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
-export type Role = "guest" | "regular" | "admin";
+export type Role = "guest" | "regular" | "ops" | "admin";
 
 export interface SessionIdentity {
   authenticated: boolean;

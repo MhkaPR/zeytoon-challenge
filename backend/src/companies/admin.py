@@ -33,7 +33,12 @@ class CompanyAdmin(admin.ModelAdmin):
         "crawl_enabled",
         "is_archived",
     )
-    list_filter = ("verification_status", "charge_status", "is_archived", "crawl_enabled")
+    list_filter = (
+        "verification_status",
+        "charge_status",
+        "is_archived",
+        "crawl_enabled",
+    )
     search_fields = ("company_name", "domain", "representative_name")
     inlines = (CompanyStepProgressInline,)
 

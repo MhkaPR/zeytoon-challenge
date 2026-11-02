@@ -9,9 +9,13 @@ import { AboutTorb } from "./AboutTorb";
 import { FaqSection } from "./FaqSection";
 import { HomeCtas } from "./HomeCtas";
 import { HomeFooter } from "./HomeFooter";
+import { HomePlanCatalog } from "./HomePlanCatalog";
 import { HowItWorks } from "./HowItWorks";
+import { RankingCriteria } from "./RankingCriteria";
 import { RecentlyApproved } from "./RecentlyApproved";
 import { SearchBox } from "./SearchBox";
+import { ServiceTypeChips } from "./ServiceTypeChips";
+import { TopHosts } from "./TopHosts";
 import type { ServiceTypeKey } from "./serviceTypes";
 
 /**
@@ -26,39 +30,62 @@ import type { ServiceTypeKey } from "./serviceTypes";
 export function MainBody({ brandLogo }: { brandLogo?: ReactNode }) {
   const [serviceType, setServiceType] = useState<ServiceTypeKey>("host");
 
-
   return (
     <>
-      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-[80px] px-[32px] py-[80px]">
-        {/* Hero: brand logo, headline, search box, and the two browse CTAs. */}
-        <section className="flex flex-col items-center gap-[40px] text-center">
-          <div className="flex flex-col items-center gap-[16px]">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-[24px] sm:px-[32px]">
+        <section className="flex scroll-mt-[80px] flex-col items-center gap-[24px] py-[64px] text-center sm:gap-[32px] sm:py-[80px]">
+          <div className="flex flex-col items-center gap-[12px]">
             {brandLogo ?? (
-              <Typography className="font-semibold text-accent" type="body-xs">
+              <Typography className="font-semibold text-accent" type="body-sm">
                 {strings.appName}
               </Typography>
             )}
+            <Typography className="text-[12px] font-medium text-accent" type="body-xs">
+              {strings.brandTagline}
+            </Typography>
             <Typography
-              className="max-w-[640px] text-[28px] font-semibold leading-[1.5] sm:text-[32px]"
+              className="max-w-[720px] text-[30px] font-semibold leading-[1.55] sm:text-[38px]"
               type="h1"
             >
               {strings.searchTitle}
             </Typography>
-            <Typography className="max-w-[560px] text-[16px] leading-[1.8]" color="muted">
+            <Typography className="max-w-[600px] text-[14px] leading-[1.9] sm:text-[16px]" color="muted">
               {strings.heroSubtitle}
             </Typography>
           </div>
 
-          <div className="w-full max-w-[720px]">
+          <div className="w-full max-w-[720px] rounded-[var(--radius)] border border-[var(--separator)] bg-surface p-[8px] shadow-overlay">
             <SearchBox />
           </div>
-          <HomeCtas />
+          <div className="w-full max-w-[520px]">
+            <HomeCtas />
+          </div>
         </section>
 
-        <div className="flex w-full flex-col gap-[80px] text-start">
-          <AboutTorb />
-          <HowItWorks />
-          <RecentlyApproved />
+        <section
+          aria-label={strings.serviceTypeLabel}
+          className="scroll-mt-[80px] border-y border-[var(--separator)] py-[28px]"
+        >
+          <ServiceTypeChips value={serviceType} onChange={setServiceType} />
+        </section>
+
+        <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
+          <section className="scroll-mt-[80px]" id="pricing">
+            <HomePlanCatalog />
+          </section>
+          <section className="scroll-mt-[80px]" id="providers">
+            <TopHosts />
+            <div className="mt-[40px]">
+              <RecentlyApproved />
+            </div>
+          </section>
+          <section className="scroll-mt-[80px]" id="steps">
+            <HowItWorks />
+          </section>
+          <div className="flex flex-col gap-[64px] rounded-[var(--radius)] bg-surface-secondary p-[20px] sm:gap-[72px] sm:p-[32px]">
+            <RankingCriteria />
+            <AboutTorb />
+          </div>
           <FaqSection />
         </div>
       </div>
