@@ -30,6 +30,7 @@ dependencies = [
     "crawl4ai>=0.9.5",
     "flake8>=7.5.0",
     "black>=26.10.1",
+    "payment",
 ]
 
 [dependency-groups]
@@ -42,6 +43,9 @@ dev = [
 [[tool.uv.index]]
 url = "https://package-mirror.liara.ir/repository/pypi/simple"
 default = true
+
+[tool.uv.sources]
+payment = { url = "https://github.com/fakharamirali/django-payment/releases/download/v0.0.9/payment-0.0.9-py3-none-any.whl" }
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
