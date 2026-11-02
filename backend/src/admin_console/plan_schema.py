@@ -99,7 +99,16 @@ PLAN_SCHEMA: dict[str, PlanSchema] = {
                 required=False,
                 unit_family="data_size",
             ),
+            SchemaField(
+                "ram_unit",
+                "RAM Unit",
+                "enum",
+                required=False,
+                values=("GB", "TB"),
+            ),
             SchemaField("cpu_cores", "CPU cores", "number", required=False),
+            SchemaField("cpu_model", "CPU Model", "text", required=False),
+
             SchemaField(
                 "bandwidth_amount",
                 "Bandwidth amount",
@@ -115,7 +124,7 @@ PLAN_SCHEMA: dict[str, PlanSchema] = {
                 "Billing period",
                 "enum",
                 required=False,
-                values=("monthly", "yearly"),
+                values=("daily", "weekly", "monthly", "yearly"),
             ),
         ),
     ),
@@ -140,6 +149,13 @@ PLAN_SCHEMA: dict[str, PlanSchema] = {
             ),
             SchemaField(
                 "price_amount", "Price amount", "number", unit_family="currency"
+            ),
+            SchemaField(
+                "billing_period",
+                "Billing period",
+                "enum",
+                required=False,
+                values=("daily", "weekly", "monthly", "yearly"),
             ),
         ),
     ),
@@ -184,6 +200,13 @@ PLAN_SCHEMA: dict[str, PlanSchema] = {
             SchemaField("os", "OS", "enum", required=False),
             SchemaField(
                 "price_amount", "Price amount", "number", unit_family="currency"
+            ),
+            SchemaField(
+                "billing_period",
+                "Billing period",
+                "enum",
+                required=False,
+                values=("daily", "weekly", "monthly", "yearly"),
             ),
         ),
     ),
