@@ -61,18 +61,17 @@ def execute_replay_run(link, actor=None):
 
     run.after_trace = after_trace
     changes = _classify_changes(link, result.diff)
-    plans_touched = any(change["touches_plans_table"] for change in changes)
+    price_table_touched = any(change["touches_price_table"] for change in changes)
     structural = any(
         change["change_kind"] == ChangeRecord.Kind.STRUCTURAL for change in changes
     )
 
     reextracted = False
-    if plans_touched:
+    if price_table_touched:
         try:
             if structural:
                 services.extract_link_tables(link)
-                services.label_link_tables(link)
-            services.classify_and_extract_link_tables(link)
+            services.process_link_tables(link)
             services.publish_link_plans(link)
             services.retire_missing_plans(link, services.unignored_plan_keys(link))
             reextracted = True
@@ -90,7 +89,7 @@ def execute_replay_run(link, actor=None):
             ChangeRecord.objects.create(
                 replay_run=run,
                 change_kind=change["change_kind"],
-                touches_plans_table=change["touches_plans_table"],
+                touches_price_table=change["touches_price_table"],
                 classification=_resolve_classification(link, change),
                 summary=change["summary"],
             )
@@ -154,7 +153,7 @@ def _change(link, path, kind):
     classification = _classification_for_path(link, path)
     return {
         "change_kind": kind,
-        "touches_plans_table": classification is not None,
+        "touches_price_table": classification is not None,
         "classification": classification,
         "summary": {"path": path},
     }
@@ -175,13 +174,13 @@ def _resolve_classification(link, change):
 
 
 def _classification_for_path(link, path):
-    """Match a diff path to a plans-table classification, if any (best effort)."""
+    """Match a diff path to a price-table classification, if any (best effort)."""
     if not path:
         return None
     normalized = str(path).lower()
     for table in link.extracted_tables.all():
         classification = getattr(table, "classification", None)
-        if classification is None or not classification.is_plans_table:
+        if classification is None or not classification.is_price_table:
             continue
         tokens = {table.parent.lower()} if table.parent else set()
         for column in table.columns.all():

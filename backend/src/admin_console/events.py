@@ -64,11 +64,11 @@ def extraction_empty(link):
     _emit("ops_extraction_empty", link_id=link.pk)
 
 
-def classification_completed(link, plans_tables, total):
+def price_table_detection_completed(link, price_tables, total):
     _emit(
-        "ops_classification_completed",
+        "ops_price_table_detection_completed",
         link_id=link.pk,
-        plans_tables=plans_tables,
+        price_tables=price_tables,
         total=total,
     )
 
@@ -77,8 +77,8 @@ def plans_extracted(link, count, skipped):
     _emit("ops_plans_extracted", link_id=link.pk, count=count, skipped=skipped)
 
 
-def no_plans_found(link, total):
-    _emit("ops_no_plans_found", link_id=link.pk, total=total)
+def no_price_tables_found(link, total):
+    _emit("ops_no_price_tables_found", link_id=link.pk, total=total)
 
 
 def labeling_run(link, call_count, tokens):

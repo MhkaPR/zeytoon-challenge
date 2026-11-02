@@ -1,6 +1,6 @@
 "use client";
 
-import {Button, Chip, Skeleton, Tabs, Tooltip, Typography} from "@heroui/react";
+import {Button, Chip, Skeleton, Tabs, Typography} from "@heroui/react";
 import { useRouter, usePathname } from "next/navigation";
 import { use } from "react";
 import { Plus } from "lucide-react";
@@ -64,12 +64,9 @@ export default function CompanyPanelPage({
                     render={(domProps) => <NextLink {...(domProps as any)} />}
                   >
                     <div className="flex min-w-0 flex-row items-center gap-[6px] text-left">
-                      <Tooltip delay={0}>
-                        <Tooltip.Trigger><span className="block min-w-0 max-w-20 truncate">{company.company_name}</span></Tooltip.Trigger>
-                        <Tooltip.Content>
-                          <p>{company.company_name}</p>
-                        </Tooltip.Content>
-                      </Tooltip>
+                      <span className="block min-w-0 max-w-20 truncate" title={company.company_name}>
+                        {company.company_name}
+                      </span>
                       <Chip
                         color={verificationColor(company.verification_status)}
                         size="sm"

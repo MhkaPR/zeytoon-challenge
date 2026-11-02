@@ -67,7 +67,7 @@ class Link(TimestampedModel):
         CAPTURED = "captured", "Captured"
         EXTRACTED = "extracted", "Extracted"
         PLANS_EXTRACTED = "plans_extracted", "Plans extracted"
-        NO_PLANS = "no_plans", "No plans found"
+        NO_PRICE_TABLES = "no_price_tables", "No price tables found"
         PUBLISHED = "published", "Published"
         AWAITING_LLM_BUDGET = "awaiting_llm_budget", "Awaiting LLM budget"
         FLAGGED = "flagged", "Flagged"
@@ -267,25 +267,53 @@ class ExtractedTableRow(TimestampedModel):
 
 
 class TableClassification(TimestampedModel):
-    """The LLM verdict for an extracted table (FR-023..FR-025)."""
+    """Rule-based decision that an extracted table contains price data."""
 
     table = models.OneToOneField(
         ExtractedTable, on_delete=models.CASCADE, related_name="classification"
     )
-    is_plans_table = models.BooleanField(default=False)
-    plan_type = models.CharField(max_length=64, blank=True, default="")
-    confidence = models.FloatField(default=0.0)
-    provider = models.CharField(max_length=64, blank=True, default="")
-    model = models.CharField(max_length=128, blank=True, default="")
-    prompt_version = models.CharField(max_length=64, blank=True, default="v1")
+    is_price_table = models.BooleanField(default=False)
+    matching_rows = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "admin_console_table_classification"
-        ordering = ("-confidence", "id")
+        ordering = ("-matching_rows", "id")
 
     def __str__(self):
-        kind = self.plan_type if self.is_plans_table else "not-plans"
-        return f"table {self.table_id}: {kind} ({self.confidence:.2f})"
+        kind = "price table" if self.is_price_table else "not-price-table"
+        return f"table {self.table_id}: {kind} ({self.matching_rows} matching rows)"
+
+
+class ClassificationRegex(TimestampedModel):
+    """Admin-managed regex rules used by table classification."""
+
+    class Kind(models.TextChoices):
+        KEYWORD = "keyword", "Keyword"
+        NUMBER = "number", "Number"
+
+    kind = models.CharField(max_length=24, choices=Kind.choices, db_index=True)
+    pattern = models.CharField(max_length=512, unique=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    description = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        db_table = "admin_console_classification_regex"
+        ordering = ("kind", "id")
+
+    def clean(self):
+        import re
+
+        from django.core.exceptions import ValidationError
+
+        try:
+            re.compile(self.pattern, re.IGNORECASE)
+        except re.error as exc:
+            raise ValidationError(
+                {"pattern": f"Invalid regular expression: {exc}"}
+            ) from exc
+
+    def __str__(self):
+        return f"{self.get_kind_display()}: {self.pattern}"
 
 
 class PlanRecord(TimestampedModel):
@@ -430,7 +458,7 @@ class ChangeRecord(TimestampedModel):
         ReplayRun, on_delete=models.CASCADE, related_name="changes"
     )
     change_kind = models.CharField(max_length=16, choices=Kind.choices)
-    touches_plans_table = models.BooleanField(default=False)
+    touches_price_table = models.BooleanField(default=False)
     classification = models.ForeignKey(
         TableClassification,
         on_delete=models.SET_NULL,
@@ -445,7 +473,7 @@ class ChangeRecord(TimestampedModel):
         ordering = ("id",)
 
     def __str__(self):
-        return f"{self.change_kind} (plans={self.touches_plans_table})"
+        return f"{self.change_kind} (price_table={self.touches_price_table})"
 
 
 class FailureAlert(TimestampedModel):
@@ -486,7 +514,6 @@ class LlmCostLedger(TimestampedModel):
         TOTAL = "total", "Total"
 
     class Stage(models.TextChoices):
-        CLASSIFICATION = "classification", "Classification"
         SCHEMA_EXTRACTION = "schema_extraction", "Schema extraction"
         LABELING = "labeling", "Labeling"
 

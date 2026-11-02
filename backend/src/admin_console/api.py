@@ -381,7 +381,7 @@ class LinkTablesView(OperatorOnlyView):
 
 
 # ---------------------------------------------------------------------------
-# US6/US7 — combined table classification + schema extraction (FR-023..FR-031)
+# US6 — table classification (FR-023..FR-025)
 # ---------------------------------------------------------------------------
 
 
@@ -393,12 +393,12 @@ class ClassificationView(OperatorOnlyView):
         self.caller(request)
         link = get_link_or_error(link_id)
         try:
-            services.classify_and_extract_link_tables(link)
+            services.classify_tables_for_link(link)
         except Exception as exc:  # noqa: BLE001
             raise _stage_error(exc) from exc
         return Response(
             {
-                "classifications": services.classifications_payload(link),
+                "classifications": services.table_classifications_payload(link),
                 "link": _link_payload(link),
             }
         )
@@ -406,7 +406,7 @@ class ClassificationView(OperatorOnlyView):
     def get(self, request, link_id):
         self.caller(request)
         link = get_link_or_error(link_id)
-        return Response({"classifications": services.classifications_payload(link)})
+        return Response({"classifications": services.table_classifications_payload(link)})
 
 
 # ---------------------------------------------------------------------------
@@ -451,9 +451,9 @@ class PlansView(OperatorOnlyView):
         try:
             if not link.plan_records.exists() and link.pipeline_stage in (
                 Link.PipelineStage.EXTRACTED,
-                Link.PipelineStage.NO_PLANS,
+                Link.PipelineStage.NO_PRICE_TABLES,
             ):
-                services.classify_and_extract_link_tables(link)
+                services.process_link_tables(link)
                 if not link.plan_records.exists():
                     raise ValueError("plans_required")
         except Exception as exc:  # noqa: BLE001

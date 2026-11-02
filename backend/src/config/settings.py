@@ -129,6 +129,7 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": env("SQLITE_PATH", str(BASE_DIR / "db.sqlite3")),
+            "OPTIONS": {"timeout": float(env("SQLITE_TIMEOUT", "20"))},
         }
     }
 
@@ -526,3 +527,4 @@ CRAWLER_USER_AGENT = env(
     "TorobPlanBot/1.0 (+https://example.com/bot; contact: support@example.com)",
 )
 CRAWLER_REQUEST_DELAY_SECONDS = float(env("CRAWLER_REQUEST_DELAY_SECONDS", "1.0"))
+PRICE_TABLE_MIN_MATCHING_ROWS = max(2, int(env("PRICE_TABLE_MIN_MATCHING_ROWS", "2")))

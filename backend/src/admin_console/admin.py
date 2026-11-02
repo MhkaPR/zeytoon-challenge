@@ -4,6 +4,7 @@ from django.contrib import admin
 
 from admin_console.models import (
     CaptureSession,
+    ClassificationRegex,
     ChangeRecord,
     ExtractedTable,
     FailureAlert,
@@ -50,8 +51,15 @@ class ExtractedTableAdmin(admin.ModelAdmin):
 
 @admin.register(TableClassification)
 class TableClassificationAdmin(admin.ModelAdmin):
-    list_display = ("table", "is_plans_table", "plan_type", "confidence")
-    list_filter = ("is_plans_table", "plan_type")
+    list_display = ("table", "is_price_table", "matching_rows")
+    list_filter = ("is_price_table",)
+
+
+@admin.register(ClassificationRegex)
+class ClassificationRegexAdmin(admin.ModelAdmin):
+    list_display = ("kind", "pattern", "is_active", "description")
+    list_filter = ("kind", "is_active")
+    search_fields = ("pattern", "description")
 
 
 @admin.register(PlanRecord)
@@ -72,8 +80,8 @@ class ReplayRunAdmin(admin.ModelAdmin):
 
 @admin.register(ChangeRecord)
 class ChangeRecordAdmin(admin.ModelAdmin):
-    list_display = ("replay_run", "change_kind", "touches_plans_table")
-    list_filter = ("change_kind", "touches_plans_table")
+    list_display = ("replay_run", "change_kind", "touches_price_table")
+    list_filter = ("change_kind", "touches_price_table")
 
 
 @admin.register(FailureAlert)

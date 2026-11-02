@@ -209,6 +209,7 @@ can change thresholds without a redeploy.
 | `DJANGO_DEBUG` | Debug mode | `True` |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts | `localhost,127.0.0.1` |
 | `DB_ENGINE` | `sqlite` or `postgresql` | `sqlite` |
+| `SQLITE_TIMEOUT` | Seconds SQLite waits for a write lock before failing | `20` |
 | `POSTGRES_DB/USER/PASSWORD/HOST/PORT` | PostgreSQL connection | `torob` / `localhost:5432` |
 | `REDIS_URL` | Redis URL (cache, TTL, throttles) | `redis://localhost:6379/0` |
 | `CORS_ALLOWED_ORIGINS` | Exact frontend origin allowlist | `http://localhost:3000` |

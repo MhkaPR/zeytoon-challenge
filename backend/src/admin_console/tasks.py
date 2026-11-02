@@ -29,11 +29,11 @@ def run_extraction_task(link_id):
 
 @task
 def run_classification_task(link_id):
-    """Run combined table classification and plan data extraction."""
+    """Classify each extracted table using the configured rules."""
     from admin_console.models import Link
-    from admin_console.services import classify_link_tables
+    from admin_console.services import classify_tables_for_link
 
-    return classify_link_tables(Link.objects.get(pk=link_id))
+    return classify_tables_for_link(Link.objects.get(pk=link_id))
 
 
 @task
@@ -86,7 +86,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
     links = Link.objects.filter(site=site, is_active=True).exclude(
         pipeline_stage__in=(
             Link.PipelineStage.PUBLISHED,
-            Link.PipelineStage.NO_PLANS,
+            Link.PipelineStage.NO_PRICE_TABLES,
             Link.PipelineStage.FLAGGED,
             Link.PipelineStage.DEAD_LETTERED,
             Link.PipelineStage.AWAITING_LLM_BUDGET,
@@ -126,7 +126,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                 services.extract_link_tables(link)
                 link.refresh_from_db()
             if link.pipeline_stage == Link.PipelineStage.EXTRACTED:
-                services.classify_and_extract_link_tables(link)
+                services.process_link_tables(link)
                 link.refresh_from_db()
                 if not link.plan_records.exists():
                     completed.append(link.pk)
@@ -184,7 +184,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
         if target is not None:
             terminal_stages = {
                 Link.PipelineStage.PLANS_EXTRACTED,
-                Link.PipelineStage.NO_PLANS,
+                Link.PipelineStage.NO_PRICE_TABLES,
                 Link.PipelineStage.PUBLISHED,
                 Link.PipelineStage.FLAGGED,
                 Link.PipelineStage.DEAD_LETTERED,

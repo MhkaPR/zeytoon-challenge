@@ -18,13 +18,9 @@ import httpx
 from django.conf import settings
 from django.utils import timezone
 from pydantic import (
-    AliasChoices,
     BaseModel,
-    ConfigDict,
-    Field,
     ValidationError,
     create_model,
-    field_validator,
 )
 
 from admin_console import plan_schema
@@ -117,56 +113,40 @@ class PlanRecordOut(BaseModel):
     confidence: float | None = None
 
 
-class CombinedTableOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    table_index: int
-    is_correct: bool
-    plan_type: str | None = None
-    classification_confidence: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        validation_alias=AliasChoices("classification_confidence", "confidence"),
-    )
-    plans: list[PlanRecordOut] | None = None
-
-    @field_validator("classification_confidence", mode="before")
-    @classmethod
-    def normalize_classification_confidence(cls, value):
-        """Accept common qualitative confidence labels from imperfect gateways."""
-        if value is None:
-            return None
-        if isinstance(value, str):
-            normalized = value.strip().lower().replace("_", " ").replace("-", " ")
-            qualitative = {
-                "very low": 0.2,
-                "low": 0.35,
-                "medium": 0.6,
-                "moderate": 0.6,
-                "high": 0.85,
-                "very high": 0.95,
-            }
-            if normalized in qualitative:
-                return qualitative[normalized]
-            try:
-                return float(normalized)
-            except ValueError:
-                return 0.0
-        return value
+class PlanTypeOut(BaseModel):
+    plan_type: str
 
 
-class CombinedTablesOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    tables: list[CombinedTableOut]
-
-
-class ClassificationOut(BaseModel):
-    table_index: int
-    is_correct: bool
-    plan_type: str | None = None
-    confidence: float = 0.0
+def _parse_plan_records(raw_plans, plan_type, table=None):
+    if not isinstance(raw_plans, list):
+        raise LlmError("LLM returned plans in an invalid format")
+    plans = []
+    for index, item in enumerate(raw_plans):
+        try:
+            raw_values = item.get("values", item) if isinstance(item, dict) else item
+            values = _sanitize_plan_values(raw_values, plan_type)
+            if values is None:
+                continue
+            plan = PlanRecordOut(
+                values=values,
+                confidence=(
+                    item.get("confidence", 1.0) if isinstance(item, dict) else 1.0
+                ),
+            )
+        except (ValidationError, TypeError):
+            logger.warning(
+                "llm_plan_record_skipped",
+                extra={
+                    "event": "llm_plan_record_skipped",
+                    "record_index": index,
+                    "table_id": getattr(table, "pk", None),
+                },
+            )
+            continue
+        plans.append(plan)
+    if raw_plans and not plans:
+        raise LlmError("LLM returned no valid plan records")
+    return plans
 
 
 class LlmBudget:
@@ -367,27 +347,37 @@ class LlmClient:
                 ) from exc
         return data
 
-    def classify_tables(self, table_contexts, *, idempotency_key=None, link=None):
-        """Classify tables individually before labeling and schema extraction."""
-        verdicts = []
-        for context in table_contexts:
-            chunk_key = (
-                f"{idempotency_key}:{context['table_index']}"
-                if idempotency_key
-                else None
-            )
-            verdicts.extend(
-                self._classify_extract_batch(
-                    [context], idempotency_key=chunk_key, link=link
-                )
-            )
-        return verdicts
-
-    def _classify_extract_batch(
-        self, table_contexts, *, idempotency_key=None, link=None
+    def infer_plan_type(
+        self, table_context, *, idempotency_key=None, link=None, table=None
     ):
-        """Classify one table in one LLM request."""
+        """Choose the supported extraction schema after a table passed price filtering."""
         schema_summary = {
+            key: [field.key for field in schema.fields]
+            for key, schema in plan_schema.PLAN_SCHEMA.items()
+        }
+        raw = self.chat_json(
+            "Infer the best matching supported plan schema for this price table so its "
+            "data can be extracted. This is extraction setup, not price table detection. "
+            "Choose exactly one key from the supplied schemas. Return JSON with a "
+            '"plan_type" string field. Schemas and fields: '
+            f"{json.dumps(schema_summary, ensure_ascii=False)}.",
+            json.dumps({"table": table_context}, ensure_ascii=False),
+            stage="schema_extraction",
+            idempotency_key=idempotency_key,
+            link=link,
+            table=table,
+            response_model=PlanTypeOut,
+        )
+        plan_type = raw["plan_type"]
+        if plan_type not in plan_schema.PLAN_SCHEMA:
+            raise LlmError(f"unknown plan schema inferred for price table: {plan_type}")
+        return plan_type
+
+    def infer_and_extract_plans(
+        self, table_context, *, idempotency_key=None, link=None, table=None
+    ):
+        """Infer the extraction schema and extract its plans in one provider request."""
+        schemas = {
             key: [
                 {
                     "key": field.key,
@@ -400,56 +390,57 @@ class LlmClient:
             for key, schema in plan_schema.PLAN_SCHEMA.items()
         }
         system = (
-            "You receive one extracted table. Determine whether it is a correct plan "
-            "table for one of the supported schema types. A correct table presents named "
-            "plans/packages and their details or pricing that can be mapped to one exact "
-            "schema key. If it is not a plan table or no schema fits, return only "
-            'table_index and "is_correct": false for that table. If it is correct, return '
-            'table_index and "is_correct": true, its exact plan_type, and "confidence". '
-            "Do not return plans. Supported schemas: "
-            f"{json.dumps(schema_summary, ensure_ascii=False)}. Return JSON with a tables "
-            "array containing exactly one result."
+            "For this price table, first choose the single best supported plan schema and "
+            "then extract its plan records in the same response. This is extraction, not "
+            "table classification. Return the exact schema key as plan_type. Schemas: "
+            f"{json.dumps(schemas, ensure_ascii=False)}. Produce data only: no selectors "
+            "or formulas. Normalize amounts, units, and billing periods. Treat each table "
+            "row as a separate plan; map cells by column headers, not by assuming a fixed "
+            "column order. Headers may be Persian or English and prices may include localized "
+            "digits, separators, or currency words. Normalize price_amount to toman, "
+            "converting Persian and Arabic-Indic digits. The price_amount unit is always "
+            "toman: if stated in thousand toman (including هزار تومان or هزار تومن), "
+            "multiply by 1,000; if stated in million toman, multiply by 1,000,000. Price "
+            "amount and scale may be in separate adjacent columns: combine them before "
+            "normalizing (for example 15,490 under a million toman scale means "
+            "15,490,000,000 toman); do not multiply by both thousand and million when both "
+            "labels describe the same price. Every plan must have a non-empty plan_name and "
+            "numeric price_amount. Never use 0, an empty string, or a guessed value for a "
+            "missing price; omit rows without an explicit price. Only use zero when the "
+            "source explicitly says the plan is free. Use null or omit unknown optional "
+            "details rather than guessing. For virtual_server plans, map hardware into the "
+            "named schema fields whenever present: CPU model to cpu_model, core count to "
+            "cpu_cores, RAM size as a number to ram_amount and its unit to ram_unit, RAM "
+            "generation to ram_type, disk capacity per disk as a number to disk_amount and "
+            "its unit to disk_unit, disk count to disk_count, and SSD/NVMe/HDD/SAS technology "
+            "to disk_type. For example, '2 * 512GB SSD' means disk_count=2, disk_amount=512, "
+            "disk_unit='GB', disk_type='SSD'; '32GB DDR4' means ram_amount=32, "
+            "ram_unit='GB', ram_type='DDR4'; 'Intel Core i7-6700 (4 Core)' means "
+            "cpu_model='Intel Core i7-6700' and cpu_cores=4. Use these fields instead of "
+            "placing those facts in other. Every plan must contain a values object. Preserve "
+            "each meaningful table column that does not map to the selected schema in "
+            "values.other as an array of {key, value} objects, using its original header and "
+            "cell content without translation, omission, or invention. Set confidence to "
+            "1.0 when the plan name and price are explicit in the corresponding row and "
+            "unambiguous; optional missing technical or billing details do not lower "
+            "confidence. Use below 1.0 only when name or price is ambiguous, inferred, or "
+            "unsupported. Do not invent plans. Return JSON with plan_type and plans, where "
+            'plans is a list of {"values": {field_key: value}, "confidence": number}.'
         )
         raw = self.chat_json(
             system,
-            json.dumps({"tables": table_contexts}, ensure_ascii=False),
-            stage="classification",
+            json.dumps({"table": table_context}, ensure_ascii=False),
+            stage="schema_extraction",
             idempotency_key=idempotency_key,
             link=link,
+            table=table,
         )
-        try:
-            response = CombinedTablesOut.model_validate(raw)
-        except ValidationError as exc:
-            raise LlmError("LLM response did not match combined table schema") from exc
-        expected = {context["table_index"] for context in table_contexts}
-        by_index = {}
-        raw_by_index = {}
-        for item, raw_item in zip(response.tables, raw["tables"]):
-            if item.table_index in by_index:
-                continue
-            by_index[item.table_index] = item
-            raw_by_index[item.table_index] = raw_item
-        results = []
-        for table_index in sorted(expected):
-            item = by_index.get(table_index)
-            if item is None:
-                # The model skipped this table's verdict; treat it as not a plans table
-                # rather than failing the whole link.
-                results.append(
-                    CombinedTableOut(table_index=table_index, is_correct=False)
-                )
-                continue
-            source = raw_by_index[table_index]
-            if item.is_correct and (
-                item.plan_type not in plan_schema.PLAN_SCHEMA
-                or "plan_type" not in source
-            ):
-                item.is_correct = False
-                item.plan_type = None
-            if item.is_correct and item.classification_confidence is None:
-                item.classification_confidence = 0.0
-            results.append(item)
-        return results
+        if not isinstance(raw, dict):
+            raise LlmError("LLM returned an invalid schema and plans response")
+        plan_type = raw.get("plan_type")
+        if not isinstance(plan_type, str) or plan_type not in plan_schema.PLAN_SCHEMA:
+            raise LlmError(f"unknown plan schema inferred for price table: {plan_type}")
+        return plan_type, _parse_plan_records(raw.get("plans", []), plan_type, table)
 
     def extract_plans(
         self,
@@ -522,38 +513,7 @@ class LlmClient:
             link=link,
             table=table,
         )
-        raw_plans = data.get("plans", [])
-        if not isinstance(raw_plans, list):
-            raise LlmError("LLM returned plans in an invalid format")
-        plans = []
-        for index, item in enumerate(raw_plans):
-            try:
-                raw_values = (
-                    item.get("values", item) if isinstance(item, dict) else item
-                )
-                values = _sanitize_plan_values(raw_values, plan_type)
-                if values is None:
-                    continue
-                plan = PlanRecordOut(
-                    values=values,
-                    confidence=(
-                        item.get("confidence", 1.0) if isinstance(item, dict) else 1.0
-                    ),
-                )
-            except ValidationError, TypeError:
-                logger.warning(
-                    "llm_plan_record_skipped",
-                    extra={
-                        "event": "llm_plan_record_skipped",
-                        "record_index": index,
-                        "table_id": getattr(table, "pk", None),
-                    },
-                )
-                continue
-            plans.append(plan)
-        if raw_plans and not plans:
-            raise LlmError("LLM returned no valid plan records")
-        return plans
+        return _parse_plan_records(data.get("plans", []), plan_type, table)
 
 
 default_budget = LlmBudget()
@@ -584,9 +544,13 @@ def record_llm_spend(*args, **kwargs):
     return default_budget.record_spend(*args, **kwargs)
 
 
-def classify_tables(*args, **kwargs):
-    return default_client.classify_tables(*args, **kwargs)
-
-
 def extract_plans(*args, **kwargs):
     return default_client.extract_plans(*args, **kwargs)
+
+
+def infer_plan_type(*args, **kwargs):
+    return default_client.infer_plan_type(*args, **kwargs)
+
+
+def infer_and_extract_plans(*args, **kwargs):
+    return default_client.infer_and_extract_plans(*args, **kwargs)
