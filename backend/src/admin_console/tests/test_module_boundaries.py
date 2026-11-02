@@ -39,7 +39,9 @@ def test_admin_console_publishes_only_through_catalog_interface():
             continue
         for name in _imports(path):
             if name.startswith("catalog."):
-                assert name == "catalog.interfaces", (
-                    f"{path} imports {name}; publishing must go through CatalogInterface"
-                )
-            assert name != "catalog.models", f"{path} reaches into catalog.models directly"
+                assert (
+                    name == "catalog.interfaces"
+                ), f"{path} imports {name}; publishing must go through CatalogInterface"
+            assert (
+                name != "catalog.models"
+            ), f"{path} reaches into catalog.models directly"

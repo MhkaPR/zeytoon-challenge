@@ -4,6 +4,7 @@ import pytest
 
 from admin_console import services
 from admin_console.models import SemanticLabel
+from admin_console.tests.conftest import HOSTING_PLAN_VALUES
 
 pytestmark = pytest.mark.django_db
 
@@ -36,7 +37,7 @@ def test_labeling_passes_the_domtrack_table_shape_to_the_labeler(
     assert sent and "meta" in sent[0] and "columns" in sent[0] and "rows" in sent[0]
 
 
-def test_labels_feed_the_combined_extraction_pass(extracted_link, stub_domtrack, stub_llm):
+def test_labels_feed_schema_extraction(extracted_link, stub_domtrack, stub_llm):
     stub_domtrack.labels = {
         "tables": [
             {
@@ -49,16 +50,19 @@ def test_labels_feed_the_combined_extraction_pass(extracted_link, stub_domtrack,
     }
     services.label_link_tables(extracted_link)
     stub_llm.classifications = [
-        {"table_index": 0, "is_correct": False, "plan_type": ""}
+        {"table_index": 0, "is_correct": True, "plan_type": "hosting"}
     ]
+    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 
     services.classify_and_extract_link_tables(extracted_link)
 
-    context = stub_llm.combined_classification_calls[0][0]
-    assert context["columns"] == ["نام پلن", "قیمت"]
+    context = stub_llm.plan_calls[0]["table"]
+    assert context["columns"][:2] == ["نام پلن", "قیمت"]
 
 
-def test_labeling_endpoint_labels_tables(operator_client, extracted_link, stub_domtrack):
+def test_labeling_endpoint_labels_tables(
+    operator_client, extracted_link, stub_domtrack
+):
     stub_domtrack.labels = {
         "tables": [{"columns": [{"id": "col-0", "semantic_label": "قیمت"}]}]
     }

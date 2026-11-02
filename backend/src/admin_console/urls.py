@@ -45,7 +45,9 @@ urlpatterns = [
         api.ExtractionView.as_view(),
         name="link-extractions",
     ),
-    path("links/<int:link_id>/tables", api.LinkTablesView.as_view(), name="link-tables"),
+    path(
+        "links/<int:link_id>/tables", api.LinkTablesView.as_view(), name="link-tables"
+    ),
     # US6 — table classification (FR-023..FR-025)
     path(
         "links/<int:link_id>/classifications",
@@ -61,7 +63,9 @@ urlpatterns = [
         name="link-plan-ignore",
     ),
     # US8 — optional labeling (FR-032..FR-035)
-    path("links/<int:link_id>/labeling", api.LabelingView.as_view(), name="link-labeling"),
+    path(
+        "links/<int:link_id>/labeling", api.LabelingView.as_view(), name="link-labeling"
+    ),
     # US9 — publishing (FR-036..FR-038)
     path("links/<int:link_id>/publish", api.PublishView.as_view(), name="link-publish"),
     # US10 — replay, failure, alerts, re-run (FR-039..FR-046)

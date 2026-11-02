@@ -46,9 +46,7 @@ def materialize(key, backend="default", suffix=".json"):
     domtrack's library API takes local paths; the bridge never converts the trace, it
     only places the same bytes on the local filesystem for the duration of a call.
     """
-    handle = tempfile.NamedTemporaryFile(
-        mode="wb", suffix=suffix, delete=False
-    )
+    handle = tempfile.NamedTemporaryFile(mode="wb", suffix=suffix, delete=False)
     try:
         with open_trace(key, backend=backend) as source:
             for chunk in iter(lambda: source.read(65536), b""):

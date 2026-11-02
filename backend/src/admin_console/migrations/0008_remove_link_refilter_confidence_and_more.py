@@ -27,36 +27,66 @@ def _noop(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('admin_console', '0007_llmcostledger_links'),
+        ("admin_console", "0007_llmcostledger_links"),
     ]
 
     operations = [
         migrations.RunPython(_remap_legacy_stages, _noop),
         migrations.RemoveField(
-            model_name='link',
-            name='refilter_confidence',
+            model_name="link",
+            name="refilter_confidence",
         ),
         migrations.RemoveField(
-            model_name='link',
-            name='refilter_flag',
+            model_name="link",
+            name="refilter_flag",
         ),
         migrations.RemoveField(
-            model_name='link',
-            name='refilter_plan_type',
+            model_name="link",
+            name="refilter_plan_type",
         ),
         migrations.AlterField(
-            model_name='link',
-            name='pipeline_stage',
-            field=models.CharField(choices=[('discovered', 'Discovered'), ('captured', 'Captured'), ('extracted', 'Extracted'), ('plans_extracted', 'Plans extracted'), ('published', 'Published'), ('awaiting_llm_budget', 'Awaiting LLM budget'), ('flagged', 'Flagged'), ('dead_lettered', 'Dead-lettered')], default='discovered', max_length=32),
+            model_name="link",
+            name="pipeline_stage",
+            field=models.CharField(
+                choices=[
+                    ("discovered", "Discovered"),
+                    ("captured", "Captured"),
+                    ("extracted", "Extracted"),
+                    ("plans_extracted", "Plans extracted"),
+                    ("published", "Published"),
+                    ("awaiting_llm_budget", "Awaiting LLM budget"),
+                    ("flagged", "Flagged"),
+                    ("dead_lettered", "Dead-lettered"),
+                ],
+                default="discovered",
+                max_length=32,
+            ),
         ),
         migrations.AlterField(
-            model_name='link',
-            name='review_state',
-            field=models.CharField(choices=[('kept', 'Kept'), ('dropped', 'Dropped'), ('flagged', 'Flagged')], default='kept', max_length=16),
+            model_name="link",
+            name="review_state",
+            field=models.CharField(
+                choices=[
+                    ("kept", "Kept"),
+                    ("dropped", "Dropped"),
+                    ("flagged", "Flagged"),
+                ],
+                default="kept",
+                max_length=16,
+            ),
         ),
         migrations.AlterField(
-            model_name='llmcostledger',
-            name='stage',
-            field=models.CharField(blank=True, choices=[('classification', 'Classification'), ('schema_extraction', 'Schema extraction'), ('labeling', 'Labeling')], default='', max_length=32),
+            model_name="llmcostledger",
+            name="stage",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("classification", "Classification"),
+                    ("schema_extraction", "Schema extraction"),
+                    ("labeling", "Labeling"),
+                ],
+                default="",
+                max_length=32,
+            ),
         ),
     ]

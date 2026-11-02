@@ -30,7 +30,11 @@ urlpatterns = [
         name="verification-decision",
     ),
     # Plan eligibility, credit, crawl (US4)
-    path("<int:pk>/plan-eligibility", api.PlanEligibilityView.as_view(), name="plan-eligibility"),
+    path(
+        "<int:pk>/plan-eligibility",
+        api.PlanEligibilityView.as_view(),
+        name="plan-eligibility",
+    ),
     path("<int:pk>/credit", api.CompanyCreditView.as_view(), name="company-credit"),
     path(
         "<int:pk>/credit/movements",

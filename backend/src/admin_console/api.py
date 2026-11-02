@@ -128,12 +128,18 @@ def _stage_error(exc):
             http_status=502,
         )
     if isinstance(exc, RuntimeError) and str(exc) == "capture_in_progress":
-        return ApiError("capture_in_progress", "A capture is already in flight.", http_status=409)
+        return ApiError(
+            "capture_in_progress", "A capture is already in flight.", http_status=409
+        )
     message = str(exc)
     if message in ("trace_required", "no_tables_found", "plans_required"):
-        return ApiError(message, "The link is not ready for this stage.", http_status=409)
+        return ApiError(
+            message, "The link is not ready for this stage.", http_status=409
+        )
     if message == "link_not_ready":
-        return ApiError("link_not_ready", "The link is not ready for this stage.", http_status=400)
+        return ApiError(
+            "link_not_ready", "The link is not ready for this stage.", http_status=400
+        )
     return ApiError("invalid_field", message[:200], http_status=400)
 
 
@@ -163,7 +169,10 @@ class VerificationDecisionView(OperatorOnlyView):
         )
         return Response(
             {
-                "company": {"id": company.pk, "verification_status": company.verification_status},
+                "company": {
+                    "id": company.pk,
+                    "verification_status": company.verification_status,
+                },
                 "decision": {
                     "outcome": decision.outcome,
                     "actor_id": getattr(decision, "actor_id", actor.pk),
@@ -188,22 +197,28 @@ class SiteCreateView(OperatorOnlyView):
         sites = Site.objects.select_related("company")
         results = []
         for site in sites:
-            stage_rows = Link.objects.filter(site=site).values("pipeline_stage").annotate(
-                count=Count("pk")
+            stage_rows = (
+                Link.objects.filter(site=site)
+                .values("pipeline_stage")
+                .annotate(count=Count("pk"))
             )
             stage_counts = {stage: 0 for stage, _ in Link.PipelineStage.choices}
             stage_counts.update(
                 {row["pipeline_stage"]: row["count"] for row in stage_rows}
             )
-            results.append({
-                **_site_payload(site),
-                "company_name": site.company.company_name,
-                "links_count": sum(stage_counts.values()),
-                "stage_counts": stage_counts,
-            })
+            results.append(
+                {
+                    **_site_payload(site),
+                    "company_name": site.company.company_name,
+                    "links_count": sum(stage_counts.values()),
+                    "stage_counts": stage_counts,
+                }
+            )
         return Response({"results": results, "count": len(results)})
 
-    @extend_schema(request=SiteCreateInput, responses={201: dict, 409: ConsoleErrorSerializer})
+    @extend_schema(
+        request=SiteCreateInput, responses={201: dict, 409: ConsoleErrorSerializer}
+    )
     def post(self, request):
         actor = self.caller(request)
         payload = parse_input(SiteCreateInput, request.data)
@@ -227,11 +242,15 @@ class SiteDetailView(OperatorOnlyView):
 
 
 class DiscoverLinksView(OperatorOnlyView):
-    @extend_schema(request=DiscoverLinksInput, responses={200: dict, 502: ConsoleErrorSerializer})
+    @extend_schema(
+        request=DiscoverLinksInput, responses={200: dict, 502: ConsoleErrorSerializer}
+    )
     def post(self, request, site_id):
         self.caller(request)
         site = get_site_or_error(site_id)
-        payload = parse_input(DiscoverLinksInput, request.data) if request.data else None
+        payload = (
+            parse_input(DiscoverLinksInput, request.data) if request.data else None
+        )
         bounds = {}
         if payload is not None:
             bounds = {
@@ -344,7 +363,10 @@ class ExtractionView(OperatorOnlyView):
             raise _stage_error(exc) from exc
         return Response(
             {
-                "extraction": {"trace_id": link.current_trace_id, "table_count": len(tables)},
+                "extraction": {
+                    "trace_id": link.current_trace_id,
+                    "table_count": len(tables),
+                },
                 "link": _link_payload(link),
             },
             status=status.HTTP_201_CREATED if tables else status.HTTP_200_OK,
@@ -364,7 +386,9 @@ class LinkTablesView(OperatorOnlyView):
 
 
 class ClassificationView(OperatorOnlyView):
-    @extend_schema(request=ClassifyInput, responses={200: dict, 202: ConsoleErrorSerializer})
+    @extend_schema(
+        request=ClassifyInput, responses={200: dict, 202: ConsoleErrorSerializer}
+    )
     def post(self, request, link_id):
         self.caller(request)
         link = get_link_or_error(link_id)
@@ -418,7 +442,9 @@ class PlanSchemaView(OperatorOnlyView):
 
 
 class PlansView(OperatorOnlyView):
-    @extend_schema(request=PlansInput, responses={201: dict, 202: ConsoleErrorSerializer})
+    @extend_schema(
+        request=PlansInput, responses={201: dict, 202: ConsoleErrorSerializer}
+    )
     def post(self, request, link_id):
         self.caller(request)
         link = get_link_or_error(link_id)
@@ -465,7 +491,9 @@ class PlanIgnoreView(OperatorOnlyView):
 
 
 class LabelingView(OperatorOnlyView):
-    @extend_schema(responses={200: dict, 403: ConsoleErrorSerializer, 202: ConsoleErrorSerializer})
+    @extend_schema(
+        responses={200: dict, 403: ConsoleErrorSerializer, 202: ConsoleErrorSerializer}
+    )
     def post(self, request, link_id):
         self.caller(request)
         link = get_link_or_error(link_id)

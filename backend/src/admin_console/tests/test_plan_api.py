@@ -11,7 +11,12 @@ pytestmark = pytest.mark.django_db
 
 def test_plan_endpoint_extracts_and_lists(operator_client, labeled_link, stub_llm):
     stub_llm.classifications = [
-        {"table_index": 0, "is_correct": True, "plan_type": "hosting", "confidence": 1.0}
+        {
+            "table_index": 0,
+            "is_correct": True,
+            "plan_type": "hosting",
+            "confidence": 1.0,
+        }
     ]
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 

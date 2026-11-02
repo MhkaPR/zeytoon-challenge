@@ -31,9 +31,9 @@ def run_extraction_task(link_id):
 def run_classification_task(link_id):
     """Run combined table classification and plan data extraction."""
     from admin_console.models import Link
-    from admin_console.services import classify_and_extract_link_tables
+    from admin_console.services import classify_link_tables
 
-    return classify_and_extract_link_tables(Link.objects.get(pk=link_id))
+    return classify_link_tables(Link.objects.get(pk=link_id))
 
 
 @task
@@ -68,10 +68,16 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
         # A persisted task can outlive its site (for example after test data or an
         # operator cleanup). Treat it as stale work instead of retrying forever.
         logger.warning(
-            "Skipping pipeline task for missing site %s", site_id,
+            "Skipping pipeline task for missing site %s",
+            site_id,
             extra={"event": "pipeline_site_missing", "site_id": site_id},
         )
-        return {"site_id": site_id, "discovered": 0, "links": [], "skipped": "site_missing"}
+        return {
+            "site_id": site_id,
+            "discovered": 0,
+            "links": [],
+            "skipped": "site_missing",
+        }
     discovered = {"after_policy": 0}
     if discover and site.last_discovered_at is None:
         discovered = services.discover_and_store_links(site)
@@ -120,8 +126,6 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                 services.extract_link_tables(link)
                 link.refresh_from_db()
             if link.pipeline_stage == Link.PipelineStage.EXTRACTED:
-                services.label_link_tables(link)
-                link.refresh_from_db()
                 services.classify_and_extract_link_tables(link)
                 link.refresh_from_db()
                 if not link.plan_records.exists():
@@ -147,9 +151,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             if isinstance(exc, services.llm.NoPlanRecordsError):
                 link.last_error = f"no_valid_plans: {exc}"[:512]
                 link.save(update_fields=["last_error", "updated_at"])
-                Link.objects.filter(pk=link.pk).update(
-                    pipeline_task_state="completed"
-                )
+                Link.objects.filter(pk=link.pk).update(pipeline_task_state="completed")
                 logger.info(
                     "site_pipeline_no_valid_plans",
                     extra={"event": "site_pipeline_no_valid_plans", "link_id": link.pk},
@@ -158,7 +160,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             failed_stage = {
                 Link.PipelineStage.DISCOVERED: "capture",
                 Link.PipelineStage.CAPTURED: "extraction",
-                Link.PipelineStage.EXTRACTED: "labeling",
+                Link.PipelineStage.EXTRACTED: "classification",
             }.get(link.pipeline_stage, link.pipeline_stage)
             link.last_error = f"{failed_stage}: {str(exc)[:450]}"
             link.save(update_fields=["last_error", "updated_at"])
@@ -194,19 +196,28 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                 state = "failed"
             elif target.pipeline_stage in terminal_stages:
                 state = "completed"
-            elif target.pipeline_stage == Link.PipelineStage.DISCOVERED and not target.last_error:
+            elif (
+                target.pipeline_stage == Link.PipelineStage.DISCOVERED
+                and not target.last_error
+            ):
                 # A capture may already be running for this link. Leave it eligible
                 # for worker recovery instead of recording a synthetic failure.
                 state = "queued"
             else:
                 state = "failed"
-                target.last_error = f"pipeline_incomplete: stopped at {target.pipeline_stage}"
+                target.last_error = (
+                    f"pipeline_incomplete: stopped at {target.pipeline_stage}"
+                )
                 target.save(update_fields=["last_error", "updated_at"])
             Link.objects.filter(pk=link_id).update(pipeline_task_state=state)
             if state == "failed":
                 raise RuntimeError(target.last_error or "pipeline_incomplete")
 
-    return {"site_id": site.pk, "discovered": discovered["after_policy"], "links": completed}
+    return {
+        "site_id": site.pk,
+        "discovered": discovered["after_policy"],
+        "links": completed,
+    }
 
 
 def recover_site_pipeline_tasks(backend_name="default"):
@@ -315,7 +326,9 @@ def recover_site_pipeline_tasks(backend_name="default"):
     if site_ids:
         from admin_console.models import Site
 
-        for site_id in Site.objects.filter(pk__in=site_ids).values_list("pk", flat=True):
+        for site_id in Site.objects.filter(pk__in=site_ids).values_list(
+            "pk", flat=True
+        ):
             run_site_pipeline_task.using(backend=backend_name).enqueue(
                 site_id, discover=False
             )

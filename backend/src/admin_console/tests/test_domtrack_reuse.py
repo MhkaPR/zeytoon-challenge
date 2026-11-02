@@ -33,8 +33,12 @@ def _sources():
 
 def test_domtrack_is_imported_only_by_its_adapter():
     offenders = [
-        path for path in _sources()
-        if any(name == "domtrack" or name.startswith("domtrack.") for name in _imports(path))
+        path
+        for path in _sources()
+        if any(
+            name == "domtrack" or name.startswith("domtrack.")
+            for name in _imports(path)
+        )
         and path.name != "domtrack_client.py"
     ]
     assert offenders == []
@@ -42,8 +46,12 @@ def test_domtrack_is_imported_only_by_its_adapter():
 
 def test_crawl4ai_is_imported_only_by_discovery():
     offenders = [
-        path for path in _sources()
-        if any(name == "crawl4ai" or name.startswith("crawl4ai.") for name in _imports(path))
+        path
+        for path in _sources()
+        if any(
+            name == "crawl4ai" or name.startswith("crawl4ai.")
+            for name in _imports(path)
+        )
         and path.name != "discovery.py"
     ]
     assert offenders == []
@@ -51,7 +59,6 @@ def test_crawl4ai_is_imported_only_by_discovery():
 
 def test_no_module_shells_out_to_a_local_domtrack_server():
     offenders = [
-        path for path in _sources()
-        if "DOMTRACK_LOCAL_API_URL" in path.read_text()
+        path for path in _sources() if "DOMTRACK_LOCAL_API_URL" in path.read_text()
     ]
     assert offenders == []

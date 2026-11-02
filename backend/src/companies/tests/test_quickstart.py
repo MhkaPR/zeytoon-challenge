@@ -68,7 +68,9 @@ def test_v1_register_company(auth_client):
 
     # internal_number optional; each mandatory field names itself when missing.
     assert (
-        auth_client.post(f"{BASE}/", _payload(internal_number=""), format="json").status_code
+        auth_client.post(
+            f"{BASE}/", _payload(internal_number=""), format="json"
+        ).status_code
         == 201
     )
     for field in ("domain", "company_name", "representative_name", "phone_number"):
@@ -83,7 +85,9 @@ def test_v1_register_company(auth_client):
 
 
 def test_v2_multiple_companies_single_owner(auth_client, owner):
-    first = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"]["id"]
+    first = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"][
+        "id"
+    ]
     second = auth_client.post(
         f"{BASE}/", _payload(domain="second.com"), format="json"
     ).json()["company"]["id"]
@@ -95,9 +99,9 @@ def test_v2_multiple_companies_single_owner(auth_client, owner):
 
 
 def test_v3_append_only_verification_history(auth_client, operator):
-    company_id = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"][
-        "id"
-    ]
+    company_id = auth_client.post(f"{BASE}/", _payload(), format="json").json()[
+        "company"
+    ]["id"]
     op = _operator_client(operator)
     approved = op.post(
         f"{BASE}/{company_id}/verification-decisions",
@@ -140,13 +144,13 @@ def test_v3_append_only_verification_history(auth_client, operator):
 
 
 def test_v4_panel_entry_and_switching(auth_client, operator):
-    pending = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"]["id"]
+    pending = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"][
+        "id"
+    ]
     verified = auth_client.post(
         f"{BASE}/", _payload(domain="verified.com"), format="json"
     ).json()["company"]["id"]
-    record_verification_decision(
-        Company.objects.get(pk=verified), operator, "approved"
-    )
+    record_verification_decision(Company.objects.get(pk=verified), operator, "approved")
 
     assert auth_client.get(f"{BASE}/panel-switcher").json()["empty_state"] is False
     entry = auth_client.get(f"{BASE}/{pending}/panel-entry").json()
@@ -167,7 +171,9 @@ def test_v4_panel_entry_and_switching(auth_client, operator):
 
 
 def test_v5_mid_step_abandonment(auth_client):
-    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"]["id"]
+    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"][
+        "id"
+    ]
     response = auth_client.post(
         f"{BASE}/{company}/steps/company_information/abandon", {}, format="json"
     )
@@ -179,7 +185,9 @@ def test_v5_mid_step_abandonment(auth_client):
 
 
 def test_v6_step_locking(auth_client):
-    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"]["id"]
+    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"][
+        "id"
+    ]
     locked = auth_client.post(
         f"{BASE}/{company}/steps/verification/abandon", {}, format="json"
     )
@@ -217,7 +225,9 @@ def test_v7_plan_eligibility_gate(auth_client, owner, operator):
 
 
 def test_v8_credit_ledger_projection(auth_client):
-    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"]["id"]
+    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"][
+        "id"
+    ]
     assert auth_client.get(f"{BASE}/{company}/credit").json()["current_credit"] == 0
 
     charge = auth_client.post(
@@ -272,8 +282,12 @@ def test_v9_crawl_requires_charge_and_is_free(auth_client, owner):
 
 
 def test_v10_ownership_refused_and_archival(auth_client, owner):
-    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"]["id"]
-    refused = auth_client.post(f"{BASE}/{company}/transfer-ownership", {}, format="json")
+    company = auth_client.post(f"{BASE}/", _payload(), format="json").json()["company"][
+        "id"
+    ]
+    refused = auth_client.post(
+        f"{BASE}/{company}/transfer-ownership", {}, format="json"
+    )
     assert refused.status_code == 409
 
     # Duplicate domain accepted; stored normalized; no dedup/merge performed.

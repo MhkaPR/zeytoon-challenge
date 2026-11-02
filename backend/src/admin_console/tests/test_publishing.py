@@ -14,7 +14,9 @@ def test_publish_writes_a_record_with_provenance(planned_link):
     published = services.publish_link_plans(planned_link)
 
     assert published == 1
-    record = PublishedRecord.objects.get(source="admin_console", site=planned_link.site_id)
+    record = PublishedRecord.objects.get(
+        source="admin_console", site=planned_link.site_id
+    )
     assert record.link == planned_link.pk
     assert record.trace == planned_link.current_trace_id
     assert record.classification is not None
@@ -33,7 +35,9 @@ def test_publish_upserts_by_source_site_natural_key(planned_link, stub_llm):
 
     services.publish_link_plans(planned_link)
 
-    records = PublishedRecord.objects.filter(source="admin_console", site=planned_link.site_id)
+    records = PublishedRecord.objects.filter(
+        source="admin_console", site=planned_link.site_id
+    )
     assert records.count() == 1
     assert records.first().values["price_amount"] == 99000
 
@@ -77,7 +81,9 @@ def test_removal_retires_the_published_record(planned_link):
     retired = services.retire_missing_plans(planned_link, current_keys=set())
 
     assert retired == 1
-    record = PublishedRecord.objects.get(source="admin_console", site=planned_link.site_id)
+    record = PublishedRecord.objects.get(
+        source="admin_console", site=planned_link.site_id
+    )
     assert record.is_published is False
     assert record.retired_at is not None
 
@@ -89,9 +95,12 @@ def test_kept_plan_is_not_retired(planned_link):
     retired = services.retire_missing_plans(planned_link, current_keys=keys)
 
     assert retired == 0
-    assert PublishedRecord.objects.get(
-        source="admin_console", site=planned_link.site_id
-    ).is_published is True
+    assert (
+        PublishedRecord.objects.get(
+            source="admin_console", site=planned_link.site_id
+        ).is_published
+        is True
+    )
 
 
 def test_ignored_plan_is_retired_and_stays_excluded_after_reextraction(
@@ -101,7 +110,9 @@ def test_ignored_plan_is_retired_and_stays_excluded_after_reextraction(
     record = PlanRecord.objects.get(link=planned_link)
     services.set_plan_excluded(planned_link, record, True)
 
-    published = PublishedRecord.objects.get(source="admin_console", site=planned_link.site_id)
+    published = PublishedRecord.objects.get(
+        source="admin_console", site=planned_link.site_id
+    )
     assert published.is_published is False
 
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]

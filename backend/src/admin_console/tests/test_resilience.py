@@ -21,12 +21,15 @@ def _failing_then_ok(monkeypatch, failures):
             raise domtrack_client.DomtrackCaptureError("transient")
         return factories.make_trace_bytes(url=url)
 
-    monkeypatch.setattr(domtrack_client.default_client, "capture_headless", capture_headless)
+    monkeypatch.setattr(
+        domtrack_client.default_client, "capture_headless", capture_headless
+    )
     return calls
 
 
-def test_a_transient_failure_is_retried_and_then_succeeds(kept_link, monkeypatch,
-                                                          no_retry_sleep):
+def test_a_transient_failure_is_retried_and_then_succeeds(
+    kept_link, monkeypatch, no_retry_sleep
+):
     calls = _failing_then_ok(monkeypatch, failures=2)
 
     session = services.start_capture(kept_link)
@@ -87,8 +90,9 @@ def test_rerunning_dead_lettered_link_with_saved_trace_skips_capture(traced_link
     assert traced_link.last_error == ""
 
 
-def test_one_link_failing_does_not_block_another(kept_link, monkeypatch, no_retry_sleep,
-                                                 stub_domtrack):
+def test_one_link_failing_does_not_block_another(
+    kept_link, monkeypatch, no_retry_sleep, stub_domtrack
+):
     other = Link.objects.create(
         site=kept_link.site,
         url="https://example.com/other",
@@ -103,7 +107,9 @@ def test_one_link_failing_does_not_block_another(kept_link, monkeypatch, no_retr
             raise domtrack_client.DomtrackCaptureError("only this link fails")
         return factories.make_trace_bytes(url=url)
 
-    monkeypatch.setattr(domtrack_client.default_client, "capture_headless", capture_headless)
+    monkeypatch.setattr(
+        domtrack_client.default_client, "capture_headless", capture_headless
+    )
 
     with pytest.raises(Exception):
         services.start_capture(kept_link)

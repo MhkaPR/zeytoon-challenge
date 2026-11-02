@@ -78,9 +78,7 @@ def deliver(notification):
         except Exception as exc:  # pragma: no cover - defensive, in-app is in-process
             delivery.state = NotificationDelivery.State.FAILED
             delivery.error = str(exc)[:255]
-        delivery.save(
-            update_fields=["state", "sent_at", "error", "updated_at"]
-        )
+        delivery.save(update_fields=["state", "sent_at", "error", "updated_at"])
         deliveries.append(delivery)
         events.delivery_recorded(delivery)
     return deliveries

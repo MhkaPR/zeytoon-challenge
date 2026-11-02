@@ -17,7 +17,15 @@ import uuid
 import httpx
 from django.conf import settings
 from django.utils import timezone
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, create_model
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    create_model,
+    field_validator,
+)
 
 from admin_console import plan_schema
 from admin_console.models import Link, LlmCostLedger
@@ -97,7 +105,7 @@ def _sanitize_plan_values(raw_values, plan_type):
                 values.pop(key)
             elif field.kind == "text" and not isinstance(value, str):
                 values[key] = str(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             values.pop(key)
     if not values.get("plan_name"):
         return None
@@ -123,11 +131,42 @@ class CombinedTableOut(BaseModel):
     )
     plans: list[PlanRecordOut] | None = None
 
+    @field_validator("classification_confidence", mode="before")
+    @classmethod
+    def normalize_classification_confidence(cls, value):
+        """Accept common qualitative confidence labels from imperfect gateways."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip().lower().replace("_", " ").replace("-", " ")
+            qualitative = {
+                "very low": 0.2,
+                "low": 0.35,
+                "medium": 0.6,
+                "moderate": 0.6,
+                "high": 0.85,
+                "very high": 0.95,
+            }
+            if normalized in qualitative:
+                return qualitative[normalized]
+            try:
+                return float(normalized)
+            except ValueError:
+                return 0.0
+        return value
+
 
 class CombinedTablesOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     tables: list[CombinedTableOut]
+
+
+class ClassificationOut(BaseModel):
+    table_index: int
+    is_correct: bool
+    plan_type: str | None = None
+    confidence: float = 0.0
 
 
 class LlmBudget:
@@ -183,8 +222,18 @@ class LlmBudget:
             idempotency_key=f"budget-{uuid.uuid4()}",
         )
 
-    def record_spend(self, stage, tokens_used, amount=None, link=None, table=None,
-                     idempotency_key=None, period=None, scope=None, links=None):
+    def record_spend(
+        self,
+        stage,
+        tokens_used,
+        amount=None,
+        link=None,
+        table=None,
+        idempotency_key=None,
+        period=None,
+        scope=None,
+        links=None,
+    ):
         key = idempotency_key or f"{stage}-{uuid.uuid4()}"
         row, created = LlmCostLedger.objects.get_or_create(
             idempotency_key=key,
@@ -238,8 +287,20 @@ class LlmClient:
         self.budget = budget or LlmBudget()
         self.model = model or settings.OPENAI_MODEL
 
-    def chat_json(self, system, user, *, stage, idempotency_key=None, model=None,
-                  link=None, table=None, links=None, response_model=None, strict_schema=False):
+    def chat_json(
+        self,
+        system,
+        user,
+        *,
+        stage,
+        idempotency_key=None,
+        model=None,
+        link=None,
+        table=None,
+        links=None,
+        response_model=None,
+        strict_schema=False,
+    ):
         self.budget.guard(stage, link=link, links=links)
         base_url = (settings.OPENAI_BASE_URL or "").rstrip("/")
         if not base_url:
@@ -264,20 +325,29 @@ class LlmClient:
             ],
             "response_format": response_format,
             "temperature": 0,
+            "prompt_cache_key": (
+                f"{stage}:{idempotency_key}" if idempotency_key else stage
+            ),
         }
         headers = {"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
         try:
             response = httpx.post(
-                f"{base_url}/chat/completions", json=payload, headers=headers, timeout=60.0
+                f"{base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=60.0,
             )
             response.raise_for_status()
         except httpx.HTTPError as exc:
             raise LlmError(str(exc)) from exc
         body = response.json()
         usage = body.get("usage") or {}
+        cached_tokens = (usage.get("prompt_tokens_details") or {}).get(
+            "cached_tokens", 0
+        )
         self.budget.record_spend(
             stage,
-            usage.get("total_tokens", 0),
+            max(0, usage.get("total_tokens", 0) - cached_tokens),
             link=link,
             table=table,
             links=links,
@@ -292,75 +362,53 @@ class LlmClient:
             try:
                 data = response_model.model_validate(data).model_dump(mode="json")
             except ValidationError as exc:
-                raise LlmError("LLM response did not match the required JSON schema") from exc
+                raise LlmError(
+                    "LLM response did not match the required JSON schema"
+                ) from exc
         return data
 
-    def classify_extract_tables(self, table_contexts, *, idempotency_key=None, link=None):
-        """Classify and extract every accepted table, batched across LLM requests.
-
-        A page may expose dozens of tables; sending them all in one request makes the
-        model omit verdicts. We reuse the labeling batch size (pass 1) so each request
-        stays small, mirroring how pass 1 already chunks tables.
-        """
-        batch_size = 0
-        try:
-            from admin_console import constants
-
-            batch_size = int(constants.labeling_config().get("batch_size") or 0)
-        except (ImportError, AttributeError, TypeError, ValueError):  # pragma: no cover
-            batch_size = 0
-        if batch_size <= 0:
-            batch_size = len(table_contexts) or 1
+    def classify_tables(self, table_contexts, *, idempotency_key=None, link=None):
+        """Classify tables individually before labeling and schema extraction."""
         verdicts = []
-        for start in range(0, len(table_contexts), batch_size):
-            chunk = table_contexts[start:start + batch_size]
+        for context in table_contexts:
             chunk_key = (
-                f"{idempotency_key}:{start}" if idempotency_key else None
+                f"{idempotency_key}:{context['table_index']}"
+                if idempotency_key
+                else None
             )
             verdicts.extend(
-                self._classify_extract_batch(chunk, idempotency_key=chunk_key, link=link)
+                self._classify_extract_batch(
+                    [context], idempotency_key=chunk_key, link=link
+                )
             )
         return verdicts
 
-    def _classify_extract_batch(self, table_contexts, *, idempotency_key=None, link=None):
-        """Classify and extract the accepted tables in one LLM request."""
+    def _classify_extract_batch(
+        self, table_contexts, *, idempotency_key=None, link=None
+    ):
+        """Classify one table in one LLM request."""
         schema_summary = {
             key: [
-                {"key": field.key, "kind": field.kind, "required": field.required,
-                 "allowed_values": list(field.values)}
+                {
+                    "key": field.key,
+                    "kind": field.kind,
+                    "required": field.required,
+                    "allowed_values": list(field.values),
+                }
                 for field in schema.fields
             ]
             for key, schema in plan_schema.PLAN_SCHEMA.items()
         }
         system = (
-            "You receive every extracted table from one page together with the semantic "
-            "column labels assigned in the table-labeling pass; the column names you see "
-            "are those labels. For each table, determine whether it is a correct plan "
+            "You receive one extracted table. Determine whether it is a correct plan "
             "table for one of the supported schema types. A correct table presents named "
             "plans/packages and their details or pricing that can be mapped to one exact "
             "schema key. If it is not a plan table or no schema fits, return only "
             'table_index and "is_correct": false for that table. If it is correct, return '
-            'table_index, "is_correct": true, its exact plan_type, '
-            '"classification_confidence", and "plans" containing extracted data records. '
-            "Each record must use {values, confidence}; "
-            "values must follow the selected schema. Do not invent values or plans. Preserve "
-            "meaningful unmapped columns in values.other as {key,value} entries. For each "
-            "record require an explicit non-empty plan_name and price_amount; omit rows "
-            "without an explicit price. Normalize Persian/Arabic digits and currency to toman. "
-            "Price scale is essential: a number followed by or associated with هزار تومان "
-            "(thousand toman) must be multiplied by 1,000; a number associated with "
-            "میلیون تومان (million toman) must be multiplied by 1,000,000. For example, "
-            "990 with میلیون تومان means price_amount=990000000 toman, while 990 with "
-            "هزار تومان means price_amount=990000 toman. When scale text appears in a "
-            "separate table cell, associate the closest preceding currency scale cell with "
-            "the price; if multiple scale labels precede it, use the nearest one. Return "
-            "price_amount already normalized to toman and never multiply a normalized value "
-            "a second time. "
-            "For virtual_server, map CPU, RAM, disk count/capacity/type to their schema "
-            "fields when present. Use confidence 1.0 only when name and price are explicit "
-            "and unambiguous. Supported schemas: "
+            'table_index and "is_correct": true, its exact plan_type, and "confidence". '
+            "Do not return plans. Supported schemas: "
             f"{json.dumps(schema_summary, ensure_ascii=False)}. Return JSON with a tables "
-            "array containing exactly one result per supplied table."
+            "array containing exactly one result."
         )
         raw = self.chat_json(
             system,
@@ -392,45 +440,27 @@ class LlmClient:
                 )
                 continue
             source = raw_by_index[table_index]
-            if not item.is_correct:
-                if set(source) != {"table_index", "is_correct"}:
-                    raise LlmError("rejected table response must contain only its Boolean verdict")
-                results.append(item)
-                continue
-            if (
+            if item.is_correct and (
                 item.plan_type not in plan_schema.PLAN_SCHEMA
-                or item.plans is None
-                or item.classification_confidence is None
-                or not {"plan_type", "plans"}.issubset(source)
-                or not ({"classification_confidence", "confidence"} & set(source))
+                or "plan_type" not in source
             ):
                 item.is_correct = False
                 item.plan_type = None
-                item.classification_confidence = None
-                item.plans = None
-                results.append(item)
-                continue
-            sanitized = []
-            for plan in item.plans:
-                values = _sanitize_plan_values(plan.values, item.plan_type)
-                if values is None:
-                    continue
-                sanitized.append(
-                    PlanRecordOut(values=values, confidence=plan.confidence)
-                )
-            if not sanitized:
-                item.is_correct = False
-                item.plan_type = None
-                item.classification_confidence = None
-                item.plans = None
-                results.append(item)
-                continue
-            item.plans = sanitized
+            if item.is_correct and item.classification_confidence is None:
+                item.classification_confidence = 0.0
             results.append(item)
         return results
 
-    def extract_plans(self, table_context, plan_type, field_keys, *, idempotency_key=None,
-                      link=None, table=None):
+    def extract_plans(
+        self,
+        table_context,
+        plan_type,
+        field_keys,
+        *,
+        idempotency_key=None,
+        link=None,
+        table=None,
+    ):
         """Extract a **list of plans** as data against the schema (FR-026, FR-028)."""
         model = plan_schema.list_model(plan_type)
         if model is None:
@@ -498,15 +528,19 @@ class LlmClient:
         plans = []
         for index, item in enumerate(raw_plans):
             try:
-                raw_values = item.get("values", item) if isinstance(item, dict) else item
+                raw_values = (
+                    item.get("values", item) if isinstance(item, dict) else item
+                )
                 values = _sanitize_plan_values(raw_values, plan_type)
                 if values is None:
                     continue
                 plan = PlanRecordOut(
                     values=values,
-                    confidence=item.get("confidence", 1.0) if isinstance(item, dict) else 1.0,
+                    confidence=(
+                        item.get("confidence", 1.0) if isinstance(item, dict) else 1.0
+                    ),
                 )
-            except (ValidationError, TypeError):
+            except ValidationError, TypeError:
                 logger.warning(
                     "llm_plan_record_skipped",
                     extra={
@@ -550,8 +584,8 @@ def record_llm_spend(*args, **kwargs):
     return default_budget.record_spend(*args, **kwargs)
 
 
-def classify_extract_tables(*args, **kwargs):
-    return default_client.classify_extract_tables(*args, **kwargs)
+def classify_tables(*args, **kwargs):
+    return default_client.classify_tables(*args, **kwargs)
 
 
 def extract_plans(*args, **kwargs):

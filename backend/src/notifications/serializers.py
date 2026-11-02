@@ -3,7 +3,11 @@
 from pydantic import BaseModel
 from rest_framework import serializers
 
-from notifications.models import Notification, NotificationDelivery, NotificationRecipient
+from notifications.models import (
+    Notification,
+    NotificationDelivery,
+    NotificationRecipient,
+)
 
 
 def parse_input(schema_cls, data):

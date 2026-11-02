@@ -37,7 +37,9 @@ def links_discovered(site, discovered, after_policy, source):
 
 
 def capture_started(link, session):
-    _emit("ops_capture_started", link_id=link.pk, session_id=session.pk, mode=session.mode)
+    _emit(
+        "ops_capture_started", link_id=link.pk, session_id=session.pk, mode=session.mode
+    )
 
 
 def capture_failed(link, session, reason):
@@ -106,7 +108,9 @@ def replay_completed(run, change_count, reextracted):
 
 
 def alert_raised(link, failure_rate):
-    _emit("ops_alert_raised", link_id=link.pk, failure_rate=round(float(failure_rate), 4))
+    _emit(
+        "ops_alert_raised", link_id=link.pk, failure_rate=round(float(failure_rate), 4)
+    )
 
 
 def stage_failed(link, stage, reason):

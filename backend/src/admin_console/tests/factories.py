@@ -22,11 +22,15 @@ def make_trace(rows=None, url="https://example.com/p"):
     Each cell carries a per-column class so domtrack's discovery sees distinct column
     paths (a plain ``<td>`` grid collapses to a single column).
     """
-    rows = rows if rows is not None else [
-        ["Plan 0", "100", "200"],
-        ["Plan 1", "101", "201"],
-        ["Plan 2", "102", "202"],
-    ]
+    rows = (
+        rows
+        if rows is not None
+        else [
+            ["Plan 0", "100", "200"],
+            ["Plan 1", "101", "201"],
+            ["Plan 2", "102", "202"],
+        ]
+    )
     body_children = []
     if rows:
         trs = []
@@ -54,11 +58,15 @@ def make_trace_bytes(rows=None, url="https://example.com/p"):
 
 def domtrack_table_result(columns=3, rows=None, score=1.0):
     """A canned ``domtrack tables extract`` result for stubbing the adapter."""
-    rows = rows if rows is not None else [
-        ["Plan 0", "100", "200"],
-        ["Plan 1", "101", "201"],
-        ["Plan 2", "102", "202"],
-    ]
+    rows = (
+        rows
+        if rows is not None
+        else [
+            ["Plan 0", "100", "200"],
+            ["Plan 1", "101", "201"],
+            ["Plan 2", "102", "202"],
+        ]
+    )
     cols = [
         {
             "id": f"col-{i}",
@@ -71,9 +79,7 @@ def domtrack_table_result(columns=3, rows=None, score=1.0):
         }
         for i in range(columns)
     ]
-    table_rows = [
-        {f"col-{i}": row[i] for i in range(columns)} for row in rows
-    ]
+    table_rows = [{f"col-{i}": row[i] for i in range(columns)} for row in rows]
     return {
         "total_candidates": 1,
         "tables_returned": 1,

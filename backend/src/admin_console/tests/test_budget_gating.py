@@ -47,7 +47,9 @@ def test_no_partial_row_is_written_when_the_budget_is_exhausted(labeled_link):
     assert TableClassification.objects.count() == 0
 
 
-def test_non_llm_stages_continue_while_the_budget_is_exhausted(traced_link, stub_domtrack):
+def test_non_llm_stages_continue_while_the_budget_is_exhausted(
+    traced_link, stub_domtrack
+):
     _exhaust_budget()
 
     services.extract_link_tables(traced_link)
@@ -80,7 +82,8 @@ def test_a_restored_budget_resumes_the_stage(labeled_link, monkeypatch, settings
 
     # Restore the budget and let the real client run against a stubbed transport.
     monkeypatch.setattr(
-        llm.httpx, "post",
+        llm.httpx,
+        "post",
         lambda *args, **kwargs: _fake_chat_response(
             {"tables": [{"table_index": 0, "is_correct": False}]}
         ),

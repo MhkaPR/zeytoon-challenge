@@ -9,6 +9,14 @@ import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
 
+function displayPhone(phone?: string) {
+  if (!phone) return strings.userMenuLabel;
+  if (phone.includes("*")) return phone;
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("98") && digits.length === 12) digits = `0${digits.slice(2)}`;
+  return digits.length > 8 ? `${digits.slice(0, 4)}***${digits.slice(-4)}` : phone;
+}
+
 // The authenticated header action: the user's masked phone number opens a dropdown listing
 // "my companies" and "logout". It replaces the login button once the session is authenticated.
 export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
@@ -35,7 +43,7 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <Dropdown>
       <Button className="gap-[6px]" variant="ghost">
-        <span className="font-medium text-foreground">{phone ?? strings.userMenuLabel}</span>
+        <span className="font-medium text-foreground">{displayPhone(phone)}</span>
         <ChevronDown aria-hidden className="size-4 text-muted" />
       </Button>
       <Dropdown.Popover>

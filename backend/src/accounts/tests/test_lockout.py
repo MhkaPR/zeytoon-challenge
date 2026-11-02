@@ -11,7 +11,9 @@ pytestmark = pytest.mark.django_db
 PHONE = "+989123456789"
 
 
-@override_config(LOCKOUT_THRESHOLD=2, MAX_VERIFY_ATTEMPTS=5, LOCKOUT_DURATION_SECONDS=900)
+@override_config(
+    LOCKOUT_THRESHOLD=2, MAX_VERIFY_ATTEMPTS=5, LOCKOUT_DURATION_SECONDS=900
+)
 def test_lockout_after_threshold_blocks_request_and_verify(issued_code):
     issued_code(PHONE)
     for _ in range(2):

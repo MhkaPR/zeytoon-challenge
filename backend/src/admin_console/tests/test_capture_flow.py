@@ -35,7 +35,9 @@ def test_capture_stores_a_headless_trace(operator_client, kept_link, stub_domtra
     assert stub_domtrack.capture_calls[0]["url"] == kept_link.url
 
 
-def test_capture_refuses_a_non_kept_link(operator_client, candidate_link, stub_domtrack):
+def test_capture_refuses_a_non_kept_link(
+    operator_client, candidate_link, stub_domtrack
+):
     response = operator_client.post(
         f"/api/v1/ops/links/{candidate_link.pk}/captures", {}, format="json"
     )
@@ -45,8 +47,9 @@ def test_capture_refuses_a_non_kept_link(operator_client, candidate_link, stub_d
     assert CaptureSession.objects.count() == 0
 
 
-def test_capture_failure_is_dead_lettered(operator_client, kept_link, stub_domtrack,
-                                          no_retry_sleep):
+def test_capture_failure_is_dead_lettered(
+    operator_client, kept_link, stub_domtrack, no_retry_sleep
+):
     stub_domtrack.capture_error = domtrack_client.DomtrackCaptureError("boom")
 
     response = operator_client.post(

@@ -39,9 +39,7 @@ def test_create_company_without_trailing_slash(auth_client):
 
 
 def test_internal_number_is_optional(auth_client):
-    response = auth_client.post(
-        LIST_URL, _payload(internal_number=""), format="json"
-    )
+    response = auth_client.post(LIST_URL, _payload(internal_number=""), format="json")
     assert response.status_code == 201
 
 

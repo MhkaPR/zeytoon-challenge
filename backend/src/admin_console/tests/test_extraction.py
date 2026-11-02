@@ -7,7 +7,9 @@ from admin_console.models import ExtractedTable, ExtractedTableColumn, Link
 pytestmark = pytest.mark.django_db
 
 
-def test_extraction_persists_tables_with_domtrack_metadata(operator_client, traced_link):
+def test_extraction_persists_tables_with_domtrack_metadata(
+    operator_client, traced_link
+):
     response = operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/extractions")
 
     assert response.status_code == 201
@@ -33,9 +35,14 @@ def test_tables_endpoint_lists_columns_and_rows(operator_client, traced_link):
     assert set(table["rows"][0]) == {c["column_id"] for c in table["columns"]}
 
 
-def test_empty_extraction_records_no_tables_and_flags(operator_client, traced_link,
-                                                      stub_domtrack):
-    stub_domtrack.table_result = {"total_candidates": 0, "tables_returned": 0, "tables": []}
+def test_empty_extraction_records_no_tables_and_flags(
+    operator_client, traced_link, stub_domtrack
+):
+    stub_domtrack.table_result = {
+        "total_candidates": 0,
+        "tables_returned": 0,
+        "tables": [],
+    }
 
     response = operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/extractions")
 

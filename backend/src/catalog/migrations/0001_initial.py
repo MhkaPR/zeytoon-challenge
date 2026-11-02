@@ -7,32 +7,44 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='PublishedRecord',
+            name="PublishedRecord",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('site', models.IntegerField(db_index=True)),
-                ('link', models.IntegerField(db_index=True)),
-                ('trace', models.IntegerField(db_index=True)),
-                ('classification', models.IntegerField(db_index=True)),
-                ('source', models.CharField(default='admin_console', max_length=64)),
-                ('plan_type', models.CharField(db_index=True, max_length=64)),
-                ('natural_key', models.CharField(db_index=True, max_length=512)),
-                ('values', models.JSONField(blank=True, default=dict)),
-                ('is_published', models.BooleanField(db_index=True, default=True)),
-                ('published_at', models.DateTimeField(blank=True, null=True)),
-                ('retired_at', models.DateTimeField(blank=True, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("site", models.IntegerField(db_index=True)),
+                ("link", models.IntegerField(db_index=True)),
+                ("trace", models.IntegerField(db_index=True)),
+                ("classification", models.IntegerField(db_index=True)),
+                ("source", models.CharField(default="admin_console", max_length=64)),
+                ("plan_type", models.CharField(db_index=True, max_length=64)),
+                ("natural_key", models.CharField(db_index=True, max_length=512)),
+                ("values", models.JSONField(blank=True, default=dict)),
+                ("is_published", models.BooleanField(db_index=True, default=True)),
+                ("published_at", models.DateTimeField(blank=True, null=True)),
+                ("retired_at", models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'catalog_published_record',
-                'ordering': ('-published_at',),
-                'constraints': [models.UniqueConstraint(fields=('source', 'site', 'natural_key'), name='uniq_published_record_source_site_key')],
+                "db_table": "catalog_published_record",
+                "ordering": ("-published_at",),
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("source", "site", "natural_key"),
+                        name="uniq_published_record_source_site_key",
+                    )
+                ],
             },
         ),
     ]

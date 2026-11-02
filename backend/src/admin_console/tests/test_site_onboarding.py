@@ -8,7 +8,9 @@ from admin_console.models import Link, Site
 pytestmark = pytest.mark.django_db
 
 
-def test_onboard_site_returns_201_with_onboarding_state(operator_client, approved_company):
+def test_onboard_site_returns_201_with_onboarding_state(
+    operator_client, approved_company
+):
     response = operator_client.post(
         "/api/v1/ops/sites", {"company_id": approved_company.pk}, format="json"
     )
@@ -70,7 +72,9 @@ def test_site_links_endpoint_returns_client_expected_shape(operator_client, site
     assert response.json()["links"][0]["id"] == link.pk
 
 
-def test_site_detail_and_links_list_use_only_pipeline_summary_columns(operator_client, site):
+def test_site_detail_and_links_list_use_only_pipeline_summary_columns(
+    operator_client, site
+):
     link = Link.objects.create(
         site=site,
         url="https://example.com/progress",

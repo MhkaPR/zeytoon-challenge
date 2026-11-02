@@ -12,7 +12,9 @@ from rest_framework.views import exception_handler as drf_exception_handler
 class ApiError(APIException):
     """Domain error carrying an explicit machine-readable ``code``."""
 
-    def __init__(self, code, message, http_status=status.HTTP_400_BAD_REQUEST, fields=None):
+    def __init__(
+        self, code, message, http_status=status.HTTP_400_BAD_REQUEST, fields=None
+    ):
         self.code = code
         self.message = message
         self.fields = fields or {}

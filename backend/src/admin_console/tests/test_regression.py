@@ -17,8 +17,13 @@ ADMIN_CONSOLE = pathlib.Path("backend/src/admin_console")
 
 def test_capture_never_scrolls_the_page():
     source = (ADMIN_CONSOLE / "domtrack_client.py").read_text().lower()
-    for scroll_api in ("mouse.wheel", "scroll_to", "scrollto", "window.scroll",
-                       "keyboard.press"):
+    for scroll_api in (
+        "mouse.wheel",
+        "scroll_to",
+        "scrollto",
+        "window.scroll",
+        "keyboard.press",
+    ):
         assert scroll_api not in source
     assert "headless=true" in source.replace(" ", "")
 
@@ -72,4 +77,6 @@ def test_external_stages_are_subclassable_classes():
     assert isinstance(discovery.default_discoverer, discovery.LinkDiscoverer)
     # Services call the adapters through these instances, so a subclass or fake can be
     # injected without touching the pipeline code.
-    assert isinstance(services.domtrack_client.default_client, domtrack_client.DomtrackClient)
+    assert isinstance(
+        services.domtrack_client.default_client, domtrack_client.DomtrackClient
+    )

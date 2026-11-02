@@ -143,7 +143,9 @@ AUTHENTICATION_BACKENDS = (
 # Password validation (kept for the Django admin operator accounts)
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -248,7 +250,10 @@ CONSTANCE_DATABASE_CACHE_BACKEND = "default"
 CONSTANCE_CONFIG = {
     "OTP_LENGTH": (6, "Number of digits in the one-time code."),
     "OTP_TTL_SECONDS": (120, "One-time code validity window in seconds."),
-    "MAX_VERIFY_ATTEMPTS": (5, "Failed verification attempts per code before invalidation."),
+    "MAX_VERIFY_ATTEMPTS": (
+        5,
+        "Failed verification attempts per code before invalidation.",
+    ),
     "LOCKOUT_THRESHOLD": (5, "Failed attempts before a temporary lockout."),
     "LOCKOUT_DURATION_SECONDS": (900, "Temporary lockout length in seconds."),
     "REQUEST_COOLDOWN_SECONDS": (60, "Minimum gap between code requests per phone."),
@@ -295,10 +300,19 @@ CONSTANCE_CONFIG = {
         0.5,
         "Failure rate (0..1) over the window that opens a link alert.",
     ),
-    "FAILURE_RATE_WINDOW_RUNS": (5, "Trailing replay runs used to derive a failure rate."),
+    "FAILURE_RATE_WINDOW_RUNS": (
+        5,
+        "Trailing replay runs used to derive a failure rate.",
+    ),
     # Table labeling is the mandatory pass 1 of extraction; pass 2 uses the same LLM.
-    "LABELING_PROVIDER": ("openai", "LLM provider key for table labeling and extraction."),
-    "LABELING_MODEL": ("", "LLM model used for labeling/extraction (empty = provider default)."),
+    "LABELING_PROVIDER": (
+        "openai",
+        "LLM provider key for table labeling and extraction.",
+    ),
+    "LABELING_MODEL": (
+        "",
+        "LLM model used for labeling/extraction (empty = provider default).",
+    ),
     "LABELING_LANGUAGE": ("fa", "Language requested for generated labels."),
     "LABELING_BATCH_SIZE": (10, "Tables labeled per LLM call."),
     # Adaptive link discovery (crawl4ai statistical strategy; no embeddings/LLM).
@@ -312,36 +326,102 @@ CONSTANCE_CONFIG = {
     ),
     "LINK_CRAWL_MAX_PAGES": (60, "Maximum pages the adaptive crawler visits per run."),
     "LINK_CRAWL_MAX_DEPTH": (5, "Maximum crawl depth from the seed domain."),
-    "LINK_CRAWL_TOP_K": (50, "Top-k links the statistical strategy keeps per frontier step."),
+    "LINK_CRAWL_TOP_K": (
+        50,
+        "Top-k links the statistical strategy keeps per frontier step.",
+    ),
     "LINK_DENY_EXTENSIONS": (
         [
-            "js", "css", "txt", "json", "xml", "pdf", "doc", "docx", "xls", "xlsx",
-            "ppt", "pptx", "zip", "rar", "7z", "gz", "tar", "png", "jpg", "jpeg",
-            "gif", "svg", "webp", "ico", "mp4", "mp3", "wav", "woff", "woff2",
-            "ttf", "eot", "csv", "rss", "atom",
+            "js",
+            "css",
+            "txt",
+            "json",
+            "xml",
+            "pdf",
+            "doc",
+            "docx",
+            "xls",
+            "xlsx",
+            "ppt",
+            "pptx",
+            "zip",
+            "rar",
+            "7z",
+            "gz",
+            "tar",
+            "png",
+            "jpg",
+            "jpeg",
+            "gif",
+            "svg",
+            "webp",
+            "ico",
+            "mp4",
+            "mp3",
+            "wav",
+            "woff",
+            "woff2",
+            "ttf",
+            "eot",
+            "csv",
+            "rss",
+            "atom",
         ],
         "File extensions excluded by the deterministic link policy.",
     ),
     "LINK_DENY_SEGMENTS": (
         [
-            "blog", "docs", "support", "help", "login", "signup", "register", "auth",
-            "cart", "checkout", "privacy", "terms", "legal", "about", "contact",
-            "careers", "jobs", "news", "faq", "ticket", "tickets",
+            "blog",
+            "docs",
+            "support",
+            "help",
+            "login",
+            "signup",
+            "register",
+            "auth",
+            "cart",
+            "checkout",
+            "privacy",
+            "terms",
+            "legal",
+            "about",
+            "contact",
+            "careers",
+            "jobs",
+            "news",
+            "faq",
+            "ticket",
+            "tickets",
         ],
         "Non-content path segments excluded by the deterministic link policy.",
     ),
-    "LINK_DISCOVERY_MAX_LINKS": (5000, "Maximum candidate links stored per discovery run."),
+    "LINK_DISCOVERY_MAX_LINKS": (
+        5000,
+        "Maximum candidate links stored per discovery run.",
+    ),
     # Server-side headless capture.
-    "CAPTURE_FIXED_DURATION_MS": (15000, "Fixed-duration headless capture length in ms."),
+    "CAPTURE_FIXED_DURATION_MS": (
+        15000,
+        "Fixed-duration headless capture length in ms.",
+    ),
     "CAPTURE_NAV_TIMEOUT_MS": (30000, "Navigation timeout for a headless capture."),
     # Resilience.
     "RETRY_MAX_ATTEMPTS": (3, "Maximum attempts before a link is dead-lettered."),
     "RETRY_BACKOFF_SECONDS": (5, "Base backoff between retries, in seconds."),
-    "PUBLISH_AUTO_THRESHOLD": (0.0, "Extraction confidence at/above which publication is automatic."),
+    "PUBLISH_AUTO_THRESHOLD": (
+        0.0,
+        "Extraction confidence at/above which publication is automatic.",
+    ),
     "TABLE_DISCOVERY_MIN_ROWS": (2, "Minimum rows for a domtrack table candidate."),
     "TABLE_DISCOVERY_MIN_COLS": (2, "Minimum columns for a domtrack table candidate."),
-    "TABLE_DISCOVERY_DEDUPE": (True, "Whether domtrack de-duplicates discovered tables."),
-    "REPLAY_MODE": ("clean", "domtrack replay mode (clean keeps widgets from false diffs)."),
+    "TABLE_DISCOVERY_DEDUPE": (
+        True,
+        "Whether domtrack de-duplicates discovered tables.",
+    ),
+    "REPLAY_MODE": (
+        "clean",
+        "domtrack replay mode (clean keeps widgets from false diffs).",
+    ),
     "REPLAY_SPEED": (1.0, "domtrack replay speed multiplier."),
     "REPLAY_TIME_POLICY": ("replay", "domtrack replay time policy."),
     "REPLAY_THIRD_PARTY_DETECTION": (
@@ -353,9 +433,7 @@ CONSTANCE_CONFIG = {
 
 # SMS gateway (credentials from environment only)
 
-SMS_GATEWAY_BACKEND = env(
-    "SMS_GATEWAY_BACKEND", "accounts.sms.ConsoleSmsGateway"
-)
+SMS_GATEWAY_BACKEND = env("SMS_GATEWAY_BACKEND", "accounts.sms.ConsoleSmsGateway")
 SMS_GATEWAY_API_KEY = env("SMS_GATEWAY_API_KEY")
 SMS_GATEWAY_SENDER = env("SMS_GATEWAY_SENDER")
 SMS_GATEWAY_BASE_URL = env("SMS_GATEWAY_BASE_URL")
@@ -412,9 +490,11 @@ ARTIFACT_STORAGE_BACKEND = env("ARTIFACT_STORAGE_BACKEND", "file")
 
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.s3.S3Storage"
-        if ARTIFACT_STORAGE_BACKEND == "s3"
-        else "django.core.files.storage.FileSystemStorage",
+        "BACKEND": (
+            "storages.backends.s3.S3Storage"
+            if ARTIFACT_STORAGE_BACKEND == "s3"
+            else "django.core.files.storage.FileSystemStorage"
+        ),
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",

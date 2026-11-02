@@ -186,36 +186,44 @@ def stub_llm(monkeypatch):
         configured = {item["table_index"]: item for item in stub.classifications}
         results = []
         for context in table_contexts:
-            verdict = configured.get(context["table_index"], {
-                "is_plans_table": False, "plan_type": "", "confidence": 0.0,
-            })
+            verdict = configured.get(
+                context["table_index"],
+                {
+                    "is_plans_table": False,
+                    "plan_type": "",
+                    "confidence": 0.0,
+                },
+            )
             accepted = verdict.get("is_correct", verdict.get("is_plans_table", False))
-            if not accepted or verdict.get("plan_type") not in llm_mod.plan_schema.PLAN_SCHEMA:
-                results.append(llm_mod.CombinedTableOut(
-                    table_index=context["table_index"], is_correct=False
-                ))
-                continue
-            response = stub.plans
-            if callable(response):
-                response = response(
-                    {"columns": context["columns"], "rows": context["rows"]},
-                    verdict["plan_type"],
+            if (
+                not accepted
+                or verdict.get("plan_type") not in llm_mod.plan_schema.PLAN_SCHEMA
+            ):
+                results.append(
+                    llm_mod.CombinedTableOut(
+                        table_index=context["table_index"], is_correct=False
+                    )
                 )
-            results.append(llm_mod.CombinedTableOut(
-                table_index=context["table_index"],
-                is_correct=True,
-                plan_type=verdict["plan_type"],
-                confidence=verdict.get("confidence", 1.0),
-                plans=[
-                    item if isinstance(item, llm_mod.PlanRecordOut)
-                    else llm_mod.PlanRecordOut(**item)
-                    for item in response
-                ],
-            ))
+                continue
+            results.append(
+                llm_mod.CombinedTableOut(
+                    table_index=context["table_index"],
+                    is_correct=True,
+                    plan_type=verdict["plan_type"],
+                    confidence=verdict.get("confidence", 1.0),
+                )
+            )
         return results
 
-    def extract_plans(table_context, plan_type, field_keys, *, idempotency_key=None,
-                      link=None, table=None):
+    def extract_plans(
+        table_context,
+        plan_type,
+        field_keys,
+        *,
+        idempotency_key=None,
+        link=None,
+        table=None,
+    ):
         stub.plan_calls.append(
             {
                 "table": table_context,
@@ -230,11 +238,21 @@ def stub_llm(monkeypatch):
         if callable(response):
             response = response(table_context, plan_type)
         return [
-            item if isinstance(item, llm_mod.PlanRecordOut) else llm_mod.PlanRecordOut(**item)
+            (
+                item
+                if isinstance(item, llm_mod.PlanRecordOut)
+                else llm_mod.PlanRecordOut(**item)
+            )
             for item in response
         ]
 
-    monkeypatch.setattr(llm_mod.default_client, "classify_extract_tables", classify_extract_tables)
+    def classify_tables(table_contexts, *, idempotency_key=None, link=None):
+        results = classify_extract_tables(
+            table_contexts, idempotency_key=idempotency_key, link=link
+        )
+        return results
+
+    monkeypatch.setattr(llm_mod.default_client, "classify_tables", classify_tables)
     monkeypatch.setattr(llm_mod.default_client, "extract_plans", extract_plans)
     return stub
 
@@ -277,10 +295,16 @@ def stub_domtrack(monkeypatch):
             raise stub.compare_error
         return stub.compare_result
 
-    monkeypatch.setattr(domtrack_client.default_client, "capture_headless", capture_headless)
-    monkeypatch.setattr(domtrack_client.default_client, "extract_tables", extract_tables)
+    monkeypatch.setattr(
+        domtrack_client.default_client, "capture_headless", capture_headless
+    )
+    monkeypatch.setattr(
+        domtrack_client.default_client, "extract_tables", extract_tables
+    )
     monkeypatch.setattr(domtrack_client.default_client, "label_tables", label_tables)
-    monkeypatch.setattr(domtrack_client.default_client, "compare_replay", compare_replay)
+    monkeypatch.setattr(
+        domtrack_client.default_client, "compare_replay", compare_replay
+    )
     return stub
 
 
@@ -295,7 +319,9 @@ def stub_discovery(monkeypatch):
         stub.calls.append({"domain": domain, "query": query, "bounds": bounds})
         return list(stub.urls)
 
-    monkeypatch.setattr(discovery.default_discoverer, "crawl_candidate_links", crawl_candidate_links)
+    monkeypatch.setattr(
+        discovery.default_discoverer, "crawl_candidate_links", crawl_candidate_links
+    )
     return stub
 
 
@@ -350,7 +376,12 @@ def planned_link(labeled_link, stub_llm):
     from admin_console import services
 
     stub_llm.classifications = [
-        {"table_index": 0, "is_correct": True, "plan_type": "hosting", "confidence": 0.92}
+        {
+            "table_index": 0,
+            "is_correct": True,
+            "plan_type": "hosting",
+            "confidence": 0.92,
+        }
     ]
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
     services.classify_and_extract_link_tables(labeled_link)

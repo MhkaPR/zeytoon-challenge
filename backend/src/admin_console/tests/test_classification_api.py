@@ -8,10 +8,16 @@ from admin_console.tests.conftest import HOSTING_PLAN_VALUES
 pytestmark = pytest.mark.django_db
 
 
-def test_classification_endpoint_returns_verdicts(operator_client, extracted_link,
-                                                  stub_llm):
+def test_classification_endpoint_returns_verdicts(
+    operator_client, extracted_link, stub_llm
+):
     stub_llm.classifications = [
-        {"table_index": 0, "is_plans_table": True, "plan_type": "hosting", "confidence": 0.9}
+        {
+            "table_index": 0,
+            "is_plans_table": True,
+            "plan_type": "hosting",
+            "confidence": 0.9,
+        }
     ]
     stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
 
@@ -34,8 +40,9 @@ def test_classification_without_tables_is_refused(operator_client, traced_link):
     assert response.json()["error"]["code"] == "no_tables_found"
 
 
-def test_classification_returns_202_on_budget_exhaustion(operator_client, extracted_link,
-                                                         stub_llm):
+def test_classification_returns_202_on_budget_exhaustion(
+    operator_client, extracted_link, stub_llm
+):
     stub_llm.exhausted_stages = {"classification"}
 
     response = operator_client.post(

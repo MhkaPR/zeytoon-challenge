@@ -38,7 +38,8 @@ def step_progress_payload(company):
             "step_key": row.step_key,
             "order": row.order,
             "state": row.state,
-            "completed": row.state in {
+            "completed": row.state
+            in {
                 CompanyStepProgress.State.APPROVED,
                 CompanyStepProgress.State.SAVED,
             },

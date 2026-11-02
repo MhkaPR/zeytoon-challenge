@@ -44,6 +44,7 @@ from admin_console.models import (
     TableClassification,
     Trace,
 )
+
 _REMOTE_ERRORS = (domtrack_client.DomtrackCaptureError, OSError, TimeoutError)
 
 
@@ -191,9 +192,7 @@ def start_capture(link, actor=None, duration_ms=None):
     """Create a headless capture session and record the trace (FR-016..FR-019)."""
     if link.review_state != Link.ReviewState.KEPT:
         raise ValueError("link_not_ready")
-    if link.capture_sessions.filter(
-        state__in=CaptureSession.NON_TERMINAL
-    ).exists():
+    if link.capture_sessions.filter(state__in=CaptureSession.NON_TERMINAL).exists():
         raise RuntimeError("capture_in_progress")
     duration = int(duration_ms or constants.capture_fixed_duration_ms())
     session = CaptureSession.objects.create(
@@ -260,7 +259,9 @@ def extract_link_tables(link, actor=None):
     path = _materialize(trace)
     config = constants.table_discovery_config()
     result = domtrack_client.extract_tables(
-        path, min_rows=config["min_rows"], min_cols=config["min_cols"],
+        path,
+        min_rows=config["min_rows"],
+        min_cols=config["min_cols"],
         dedupe=config["dedupe"],
     )
     tables = result.get("tables") or []
@@ -304,9 +305,7 @@ def _persist_table(link, trace, index, table):
             row_count=int(column.get("row_count") or 0),
         )
     for row_index, row in enumerate(rows):
-        ExtractedTableRow.objects.create(
-            table=record, row_index=row_index, cells=row
-        )
+        ExtractedTableRow.objects.create(table=record, row_index=row_index, cells=row)
     return record
 
 
@@ -373,57 +372,67 @@ def _table_context(table):
 
 
 # ---------------------------------------------------------------------------
-# US6/US7 — single-pass classify + schema extraction over labeled tables
+# US6/US7 — classification, labeling, then schema extraction
 # (FR-023..FR-031)
 # ---------------------------------------------------------------------------
 
 
-def classify_and_extract_link_tables(link, actor=None):
-    """Classify every table and extract accepted tables in one model call (pass 2).
-
-    Pass 1 is :func:`label_link_tables`; this call receives the domtrack semantic
-    labels through :func:`_table_context` and returns both the classification record
-    and the schema-bound plan data in a single request.
-    """
+def classify_link_tables(link, actor=None):
+    """Classify each table before labeling; extract only accepted tables."""
     tables = list(link.extracted_tables.all())
     if not tables:
         raise ValueError("no_tables_found")
-    contexts = [
-        {"table_index": index, **_table_context(table)}
-        for index, table in enumerate(tables)
-    ]
-    context_by_index = {context["table_index"]: context for context in contexts}
-    verdicts = llm.classify_extract_tables(
-        contexts, link=link, idempotency_key=f"classify-extract:{link.pk}"
-    )
-    by_index = {verdict.table_index: verdict for verdict in verdicts}
+    existing = {
+        item.table_id: item
+        for item in TableClassification.objects.filter(table__link=link)
+    }
+    for index, table in enumerate(tables):
+        if table.pk in existing:
+            continue
+        verdict = llm.classify_tables(
+            [{"table_index": index, **_table_context(table)}],
+            link=link,
+            idempotency_key=f"classification:{link.pk}:{table.pk}",
+        )[0]
+        classification = TableClassification.objects.create(
+            table=table,
+            is_plans_table=verdict.is_correct,
+            plan_type=verdict.plan_type or "",
+            confidence=verdict.classification_confidence or 0.0,
+            provider=constants.labeling_provider(),
+            model=constants.labeling_model() or "",
+            prompt_version=llm.PROMPT_VERSION,
+        )
+        existing[table.pk] = classification
+    accepted = [table for table in tables if existing[table.pk].is_plans_table]
+    if not accepted:
+        link.pipeline_stage = Link.PipelineStage.NO_PLANS
+        link.save()
+        events.classification_completed(link, 0, len(tables))
+        events.no_plans_found(link, len(tables))
+        return link
+    label_link_tables(link, tables=accepted)
     plans_count = 0
     skipped = 0
     pending_records = []
     with transaction.atomic():
-        TableClassification.objects.filter(table__link=link).delete()
         PlanRecord.objects.filter(link=link).delete()
-        for index, table in enumerate(tables):
-            verdict = by_index[index]
-            TableClassification.objects.create(
+        for table in accepted:
+            classification = existing[table.pk]
+            plan_type = classification.plan_type
+            plans = llm.extract_plans(
+                _table_context(table),
+                plan_type,
+                {field.key for field in plan_schema.schema_for(plan_type).fields},
+                link=link,
                 table=table,
-                is_plans_table=verdict.is_correct,
-                plan_type=verdict.plan_type or "",
-                confidence=verdict.classification_confidence or 0.0,
-                provider=constants.labeling_provider(),
-                model=constants.labeling_model() or "",
-                prompt_version=llm.PROMPT_VERSION,
+                idempotency_key=f"schema-extraction:{link.pk}:{table.pk}",
             )
-            if not verdict.is_correct:
-                continue
             plans_count += 1
-            classification = table.classification
-            for plan in verdict.plans or []:
+            for plan in plans:
                 confidence = 1.0 if plan.confidence is None else plan.confidence
-                values = _normalize_price_scale(
-                    plan.values, context_by_index[index]
-                )
-                if not _plan_is_complete(values, verdict.plan_type, confidence):
+                values = _normalize_price_scale(plan.values, _table_context(table))
+                if not _plan_is_complete(values, plan_type, confidence):
                     skipped += 1
                     continue
                 pending_records.append(
@@ -431,9 +440,9 @@ def classify_and_extract_link_tables(link, actor=None):
                         link=link,
                         table=table,
                         classification=classification,
-                        plan_type=verdict.plan_type,
+                        plan_type=plan_type,
                         natural_key=_natural_key(
-                            values, verdict.plan_type, len(pending_records)
+                            values, plan_type, len(pending_records)
                         ),
                         values=values,
                         confidence=confidence,
@@ -462,14 +471,18 @@ def classify_and_extract_link_tables(link, actor=None):
     return link
 
 
+# Kept as a compatibility entry point for existing callers while the pipeline
+# now performs classification, labeling, and schema extraction as separate stages.
+def classify_and_extract_link_tables(link, actor=None):
+    return classify_link_tables(link, actor=actor)
+
+
 _PRICE_SCALE_FACTORS = (
     (re.compile(r"(?:میلیون|million)", re.IGNORECASE), 1_000_000),
     (re.compile(r"(?:هزار|thousand)", re.IGNORECASE), 1_000),
     (re.compile(r"(?:میلیارد|billion)", re.IGNORECASE), 1_000_000_000),
 )
-_LOCALIZED_DIGITS = str.maketrans(
-    "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"
-)
+_LOCALIZED_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
 
 def _numeric_cell(value):
@@ -506,8 +519,7 @@ def _normalize_price_scale(values, table_context):
             ratio = price / source_amount
             recognized_scales = (1, 1_000, 1_000_000, 1_000_000_000)
             if not any(
-                math.isclose(ratio, scale, rel_tol=1e-9)
-                for scale in recognized_scales
+                math.isclose(ratio, scale, rel_tol=1e-9) for scale in recognized_scales
             ):
                 continue
             for unit_cell in reversed(row_text[:cell_index]):
@@ -559,7 +571,8 @@ def extract_link_plans(link, actor=None):
     the schema without repeating classification.
     """
     tables = [
-        table for table in link.extracted_tables.all()
+        table
+        for table in link.extracted_tables.all()
         if getattr(table, "classification", None) is not None
         and table.classification.is_plans_table
         and table.classification.plan_type in plan_schema.PLAN_SCHEMA
@@ -580,7 +593,8 @@ def extract_link_plans(link, actor=None):
             idempotency_key=f"plans:{table.pk}",
         )
         valid = [
-            plan for plan in plans
+            plan
+            for plan in plans
             if _plan_is_complete(plan.values, plan_type, plan.confidence)
         ]
         skipped += len(plans) - len(valid)
@@ -595,7 +609,9 @@ def extract_link_plans(link, actor=None):
                     table=table,
                     classification=classification,
                     plan_type=plan_type,
-                    natural_key=_natural_key(plan.values, plan_type, len(pending_records)),
+                    natural_key=_natural_key(
+                        plan.values, plan_type, len(pending_records)
+                    ),
                     values=plan.values,
                     confidence=plan.confidence,
                     prompt_version=llm.PROMPT_VERSION,
@@ -698,7 +714,7 @@ def unignored_plan_keys(link):
 # ---------------------------------------------------------------------------
 
 
-def label_link_tables(link, actor=None):
+def label_link_tables(link, actor=None, tables=None):
     """Label every extracted table with ``domtrack tables label`` (pass 1).
 
     The result feeds pass 2 (:func:`classify_and_extract_link_tables`) as semantic
@@ -706,24 +722,23 @@ def label_link_tables(link, actor=None):
     ``meta.purpose`` and per-column ``semantic_label`` merged in, so the discovered
     tables are passed through verbatim rather than rebuilt from our columns.
     """
-    tables = list(link.extracted_tables.all())
+    tables = list(tables if tables is not None else link.extracted_tables.all())
     if not tables:
         raise ValueError("no_tables_found")
     # domtrack's labeler calls the provider directly, so the admin token budget has to
     # be enforced here before any spend happens (FR-048).
     llm.default_budget.guard("labeling", link=link)
-    domtrack_tables = [_domtrack_table(table) for table in tables]
     config = constants.labeling_config()
-    result = domtrack_client.label_tables(domtrack_tables, config)
-    labeled_tables = (result or {}).get("tables") or []
     labels = []
     provider = config["provider"]
     model = config["model"] or ""
     language = config["language"]
     with transaction.atomic():
         SemanticLabel.objects.filter(table__link=link).delete()
-        for index, table in enumerate(tables):
-            entry = labeled_tables[index] if index < len(labeled_tables) else {}
+        for table in tables:
+            llm.default_budget.guard("labeling", link=link)
+            result = domtrack_client.label_tables([_domtrack_table(table)], config)
+            entry = ((result or {}).get("tables") or [{}])[0]
             for column_index, column in enumerate(table.columns.all()):
                 label = _column_label(entry, column_index)
                 if not label:
@@ -737,7 +752,11 @@ def label_link_tables(link, actor=None):
                     language=language,
                 )
                 labels.append(
-                    {"table_id": table.pk, "column_id": column.column_id, "label": label}
+                    {
+                        "table_id": table.pk,
+                        "column_id": column.column_id,
+                        "label": label,
+                    }
                 )
     events.labeling_run(link, len(tables), 0)
     return labels
@@ -756,8 +775,11 @@ def _domtrack_table(table):
             "parent_tag": table.parent,
             "parent_classes": [],
             "row_count": table.row_count,
-            **{key: value for key, value in (table.meta or {}).items()
-               if key not in ("parent_tag", "parent_classes", "row_count")},
+            **{
+                key: value
+                for key, value in (table.meta or {}).items()
+                if key not in ("parent_tag", "parent_classes", "row_count")
+            },
         },
         "columns": [
             {
@@ -772,7 +794,10 @@ def _domtrack_table(table):
             for column in columns
         ],
         "rows": [
-            {column.column_id: row.cells.get(column.column_id, "") for column in columns}
+            {
+                column.column_id: row.cells.get(column.column_id, "")
+                for column in columns
+            }
             for row in table.rows.all()
         ],
         "row_count": table.row_count,
@@ -904,7 +929,9 @@ def rerun_link_stages(link, actor=None):
         }.get(awaiting_stage, Link.PipelineStage.DISCOVERED)
     link.last_error = ""
     link.retry_count = 0
-    link.save(update_fields=["pipeline_stage", "retry_count", "last_error", "updated_at"])
+    link.save(
+        update_fields=["pipeline_stage", "retry_count", "last_error", "updated_at"]
+    )
     return link
 
 
@@ -956,9 +983,7 @@ def due_links(now=None):
             review_state=Link.ReviewState.KEPT,
             site__maintenance_state=Site.MaintenanceState.ACTIVE,
         )
-        .filter(
-            models_q_last_replay(cutoff)
-        )
+        .filter(models_q_last_replay(cutoff))
         .order_by("last_replay_at")[: constants.replay_batch_size()]
     )
 

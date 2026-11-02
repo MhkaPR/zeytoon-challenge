@@ -30,8 +30,11 @@ def test_due_links_excludes_suspended_sites_and_non_kept_links(site):
     due = _kept_link(site, "due", last_replay_at=stale)
     _kept_link(site, "fresh", last_replay_at=timezone.now())
     Link.objects.create(
-        site=site, url="https://example.com/dropped", url_hash="dropped",
-        review_state=Link.ReviewState.DROPPED, last_replay_at=stale,
+        site=site,
+        url="https://example.com/dropped",
+        url_hash="dropped",
+        review_state=Link.ReviewState.DROPPED,
+        last_replay_at=stale,
     )
 
     assert services.due_links() == [due]
@@ -54,9 +57,13 @@ def test_due_links_skips_suspended_sites(owner, site):
         domain=other.domain,
         maintenance_state=Site.MaintenanceState.SUSPENDED,
     )
-    _kept_link(suspended, "suspended-link", last_replay_at=timezone.now() - timedelta(days=2))
+    _kept_link(
+        suspended, "suspended-link", last_replay_at=timezone.now() - timedelta(days=2)
+    )
     # The active site has one due link; the suspended site's link must be excluded.
-    due = _kept_link(site, "active-link", last_replay_at=timezone.now() - timedelta(days=2))
+    due = _kept_link(
+        site, "active-link", last_replay_at=timezone.now() - timedelta(days=2)
+    )
 
     assert services.due_links() == [due]
 
@@ -66,7 +73,8 @@ def test_scheduler_command_enqueues_one_task_per_due_link(site, monkeypatch):
     link = _kept_link(site, "due", last_replay_at=stale)
     enqueued = []
     monkeypatch.setattr(
-        tasks, "run_replay_task",
+        tasks,
+        "run_replay_task",
         SimpleNamespace(enqueue=lambda pk: enqueued.append(pk)),
     )
 

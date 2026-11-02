@@ -70,7 +70,9 @@ class AdminOnlyView(AuthenticatedView):
     def caller(self, request):
         user = super().caller(request)
         if not user.is_admin():
-            raise ApiError("not_permitted", "This action is restricted.", http_status=403)
+            raise ApiError(
+                "not_permitted", "This action is restricted.", http_status=403
+            )
         return user
 
 
@@ -80,7 +82,9 @@ class AdminOnlyView(AuthenticatedView):
 
 
 class CompanyListCreateView(AuthenticatedView):
-    @extend_schema(request=CompanyInformationSerializer, responses={201: CompanySerializer})
+    @extend_schema(
+        request=CompanyInformationSerializer, responses={201: CompanySerializer}
+    )
     def post(self, request):
         user = self.caller(request)
         payload = parse_input(CompanyInformationInput, request.data)
@@ -170,7 +174,9 @@ class PanelEntryView(AuthenticatedView):
         user = self.caller(request)
         company = selectors.owned_company_or_error(user, pk)
         if company.is_verified:
-            return Response({"view": "full_panel", "company": _company_payload(company)})
+            return Response(
+                {"view": "full_panel", "company": _company_payload(company)}
+            )
         return Response(
             {
                 "view": "continue_registration",
@@ -191,9 +197,7 @@ class PanelFullView(AuthenticatedView):
             # Redirect to the continue view; the full panel never renders (FR-027, SC-003).
             return Response(
                 status=status.HTTP_303_SEE_OTHER,
-                headers={
-                    "Location": f"/api/v1/companies/{company.pk}/panel-entry"
-                },
+                headers={"Location": f"/api/v1/companies/{company.pk}/panel-entry"},
             )
         return Response(
             {
@@ -222,7 +226,9 @@ class VerificationDecisionView(AdminOnlyView):
         if company.owner_id == actor.pk:
             # The owner can never decide their own verification (FR-012).
             raise ApiError(
-                "not_permitted", "An owner cannot decide their own verification.", http_status=403
+                "not_permitted",
+                "An owner cannot decide their own verification.",
+                http_status=403,
             )
         payload = parse_input(VerificationDecisionInputSerializer, request.data)
         decision = services.record_verification_decision(
@@ -239,11 +245,7 @@ class VerificationDecisionView(AdminOnlyView):
                 "note": decision.note,
             },
         }
-        code = (
-            status.HTTP_201_CREATED
-            if company.is_verified
-            else status.HTTP_200_OK
-        )
+        code = status.HTTP_201_CREATED if company.is_verified else status.HTTP_200_OK
         return Response(body, status=code)
 
 
@@ -306,13 +308,17 @@ class CreditMovementView(AuthenticatedView):
 
 
 class CrawlView(AuthenticatedView):
-    @extend_schema(request=CrawlInputSerializer, responses={200: CrawlResponseSerializer})
+    @extend_schema(
+        request=CrawlInputSerializer, responses={200: CrawlResponseSerializer}
+    )
     def post(self, request, pk):
         user = self.caller(request)
         company = selectors.owned_company_or_error(user, pk)
         payload = parse_input(CrawlInputSerializer, request.data)
         services.set_crawl_enabled(company, payload["enabled"])
-        return Response({"crawl_enabled": company.crawl_enabled, "credit_unchanged": True})
+        return Response(
+            {"crawl_enabled": company.crawl_enabled, "credit_unchanged": True}
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -37,7 +37,9 @@ def test_queue_lists_pending_companies_with_masked_phone(operator_client, owner)
     assert company.phone_number not in str(body)
 
 
-def test_approval_creates_site_in_onboarding_and_verifies_company(operator_client, owner):
+def test_approval_creates_site_in_onboarding_and_verifies_company(
+    operator_client, owner
+):
     company = _pending_company(owner)
 
     response = operator_client.post(
@@ -60,7 +62,9 @@ def test_approval_enqueues_automatic_site_pipeline_after_commit(
     company = _pending_company(owner)
     callbacks = []
     enqueued = []
-    monkeypatch.setattr("admin_console.services.transaction.on_commit", callbacks.append)
+    monkeypatch.setattr(
+        "admin_console.services.transaction.on_commit", callbacks.append
+    )
     monkeypatch.setattr(
         "admin_console.tasks.run_site_pipeline_task",
         SimpleNamespace(enqueue=lambda site_id: enqueued.append(site_id)),

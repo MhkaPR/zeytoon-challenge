@@ -185,7 +185,9 @@ def _classification_for_path(link, path):
             continue
         tokens = {table.parent.lower()} if table.parent else set()
         for column in table.columns.all():
-            tokens.update(token for token in str(column.path).lower().replace(">", " ").split())
+            tokens.update(
+                token for token in str(column.path).lower().replace(">", " ").split()
+            )
         tokens = {token for token in tokens if token}
         if any(token and token in normalized for token in tokens):
             return classification

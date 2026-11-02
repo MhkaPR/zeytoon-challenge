@@ -73,6 +73,4 @@ def test_distinct_link_retries_are_enqueued_independently(
         kept_link.pk,
         second_link.pk,
     }
-    assert all(
-        options == {"priority": TASK_MAX_PRIORITY} for _, _, options in enqueued
-    )
+    assert all(options == {"priority": TASK_MAX_PRIORITY} for _, _, options in enqueued)

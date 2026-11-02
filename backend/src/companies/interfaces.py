@@ -55,9 +55,7 @@ class CompaniesInterface:
 
     @staticmethod
     def record_verification_decision(company, actor, outcome, note=""):
-        return services.record_verification_decision(
-            company, actor, outcome, note=note
-        )
+        return services.record_verification_decision(company, actor, outcome, note=note)
 
 
 __all__ = ["CompaniesInterface"]

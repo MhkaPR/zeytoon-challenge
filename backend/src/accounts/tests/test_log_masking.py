@@ -38,8 +38,13 @@ def test_filter_masks_record_message_and_args():
 
 def test_filter_preserves_numeric_format_arguments():
     record = logging.LogRecord(
-        "httpx", logging.INFO, __file__, 1, 'HTTP %s "%s %d %s"',
-        ("GET", "https://example.com", 200, "OK"), None
+        "httpx",
+        logging.INFO,
+        __file__,
+        1,
+        'HTTP %s "%s %d %s"',
+        ("GET", "https://example.com", 200, "OK"),
+        None,
     )
 
     SensitiveDataFilter().filter(record)

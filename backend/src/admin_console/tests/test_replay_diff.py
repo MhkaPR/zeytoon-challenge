@@ -38,7 +38,9 @@ def _compare_result(tmp_path, diff, summary=None):
     return FakeCompareResult(str(after), diff, summary or {"changed": 1})
 
 
-def test_change_touching_a_plans_table_reextracts(planned_link, stub_domtrack, tmp_path):
+def test_change_touching_a_plans_table_reextracts(
+    planned_link, stub_domtrack, tmp_path
+):
     stub_domtrack.compare_result = _compare_result(
         tmp_path, FakeDiff(changed=[FakeChange(PLANS_PATH)])
     )
@@ -66,8 +68,9 @@ def test_change_elsewhere_runs_no_llm_work(planned_link, stub_domtrack, tmp_path
     assert change.touches_plans_table is False
 
 
-def test_structural_change_rediscovers_and_reclassifies(planned_link, stub_domtrack,
-                                                        stub_llm, tmp_path):
+def test_structural_change_rediscovers_and_reclassifies(
+    planned_link, stub_domtrack, stub_llm, tmp_path
+):
     stub_domtrack.compare_result = _compare_result(
         tmp_path, FakeDiff(added=[(PLANS_PATH, {"tag": "td"})])
     )

@@ -10,6 +10,14 @@ import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
 
+function displayPhone(phone?: string) {
+  if (!phone) return strings.userMenuLabel;
+  if (phone.includes("*")) return phone;
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("98") && digits.length === 12) digits = `0${digits.slice(2)}`;
+  return digits.length > 8 ? `${digits.slice(0, 4)}***${digits.slice(-4)}` : phone;
+}
+
 /**
  * The account block shown inside the mobile drawer: the user's recognizable masked phone
  * number followed by "my companies" and "logout". Mirrors the desktop user menu.
@@ -25,7 +33,7 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
           {strings.userMenuLabel}
         </Typography>
         <Typography className="text-[15px] font-medium">
-          {identity?.user?.phone ?? strings.userMenuLabel}
+          {displayPhone(identity?.user?.phone)}
         </Typography>
       </div>
       <Separator />

@@ -21,9 +21,15 @@ class LinkDiscoverer:
         # Resolve the runtime tunables here (sync) so no database-backed config is
         # read from inside the asyncio loop.
         resolved = {
-            "max_depth": int(bounds.get("max_depth") or constants.link_crawl_max_depth()),
-            "max_pages": int(bounds.get("max_pages") or constants.link_crawl_max_pages()),
-            "top_k_links": int(bounds.get("top_k_links") or constants.link_crawl_top_k()),
+            "max_depth": int(
+                bounds.get("max_depth") or constants.link_crawl_max_depth()
+            ),
+            "max_pages": int(
+                bounds.get("max_pages") or constants.link_crawl_max_pages()
+            ),
+            "top_k_links": int(
+                bounds.get("top_k_links") or constants.link_crawl_top_k()
+            ),
         }
         return asyncio.run(self._crawl(domain, query, resolved))
 
@@ -48,7 +54,9 @@ class LinkDiscoverer:
     ):
         """Deterministically reduce harvested links to candidates (FR-009, SC-006)."""
         deny_extensions = (
-            constants.link_deny_extensions() if deny_extensions is None else deny_extensions
+            constants.link_deny_extensions()
+            if deny_extensions is None
+            else deny_extensions
         )
         deny_segments = (
             constants.link_deny_segments() if deny_segments is None else deny_segments
@@ -101,8 +109,9 @@ def crawl_candidate_links(domain, query, bounds=None):
     return default_discoverer.crawl_candidate_links(domain, query, bounds)
 
 
-def apply_link_policy(urls, deny_extensions=None, deny_segments=None, host=None,
-                      max_links=None):
+def apply_link_policy(
+    urls, deny_extensions=None, deny_segments=None, host=None, max_links=None
+):
     return default_discoverer.apply_link_policy(
         urls, deny_extensions, deny_segments, host, max_links
     )

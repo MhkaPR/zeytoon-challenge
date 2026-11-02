@@ -295,7 +295,9 @@ class PlanRecord(TimestampedModel):
     no formulas.
     """
 
-    link = models.ForeignKey(Link, on_delete=models.CASCADE, related_name="plan_records")
+    link = models.ForeignKey(
+        Link, on_delete=models.CASCADE, related_name="plan_records"
+    )
     table = models.ForeignKey(
         ExtractedTable, on_delete=models.CASCADE, related_name="plan_records"
     )
@@ -327,7 +329,9 @@ class PlanRecord(TimestampedModel):
 class PlanExclusion(TimestampedModel):
     """Operator decision to keep a logical plan out across future extractions."""
 
-    link = models.ForeignKey(Link, on_delete=models.CASCADE, related_name="plan_exclusions")
+    link = models.ForeignKey(
+        Link, on_delete=models.CASCADE, related_name="plan_exclusions"
+    )
     fingerprint = models.CharField(max_length=64)
     plan_type = models.CharField(max_length=64)
     plan_name = models.CharField(max_length=255)
@@ -337,7 +341,8 @@ class PlanExclusion(TimestampedModel):
         db_table = "admin_console_plan_exclusion"
         constraints = [
             models.UniqueConstraint(
-                fields=("link", "fingerprint"), name="uniq_plan_exclusion_link_fingerprint"
+                fields=("link", "fingerprint"),
+                name="uniq_plan_exclusion_link_fingerprint",
             )
         ]
 
@@ -499,9 +504,7 @@ class LlmCostLedger(TimestampedModel):
     )
     timestamp = models.DateTimeField(null=True, blank=True)
     tokens_used = models.BigIntegerField(default=0)
-    amount = models.DecimalField(
-        max_digits=14, decimal_places=4, null=True, blank=True
-    )
+    amount = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     stage = models.CharField(
         max_length=32, choices=Stage.choices, blank=True, default=""
     )

@@ -10,9 +10,7 @@ def assert_step_enterable(company, step_key):
     if step_key not in constants.step_keys():
         raise ApiError("unknown_step", "Unknown registration step.", http_status=404)
 
-    row = CompanyStepProgress.objects.filter(
-        company=company, step_key=step_key
-    ).first()
+    row = CompanyStepProgress.objects.filter(company=company, step_key=step_key).first()
     if row is None or row.state == CompanyStepProgress.State.LOCKED:
         raise ApiError(
             "step_locked",

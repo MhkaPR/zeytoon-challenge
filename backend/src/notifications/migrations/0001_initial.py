@@ -15,66 +15,160 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('event_type', models.CharField(db_index=True, max_length=64)),
-                ('severity', models.CharField(choices=[('info', 'Info'), ('warning', 'Warning'), ('critical', 'Critical')], default='warning', max_length=16)),
-                ('subject', models.CharField(max_length=255)),
-                ('body', models.TextField(blank=True, default='')),
-                ('related_object', models.CharField(blank=True, default='', max_length=255)),
-                ('dedup_key', models.CharField(blank=True, db_index=True, default='', max_length=255)),
-                ('is_resolved', models.BooleanField(db_index=True, default=False)),
-                ('resolved_at', models.DateTimeField(blank=True, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("event_type", models.CharField(db_index=True, max_length=64)),
+                (
+                    "severity",
+                    models.CharField(
+                        choices=[
+                            ("info", "Info"),
+                            ("warning", "Warning"),
+                            ("critical", "Critical"),
+                        ],
+                        default="warning",
+                        max_length=16,
+                    ),
+                ),
+                ("subject", models.CharField(max_length=255)),
+                ("body", models.TextField(blank=True, default="")),
+                (
+                    "related_object",
+                    models.CharField(blank=True, default="", max_length=255),
+                ),
+                (
+                    "dedup_key",
+                    models.CharField(
+                        blank=True, db_index=True, default="", max_length=255
+                    ),
+                ),
+                ("is_resolved", models.BooleanField(db_index=True, default=False)),
+                ("resolved_at", models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'notifications_notification',
-                'ordering': ('-created_at',),
+                "db_table": "notifications_notification",
+                "ordering": ("-created_at",),
             },
         ),
         migrations.CreateModel(
-            name='NotificationRecipient',
+            name="NotificationRecipient",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(blank=True, default='', max_length=255)),
-                ('is_active', models.BooleanField(db_index=True, default=True)),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='notification_recipients_created', to=settings.AUTH_USER_MODEL)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notification_recipients', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(blank=True, default="", max_length=255)),
+                ("is_active", models.BooleanField(db_index=True, default=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="notification_recipients_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notification_recipients",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'notifications_recipient',
-                'ordering': ('-created_at',),
+                "db_table": "notifications_recipient",
+                "ordering": ("-created_at",),
             },
         ),
         migrations.CreateModel(
-            name='NotificationDelivery',
+            name="NotificationDelivery",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('channel', models.CharField(choices=[('in_app', 'In-app')], default='in_app', max_length=16)),
-                ('state', models.CharField(choices=[('pending', 'Pending'), ('sent', 'Sent'), ('failed', 'Failed')], default='pending', max_length=16)),
-                ('sent_at', models.DateTimeField(blank=True, null=True)),
-                ('read_at', models.DateTimeField(blank=True, null=True)),
-                ('error', models.CharField(blank=True, default='', max_length=255)),
-                ('notification', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='deliveries', to='notifications.notification')),
-                ('recipient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='deliveries', to='notifications.notificationrecipient')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "channel",
+                    models.CharField(
+                        choices=[("in_app", "In-app")], default="in_app", max_length=16
+                    ),
+                ),
+                (
+                    "state",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("sent", "Sent"),
+                            ("failed", "Failed"),
+                        ],
+                        default="pending",
+                        max_length=16,
+                    ),
+                ),
+                ("sent_at", models.DateTimeField(blank=True, null=True)),
+                ("read_at", models.DateTimeField(blank=True, null=True)),
+                ("error", models.CharField(blank=True, default="", max_length=255)),
+                (
+                    "notification",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="deliveries",
+                        to="notifications.notification",
+                    ),
+                ),
+                (
+                    "recipient",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="deliveries",
+                        to="notifications.notificationrecipient",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'notifications_delivery',
-                'ordering': ('-created_at',),
+                "db_table": "notifications_delivery",
+                "ordering": ("-created_at",),
             },
         ),
         migrations.AddConstraint(
-            model_name='notificationrecipient',
-            constraint=models.UniqueConstraint(fields=('user',), name='uniq_notification_recipient_user'),
+            model_name="notificationrecipient",
+            constraint=models.UniqueConstraint(
+                fields=("user",), name="uniq_notification_recipient_user"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='notificationdelivery',
-            constraint=models.UniqueConstraint(fields=('notification', 'recipient', 'channel'), name='uniq_delivery_notification_recipient_channel'),
+            model_name="notificationdelivery",
+            constraint=models.UniqueConstraint(
+                fields=("notification", "recipient", "channel"),
+                name="uniq_delivery_notification_recipient_channel",
+            ),
         ),
     ]

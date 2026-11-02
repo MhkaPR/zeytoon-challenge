@@ -104,7 +104,9 @@ def test_duplicate_pipeline_capture_does_not_park_link(site, monkeypatch):
 def test_task_on_already_published_link_is_completed(kept_link):
     kept_link.pipeline_stage = Link.PipelineStage.PUBLISHED
     kept_link.pipeline_task_state = "queued"
-    kept_link.save(update_fields=["pipeline_stage", "pipeline_task_state", "updated_at"])
+    kept_link.save(
+        update_fields=["pipeline_stage", "pipeline_task_state", "updated_at"]
+    )
 
     tasks.run_site_pipeline_task.call(
         kept_link.site_id, discover=False, link_id=kept_link.pk
@@ -120,7 +122,9 @@ def test_no_acceptable_plans_is_handled_as_completed_quality_outcome(
 ):
     kept_link.pipeline_stage = Link.PipelineStage.EXTRACTED
     kept_link.pipeline_task_state = "queued"
-    kept_link.save(update_fields=["pipeline_stage", "pipeline_task_state", "updated_at"])
+    kept_link.save(
+        update_fields=["pipeline_stage", "pipeline_task_state", "updated_at"]
+    )
     monkeypatch.setattr(services, "label_link_tables", lambda link: [])
     monkeypatch.setattr(
         services,
