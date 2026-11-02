@@ -1,20 +1,20 @@
+import { useTranslations } from "next-intl";
 import { Avatar, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
 import type { RecentPublicCompany } from "@/src/lib/api/publicCatalog";
-import { strings } from "@/src/lib/i18n/strings";
-
 /** The three newest verified companies registered during the current month. */
 export function RecentlyApproved({ companies }: { companies: RecentPublicCompany[] }) {
+  const t = useTranslations("common");
   return (
     <section className="flex flex-col">
       <div className="flex flex-row items-end justify-between gap-[16px] py-2">
         <div className="flex flex-col gap-[8px]">
           <Typography className="text-[28px] font-semibold" type="h2">
-            {strings.recentlyApprovedTitle}
+            {t("recentlyApprovedTitle")}
           </Typography>
           <Typography className="max-w-[720px] leading-[1.8]" color="muted">
-            {strings.recentlyApprovedIntro}
+            {t("recentlyApprovedIntro")}
           </Typography>
         </div>
       </div>

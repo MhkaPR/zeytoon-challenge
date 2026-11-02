@@ -1,12 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Typography } from "@heroui/react";
 import { Building2 } from "lucide-react";
 
-import { strings } from "@/src/lib/i18n/strings";
-
 /** Empty state shown when the user owns no companies (FR-023). */
 export function EmptyState({ onRegister }: { onRegister?: () => void }) {
+  const t = useTranslations("common");
   return (
     <Card className="items-center gap-[20px] p-[40px] text-center" variant="default">
       <span
@@ -17,13 +17,13 @@ export function EmptyState({ onRegister }: { onRegister?: () => void }) {
       </span>
       <div className="flex flex-col gap-[8px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {strings.panelEmptyTitle}
+          {t("panelEmptyTitle")}
         </Typography>
         <Typography className="max-w-[440px] leading-[1.8]" color="muted">
-          {strings.panelEmptyBody}
+          {t("panelEmptyBody")}
         </Typography>
       </div>
-      <Button onPress={onRegister}>{strings.registerNewCompany}</Button>
+      <Button onPress={onRegister}>{t("registerNewCompany")}</Button>
     </Card>
   );
 }

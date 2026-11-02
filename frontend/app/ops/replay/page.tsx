@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Skeleton, Typography } from "@heroui/react";
 import { Play } from "lucide-react";
 import { useState } from "react";
@@ -20,10 +21,10 @@ import {
   listReplayRuns,
   rerunLink,
 } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsReplayPage() {
+  const ot = useTranslations("ops");
   const runs = useOpsData((token) => listReplayRuns(token), "runs");
   const alerts = useOpsData((token) => listAlerts(token), "alerts");
   const recipients = useOpsData((token) => listRecipients(token), "recipients");
@@ -56,7 +57,7 @@ export default function OpsReplayPage() {
     setNotice(null);
     try {
       await rerunLink(getAccessToken(), linkId);
-      setNotice(opsStrings.rerunStarted);
+      setNotice(ot("rerunStarted"));
       runs.reload();
       alerts.reload();
     } catch (err) {
@@ -73,9 +74,9 @@ export default function OpsReplayPage() {
     <main className="flex flex-col gap-[24px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.replayTitle}
+          {ot("replayTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.replayIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("replayIntro")}</Typography>
       </div>
 
       {notice && (
@@ -93,11 +94,11 @@ export default function OpsReplayPage() {
         <Button
           isDisabled={busy}
           onPress={() =>
-            run(() => createReplayRuns(getAccessToken()), opsStrings.running)
+            run(() => createReplayRuns(getAccessToken()), ot("running"))
           }
         >
           <Play aria-hidden className="size-4" />
-          {busy ? opsStrings.running : opsStrings.createReplays}
+          {busy ? ot("running") : ot("createReplays")}
         </Button>
       </div>
 
@@ -107,14 +108,14 @@ export default function OpsReplayPage() {
         <>
           <section className="flex flex-col gap-[10px]">
             <Typography className="text-[16px] font-semibold" type="h3">
-              {opsStrings.createReplays}
+              {ot("createReplays")}
             </Typography>
             <ReplayRunsTable runs={runs.data?.results ?? []} />
           </section>
 
           <section className="flex flex-col gap-[10px]">
             <Typography className="text-[16px] font-semibold" type="h3">
-              {opsStrings.alertsTitle}
+              {ot("alertsTitle")}
             </Typography>
             <AlertsPanel
               alerts={alerts.data?.results ?? []}
@@ -130,13 +131,13 @@ export default function OpsReplayPage() {
               onAdd={(userId, name) =>
                 run(
                   () => addRecipient(getAccessToken(), userId, name),
-                  opsStrings.settingsSaved,
+                  ot("settingsSaved"),
                 )
               }
               onDeactivate={(recipientId) =>
                 run(
                   () => deactivateRecipient(getAccessToken(), recipientId),
-                  opsStrings.settingsSaved,
+                  ot("settingsSaved"),
                 )
               }
               recipients={recipients.data?.results ?? []}

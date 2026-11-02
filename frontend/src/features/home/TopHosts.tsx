@@ -1,22 +1,23 @@
+import { useTranslations } from "next-intl";
 import { Card, Chip, Typography } from "@heroui/react";
 import { ChevronLeft, MapPin, Star } from "lucide-react";
 import NextLink from "next/link";
 
-import { strings, topHosts } from "@/src/lib/i18n/strings";
-
+import { topHosts } from "@/src/lib/i18n/strings";
 /**
  * Highest-ranked hosts, sorted by rank. Each row is a card linking to the provider; the
  * rank is shown as plain text so the ordering does not rely on color alone.
  */
 export function TopHosts() {
+  const t = useTranslations("common");
   return (
     <section className="flex flex-col gap-[24px]">
       <div className="flex flex-col gap-[8px]">
         <Typography className="text-[28px] font-semibold" type="h2">
-          {strings.topHostsTitle}
+          {t("topHostsTitle")}
         </Typography>
         <Typography className="max-w-[720px] leading-[1.8]" color="muted">
-          {strings.topHostsIntro}
+          {t("topHostsIntro")}
         </Typography>
       </div>
 
@@ -83,7 +84,7 @@ export function TopHosts() {
                     <Typography className="font-mono text-[12px] font-medium">
                       {host.score}
                     </Typography>
-                    <span className="sr-only">{strings.rankingScoreLabel}</span>
+                    <span className="sr-only">{t("rankingScoreLabel")}</span>
                   </div>
 
                   <ChevronLeft

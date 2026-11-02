@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Chip,
   Input,
@@ -15,8 +16,6 @@ import type {
   PlanSchemaField,
   RecipeBinding,
 } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 export function emptyBinding(fieldKey: string): RecipeBinding {
   return {
     schema_field_key: fieldKey,
@@ -51,6 +50,7 @@ export function FieldBindingPanel({
   bindings: Record<string, RecipeBinding>;
   onChange: (fieldKey: string, binding: RecipeBinding) => void;
 }) {
+  const ot = useTranslations("ops");
   return (
     <div className="flex flex-col gap-[12px]">
       {fields.map((field) => {
@@ -68,7 +68,7 @@ export function FieldBindingPanel({
                 size="sm"
                 variant="soft"
               >
-                {field.required ? opsStrings.requiredField : opsStrings.optionalField}
+                {field.required ? ot("requiredField") : ot("optionalField")}
               </Chip>
               {field.unit_family && (
                 <span className="text-[11px] text-muted">{field.unit_family}</span>
@@ -100,15 +100,15 @@ export function FieldBindingPanel({
                   });
                 }}
               >
-                <Label>{opsStrings.sourceColumn}</Label>
+                <Label>{ot("sourceColumn")}</Label>
                 <Select.Trigger>
                   <Select.Value />
                   <Select.Indicator />
                 </Select.Trigger>
                 <Select.Popover>
                   <ListBox>
-                    <ListBox.Item id="none" textValue={opsStrings.none}>
-                      {opsStrings.none}
+                    <ListBox.Item id="none" textValue={ot("none")}>
+                      {ot("none")}
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
                     {tables.flatMap((table, tableIndex) =>
@@ -121,7 +121,7 @@ export function FieldBindingPanel({
                           }`}
                         >
                           {(table.title ||
-                            `${opsStrings.tablesTitle} #${tableIndex + 1}`) +
+                            `${ot("tablesTitle")} #${tableIndex + 1}`) +
                             " / " +
                             (column.label || column.column_id)}
                           <ListBox.ItemIndicator />
@@ -137,13 +137,13 @@ export function FieldBindingPanel({
                 value={binding.formula}
                 onChange={(value) => onChange(field.key, { ...binding, formula: value })}
               >
-                <Label>{opsStrings.formula}</Label>
+                <Label>{ot("formula")}</Label>
                 <Input dir="ltr" placeholder="=A2*B2" />
               </TextField>
             </div>
 
             <Typography className="text-[11px] text-muted" dir="ltr">
-              {opsStrings.selector}: {binding.selector || opsStrings.none}
+              {ot("selector")}: {binding.selector || ot("none")}
             </Typography>
           </div>
         );

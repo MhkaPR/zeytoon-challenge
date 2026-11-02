@@ -1,11 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Skeleton, Typography } from "@heroui/react";
 import { use, useState } from "react";
 
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { getPlans, publishLink, setPlanIgnored } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 function flattenOther(value: unknown, parentKey = "", depth = 0): Array<{ key: string; value: string }> {
@@ -54,6 +54,7 @@ export default function OpsPublishPage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
+  const ot = useTranslations("ops");
   const { linkId } = use(params);
   const id = Number(linkId);
   const { data, loading, error, reload } = useOpsData(
@@ -97,16 +98,16 @@ export default function OpsPublishPage({
     <main className="flex flex-col gap-[20px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.qualityReviewTitle}
+          {ot("qualityReviewTitle")}
         </Typography>
         <Typography className="text-[13px] text-muted">
-          {opsStrings.qualityReviewIntro}
+          {ot("qualityReviewIntro")}
         </Typography>
       </div>
 
       {accepted && (
         <Typography className="text-[13px] text-success" role="status">
-          {opsStrings.qualityAccepted}
+          {ot("qualityAccepted")}
         </Typography>
       )}
       {failure && (
@@ -118,15 +119,15 @@ export default function OpsPublishPage({
       {loading ? (
         <Skeleton className="h-[220px] rounded-[var(--radius)]" />
       ) : error || !data ? (
-        <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+        <Typography role="alert">{error ?? ot("genericError")}</Typography>
       ) : data.plans.length === 0 ? (
         <Typography className="text-[13px] text-muted" role="status">
-          {opsStrings.noPlansForReview}
+          {ot("noPlansForReview")}
         </Typography>
       ) : (
         <>
           <Typography className="text-[13px] text-muted" role="status">
-            {opsStrings.planIgnoreHint}
+            {ot("planIgnoreHint")}
           </Typography>
           <div className="flex flex-col gap-[12px]">
             {data.plans.map((plan) => (
@@ -145,7 +146,7 @@ export default function OpsPublishPage({
                     </Chip>
                     {plan.ignored && (
                       <Chip color="warning" size="sm" variant="soft">
-                        {opsStrings.planIgnored}
+                        {ot("planIgnored")}
                       </Chip>
                     )}
                     <Button
@@ -155,10 +156,10 @@ export default function OpsPublishPage({
                       variant={plan.ignored ? "secondary" : "tertiary"}
                     >
                       {savingPlanId === plan.id
-                        ? opsStrings.saving
+                        ? ot("saving")
                         : plan.ignored
-                          ? opsStrings.restorePlan
-                          : opsStrings.ignorePlan}
+                          ? ot("restorePlan")
+                          : ot("ignorePlan")}
                     </Button>
                   </div>
                 </div>
@@ -186,7 +187,7 @@ export default function OpsPublishPage({
                       ? value.join(", ")
                       : value && typeof value === "object"
                         ? JSON.stringify(value)
-                        : String(value ?? opsStrings.none);
+                        : String(value ?? ot("none"));
                     return [
                       <div className="rounded-[var(--radius)] bg-surface-secondary p-[10px]" key={key}>
                         <dt className="text-[11px] text-muted">{key}</dt>
@@ -203,7 +204,7 @@ export default function OpsPublishPage({
             isDisabled={busy || accepted || data.plans.every((plan) => plan.ignored)}
             onPress={acceptAndPublish}
           >
-            {busy ? opsStrings.publishing : opsStrings.acceptAndPublish}
+            {busy ? ot("publishing") : ot("acceptAndPublish")}
           </Button>
         </>
       )}

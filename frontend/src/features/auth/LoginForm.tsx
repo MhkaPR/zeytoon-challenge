@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Input, Label, TextField, Typography } from "@heroui/react";
 import { useState } from "react";
 
@@ -43,6 +44,7 @@ function localizeError(error: AuthApiError): string {
  * "The code is incorrect" message (spec FR-015).
  */
 export function LoginForm({ onSuccess }: LoginFormProps) {
+  const t = useTranslations("common");
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -60,7 +62,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       setTtl(result.expires_in_seconds);
       setStep("code");
     } catch (err) {
-      setError(err instanceof AuthApiError ? localizeError(err) : strings.genericError);
+      setError(err instanceof AuthApiError ? localizeError(err) : t("genericError"));
     } finally {
       setBusy(false);
     }
@@ -76,7 +78,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       onSuccess?.(result.redirect_to);
     } catch (err) {
       // Expired and wrong codes produce the same message by design.
-      setError(err instanceof AuthApiError ? localizeError(err) : strings.genericError);
+      setError(err instanceof AuthApiError ? localizeError(err) : t("genericError"));
     } finally {
       setBusy(false);
     }
@@ -91,8 +93,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           value={phone}
           onChange={setPhone}
         >
-          <Label>{strings.phoneNumber}</Label>
-          <Input inputMode="tel" placeholder={strings.phonePlaceholder} />
+          <Label>{t("phoneNumber")}</Label>
+          <Input inputMode="tel" placeholder={t("phonePlaceholder")} />
         </TextField>
         {error && (
           <Typography className="text-[14px] text-danger" role="alert">
@@ -100,7 +102,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </Typography>
         )}
         <Button isDisabled={busy} type="submit">
-          {strings.sendCode}
+          {t("sendCode")}
         </Button>
       </form>
     );
@@ -109,11 +111,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   return (
     <form onSubmit={handleVerify} aria-label="login-code" className="flex flex-col gap-[16px]">
       <TextField isRequired name="code" value={code} onChange={setCode}>
-        <Label>{strings.enterCode}</Label>
+        <Label>{t("enterCode")}</Label>
         <Input autoComplete="one-time-code" inputMode="numeric" />
       </TextField>
       <Typography aria-label="countdown" className="text-[12px] text-muted">
-        {expired ? strings.requestNewCode : `${strings.timeRemaining} ${label}`}
+        {expired ? t("requestNewCode") : `${t("timeRemaining")} ${label}`}
       </Typography>
       {error && (
         <Typography className="text-[14px] text-danger" role="alert">
@@ -121,7 +123,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         </Typography>
       )}
       <Button isDisabled={busy} type="submit">
-        {strings.loginButton}
+        {t("loginButton")}
       </Button>
     </form>
   );

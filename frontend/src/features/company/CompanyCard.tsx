@@ -1,7 +1,6 @@
+import { useTranslations } from "next-intl";
 import { Card, Chip, Typography } from "@heroui/react";
 import NextLink from "next/link";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 /**
  * ``company_card`` (PAGES.yaml): a vertical card whose block is the company explained.
@@ -18,6 +17,7 @@ export function CompanyCard({
   description?: string;
   serviceType?: string;
 }) {
+  const t = useTranslations("common");
   return (
     <NextLink
       aria-label={name}
@@ -41,7 +41,7 @@ export function CompanyCard({
             {domain}
           </Typography>
         )}
-        <Card.Description>{description || strings.companyCardFallback}</Card.Description>
+        <Card.Description>{description || t("companyCardFallback")}</Card.Description>
       </Card>
     </NextLink>
   );

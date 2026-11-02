@@ -1,11 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, Chip, Separator, Typography } from "@heroui/react";
 import { Globe, Workflow } from "lucide-react";
 
 import type { Site } from "@/src/lib/api/ops";
 import { opsStrings } from "@/src/lib/i18n/strings";
-
 const STATE_LABEL: Record<string, string> = {
   onboarding: opsStrings.stateOnboarding,
   active: opsStrings.stateActive,
@@ -19,6 +19,7 @@ export function SiteOnboarding({
   site: Site;
   linksCount: number;
 }) {
+  const ot = useTranslations("ops");
   return (
     <Card className="flex flex-col gap-[16px] p-[20px]" variant="default">
       <div className="flex flex-wrap items-center justify-between gap-[12px]">
@@ -31,7 +32,7 @@ export function SiteOnboarding({
               {site.domain}
             </Typography>
             <span className="text-[12px] text-muted">
-              {opsStrings.linksCount}: {linksCount}
+              {ot("linksCount")}: {linksCount}
             </span>
           </div>
         </div>
@@ -43,7 +44,7 @@ export function SiteOnboarding({
       <div className="flex items-start gap-[10px]">
         <Workflow aria-hidden className="mt-[2px] size-4 text-accent" />
         <Typography className="text-[13px] text-muted">
-          {opsStrings.automaticPipelineHint}
+          {ot("automaticPipelineHint")}
         </Typography>
       </div>
     </Card>

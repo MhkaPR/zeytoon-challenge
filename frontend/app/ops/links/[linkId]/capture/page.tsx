@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Skeleton, Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
@@ -18,7 +19,6 @@ import {
   uploadTrace,
   type CaptureSession,
 } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsCapturePage({
@@ -26,6 +26,7 @@ export default function OpsCapturePage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
+  const ot = useTranslations("ops");
   const { linkId } = use(params);
   const id = Number(linkId);
   const router = useRouter();
@@ -54,7 +55,7 @@ export default function OpsCapturePage({
     try {
       const response = await startCapture(getAccessToken(), id, mode, durationMs);
       setCapture(response.capture);
-      setNotice(opsStrings.captureStarted);
+      setNotice(ot("captureStarted"));
       reload();
       active.reload();
     } catch (err) {
@@ -71,7 +72,7 @@ export default function OpsCapturePage({
     try {
       const response = await uploadTrace(getAccessToken(), capture.id, file);
       setCapture(response.capture);
-      setNotice(opsStrings.traceStored);
+      setNotice(ot("traceStored"));
       reload();
       active.reload();
     } catch (err) {
@@ -92,7 +93,7 @@ export default function OpsCapturePage({
         capture.local_path,
       );
       setCapture(response.capture);
-      setNotice(opsStrings.traceStored);
+      setNotice(ot("traceStored"));
       reload();
       active.reload();
     } catch (err) {
@@ -112,7 +113,7 @@ export default function OpsCapturePage({
         "operator failed",
       );
       setCapture((response as { capture: CaptureSession }).capture ?? capture);
-      setFailure(opsStrings.captureFailed);
+      setFailure(ot("captureFailed"));
     } catch (err) {
       fail(err);
     } finally {
@@ -126,7 +127,7 @@ export default function OpsCapturePage({
     <main className="flex flex-col gap-[20px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.captureTitle}
+          {ot("captureTitle")}
         </Typography>
         <Typography className="text-[12px] text-muted" dir="ltr">
           {data?.url ?? ""}
@@ -148,7 +149,7 @@ export default function OpsCapturePage({
       {loading ? (
         <Skeleton className="h-[260px] rounded-[var(--radius)]" />
       ) : error || !data ? (
-        <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+        <Typography role="alert">{error ?? ot("genericError")}</Typography>
       ) : (
         <CapturePanel
           busy={busy}

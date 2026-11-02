@@ -1,7 +1,7 @@
+import { useTranslations } from "next-intl";
 import { Typography } from "@heroui/react";
 import type { ReactNode } from "react";
 
-import { strings } from "@/src/lib/i18n/strings";
 import { AboutTorb } from "./AboutTorb";
 import { FaqSection } from "./FaqSection";
 import { HomeCtas } from "./HomeCtas";
@@ -19,6 +19,7 @@ import type { PublicPlan, RecentPublicCompany } from "@/src/lib/api/publicCatalo
  * Published catalog records are passed in by the server-rendered home route.
  */
 export function MainBody({ brandLogo, plans, recentCompanies }: { brandLogo?: ReactNode; plans: PublicPlan[]; recentCompanies: RecentPublicCompany[] }) {
+  const t = useTranslations("common");
   return (
     <>
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-[24px] sm:px-[32px]">
@@ -26,20 +27,20 @@ export function MainBody({ brandLogo, plans, recentCompanies }: { brandLogo?: Re
           <div className="flex flex-col items-center gap-[12px]">
             {brandLogo ?? (
               <Typography className="font-semibold text-accent" type="body-sm">
-                {strings.appName}
+                {t("appName")}
               </Typography>
             )}
             <Typography className="text-[12px] font-medium text-accent" type="body-xs">
-              {strings.brandTagline}
+              {t("brandTagline")}
             </Typography>
             <Typography
               className="max-w-[720px] text-[30px] font-semibold leading-[1.55] sm:text-[38px]"
               type="h1"
             >
-              {strings.searchTitle}
+              {t("searchTitle")}
             </Typography>
             <Typography className="max-w-[600px] text-[14px] leading-[1.9] sm:text-[16px]" color="muted">
-              {strings.heroSubtitle}
+              {t("heroSubtitle")}
             </Typography>
           </div>
 

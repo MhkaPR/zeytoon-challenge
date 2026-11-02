@@ -1,12 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Typography } from "@heroui/react";
 import NextLink from "next/link";
 import { useMemo, useState } from "react";
 
 import type { Link } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 import { StageBadge } from "../pipeline/StageBadge";
 
 export function LinkReviewTable({
@@ -18,6 +17,7 @@ export function LinkReviewTable({
   busy?: boolean;
   onReview: (keepIds: number[], removeIds: number[]) => void;
 }) {
+  const ot = useTranslations("ops");
   const [removed, setRemoved] = useState<Set<number>>(
     () => new Set(links.filter((link) => link.review_state === "removed").map((link) => link.id)),
   );
@@ -39,7 +39,7 @@ export function LinkReviewTable({
   if (links.length === 0) {
     return (
       <Typography className="text-[13px] text-warning" role="status">
-        {opsStrings.linksEmpty}
+        {ot("linksEmpty")}
       </Typography>
     );
   }
@@ -48,10 +48,10 @@ export function LinkReviewTable({
     <div className="flex flex-col gap-[12px]">
       <div className="flex flex-wrap items-center gap-[12px] text-[12px] text-muted">
         <span>
-          {opsStrings.keptCount}: {kept.length}
+          {ot("keptCount")}: {kept.length}
         </span>
         <span>
-          {opsStrings.removedCount}: {removed.size}
+          {ot("removedCount")}: {removed.size}
         </span>
       </div>
 
@@ -60,9 +60,9 @@ export function LinkReviewTable({
           <thead>
             <tr className="border-b border-[var(--ds-border)] text-muted">
               <th className="py-[8px] font-medium">URL</th>
-              <th className="py-[8px] font-medium">{opsStrings.status}</th>
-              <th className="py-[8px] font-medium">{opsStrings.keep}</th>
-              <th className="py-[8px] font-medium">{opsStrings.action}</th>
+              <th className="py-[8px] font-medium">{ot("status")}</th>
+              <th className="py-[8px] font-medium">{ot("keep")}</th>
+              <th className="py-[8px] font-medium">{ot("action")}</th>
             </tr>
           </thead>
           <tbody>
@@ -84,7 +84,7 @@ export function LinkReviewTable({
                       size="sm"
                       variant={isRemoved ? "secondary" : "ghost"}
                     >
-                      {isRemoved ? opsStrings.restore : opsStrings.remove}
+                      {isRemoved ? ot("restore") : ot("remove")}
                     </Button>
                   </td>
                   <td className="py-[10px]">
@@ -93,10 +93,10 @@ export function LinkReviewTable({
                         className="rounded-[var(--radius)] bg-accent px-[10px] py-[6px] text-[12px] font-medium text-accent-foreground"
                         href={`/ops/links/${link.id}/capture`}
                       >
-                        {opsStrings.openCapture}
+                        {ot("openCapture")}
                       </NextLink>
                     ) : (
-                      <span className="text-[12px] text-muted">{opsStrings.none}</span>
+                      <span className="text-[12px] text-muted">{ot("none")}</span>
                     )}
                   </td>
                 </tr>
@@ -116,7 +116,7 @@ export function LinkReviewTable({
           )
         }
       >
-        {busy ? opsStrings.reviewing : opsStrings.reviewSubmit}
+        {busy ? ot("reviewing") : ot("reviewSubmit")}
       </Button>
     </div>
   );

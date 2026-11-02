@@ -1,10 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Check, Clock, Lock, X } from "lucide-react";
 
 import type { StepProgress as StepProgressItem } from "@/src/lib/api/companies";
 import { strings } from "@/src/lib/i18n/strings";
-
 const STEP_LABELS: Record<string, string> = {
   company_information: strings.stepCompanyInfo,
   verification: strings.stepVerification,
@@ -66,6 +66,7 @@ export function StepProgress({
   steps: StepProgressItem[];
   currentStep?: string | null;
 }) {
+  const t = useTranslations("common");
   return (
     <ol className="flex flex-col">
       {steps.map((step, index) => {
@@ -95,7 +96,7 @@ export function StepProgress({
                 </span>
                 {isCurrent && (
                   <span className="rounded-full bg-accent-soft px-[8px] py-[2px] text-[12px] font-medium text-accent-soft-foreground">
-                    {strings.currentStepTitle}
+                    {t("currentStepTitle")}
                   </span>
                 )}
               </div>

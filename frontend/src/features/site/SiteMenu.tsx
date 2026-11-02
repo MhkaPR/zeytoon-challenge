@@ -1,18 +1,18 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 import { NAV_ITEMS } from "./navItems";
 
 /** Desktop primary navigation: the inline horizontal list of menu items (md and up). */
 export function SiteMenu() {
+  const t = useTranslations("common");
   const pathname = usePathname();
 
   return (
-    <nav aria-label={strings.navMainPage} className="hidden md:block">
+    <nav aria-label={t("navMainPage")} className="hidden md:block">
       <ul className="flex flex-row items-center gap-[24px]">
         {NAV_ITEMS.map((item) => (
           <li key={item.href}>

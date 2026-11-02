@@ -1,10 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
 import NextLink from "next/link";
 
 import { opsStrings } from "@/src/lib/i18n/strings";
-
 const STAGES = [
   { key: "capture", label: opsStrings.openCapture },
   { key: "tables", label: opsStrings.openTables },
@@ -22,6 +22,7 @@ export function LinkStageNav({
   active: string;
   siteId?: number | null;
 }) {
+  const ot = useTranslations("ops");
   return (
     <div className="flex flex-col gap-[8px]">
       {siteId != null && (
@@ -30,10 +31,10 @@ export function LinkStageNav({
           href={`/ops/sites/${siteId}/links`}
         >
           <ArrowRight aria-hidden className="size-4" />
-          {opsStrings.backToLinks}
+          {ot("backToLinks")}
         </NextLink>
       )}
-      <nav aria-label={opsStrings.console}>
+      <nav aria-label={ot("console")}>
         <ul className="flex flex-wrap gap-[6px]">
           {STAGES.map((stage) => {
             const isActive = stage.key === active;

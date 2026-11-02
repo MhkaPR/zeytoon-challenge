@@ -1,8 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Avatar, Chip, ListBox, Typography } from "@heroui/react";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 import type { SearchResult } from "./data";
 
@@ -12,16 +11,17 @@ import type { SearchResult } from "./data";
  * (company vs plan) is surfaced as text so it does not rely on color.
  */
 export function ResultsList({ results }: { results: SearchResult[] }) {
+  const t = useTranslations("common");
   if (results.length === 0) {
     return (
       <Typography className="px-[16px] py-[24px] text-center" color="muted">
-        {strings.noResults}
+        {t("noResults")}
       </Typography>
     );
   }
 
   return (
-    <ListBox aria-label={strings.resultsTitle} className="p-[8px]" selectionMode="none">
+    <ListBox aria-label={t("resultsTitle")} className="p-[8px]" selectionMode="none">
       {results.map((result) => (
         <ListBox.Item id={result.id} key={result.id} textValue={result.title}>
           <Avatar size="sm">
@@ -29,7 +29,7 @@ export function ResultsList({ results }: { results: SearchResult[] }) {
               <Avatar.Image alt="" src={result.image} />
             ) : (
               <Avatar.Fallback>
-                {result.kind === "company" ? strings.companyType.slice(0, 1) : strings.planType.slice(0, 1)}
+                {result.kind === "company" ? t("companyType").slice(0, 1) : t("planType").slice(0, 1)}
               </Avatar.Fallback>
             )}
           </Avatar>
@@ -40,7 +40,7 @@ export function ResultsList({ results }: { results: SearchResult[] }) {
             </Typography>
           </div>
           <Chip className="ms-auto" color="accent" size="sm" variant="soft">
-            {result.kind === "company" ? strings.companyType : strings.planType}
+            {result.kind === "company" ? t("companyType") : t("planType")}
           </Chip>
         </ListBox.Item>
       ))}

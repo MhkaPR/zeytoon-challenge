@@ -1,9 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Label, SearchField, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { useState } from "react";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 import { ResultsList } from "./ResultsList";
 import { SERVICE_TYPES, suggest, type ServiceKey } from "./data";
@@ -14,6 +13,7 @@ import { SERVICE_TYPES, suggest, type ServiceKey } from "./data";
  * the home page (``FilterBox``).
  */
 export function SearchExperience() {
+  const t = useTranslations("common");
   const [query, setQuery] = useState("");
   const [service, setService] = useState<ServiceKey>("host");
 
@@ -24,18 +24,18 @@ export function SearchExperience() {
     <div className="flex w-full flex-col gap-[16px]">
       {/* Sticky search + chips stack: chips sit directly below the sticky search field. */}
       <div className="sticky top-[64px] z-20 -mx-[16px] bg-surface px-[16px] pb-[12px] pt-[12px] md:-mx-[32px] md:px-[32px]">
-        <SearchField aria-label={strings.searchTitle} value={query} onChange={setQuery}>
-          <Label className="sr-only">{strings.searchPlaceholder}</Label>
+        <SearchField aria-label={t("searchTitle")} value={query} onChange={setQuery}>
+          <Label className="sr-only">{t("searchPlaceholder")}</Label>
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input className="w-full" placeholder={strings.searchPlaceholder} />
+            <SearchField.Input className="w-full" placeholder={t("searchPlaceholder")} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
 
         <div className="mt-[12px]">
           <ToggleButtonGroup
-            aria-label={strings.serviceTypeLabel}
+            aria-label={t("serviceTypeLabel")}
             className="flex-wrap"
             isDetached
             selectedKeys={[service]}

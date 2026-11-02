@@ -1,12 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, Chip, Skeleton, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
 import { useOpsData } from "@/src/features/ops/useOpsData";
 import { listSites } from "@/src/lib/api/ops";
 import { opsStrings } from "@/src/lib/i18n/strings";
-
 const STATE_LABEL: Record<string, string> = {
   onboarding: opsStrings.stateOnboarding,
   active: opsStrings.stateActive,
@@ -14,24 +14,25 @@ const STATE_LABEL: Record<string, string> = {
 };
 
 export default function OpsSitesPage() {
+  const ot = useTranslations("ops");
   const { data, loading, error } = useOpsData(listSites, "sites");
 
   return (
     <main className="flex flex-col gap-[20px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.sitesTitle}
+          {ot("sitesTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.siteIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("siteIntro")}</Typography>
       </div>
 
       {loading ? (
         <Skeleton className="h-[200px] rounded-[var(--radius)]" />
       ) : error || !data ? (
-        <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+        <Typography role="alert">{error ?? ot("genericError")}</Typography>
       ) : data.results.length === 0 ? (
         <Typography className="text-[13px] text-muted" role="status">
-          {opsStrings.sitesEmpty}
+          {ot("sitesEmpty")}
         </Typography>
       ) : (
         <div className="grid gap-[12px] sm:grid-cols-2">
@@ -56,20 +57,20 @@ export default function OpsSitesPage() {
                 </Chip>
               </div>
               <Typography className="text-[12px] text-muted">
-                {opsStrings.linksCount}: {site.links_count}
+                {ot("linksCount")}: {site.links_count}
               </Typography>
               <div className="flex flex-wrap gap-[8px]">
                 <NextLink
                   className="rounded-[var(--radius)] bg-accent px-[12px] py-[6px] text-[13px] text-accent-foreground"
                   href={`/ops/sites/${site.id}`}
                 >
-                  {opsStrings.openSite}
+                  {ot("openSite")}
                 </NextLink>
                 <NextLink
                   className="rounded-[var(--radius)] bg-surface-secondary px-[12px] py-[6px] text-[13px]"
                   href={`/ops/sites/${site.id}/links`}
                 >
-                  {opsStrings.openLinks}
+                  {ot("openLinks")}
                 </NextLink>
               </div>
             </Card>

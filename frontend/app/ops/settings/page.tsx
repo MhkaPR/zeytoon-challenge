@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Skeleton, Typography } from "@heroui/react";
 import { useState } from "react";
 
@@ -7,10 +8,10 @@ import { LlmCeilingForm } from "@/src/features/ops/settings/LlmCeilingForm";
 import { TunablesForm } from "@/src/features/ops/settings/TunablesForm";
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { getLlmCeiling, getSettings, setLlmCeiling, updateSettings } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsSettingsPage() {
+  const ot = useTranslations("ops");
   const settings = useOpsData(getSettings, "settings");
   const ceilingState = useOpsData(getLlmCeiling, "ceiling");
   const [busy, setBusy] = useState(false);
@@ -41,9 +42,9 @@ export default function OpsSettingsPage() {
     <main className="flex flex-col gap-[20px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.settingsTitle}
+          {ot("settingsTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.settingsIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("settingsIntro")}</Typography>
       </div>
 
       {notice && (
@@ -61,14 +62,14 @@ export default function OpsSettingsPage() {
         {settings.loading ? (
           <Skeleton className="h-[320px] rounded-[var(--radius)]" />
         ) : settings.error || !settings.data ? (
-          <Typography role="alert">{settings.error ?? opsStrings.genericError}</Typography>
+          <Typography role="alert">{settings.error ?? ot("genericError")}</Typography>
         ) : (
           <TunablesForm
             busy={busy}
             onSave={(values) =>
               run(
                 () => updateSettings(getAccessToken(), values),
-                opsStrings.settingsSaved,
+                ot("settingsSaved"),
               )
             }
             values={settings.data}
@@ -85,7 +86,7 @@ export default function OpsSettingsPage() {
             onSave={(amount, period) =>
               run(
                 () => setLlmCeiling(getAccessToken(), amount, period),
-                opsStrings.settingsSaved,
+                ot("settingsSaved"),
               )
             }
             period={ceiling?.period ?? "monthly"}

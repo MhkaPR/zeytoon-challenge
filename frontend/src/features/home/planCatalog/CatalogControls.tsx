@@ -26,7 +26,7 @@ export function SortAndPageSizeControls({
     <div className="flex flex-wrap items-center gap-[12px]">
       <div className="flex items-center gap-[7px]">
         <Label className="shrink-0 text-[11px] text-muted">مرتب‌سازی</Label>
-        <Select aria-label="مرتب‌سازی" className="w-[145px]" value={sort} variant="secondary" onChange={(value) => value && onSortChange(value as SortOrder)}>
+        <Select aria-label="مرتب‌سازی" className="w-[145px]" value={sort} variant="primary" onChange={(value) => value && onSortChange(value as SortOrder)}>
           <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
           <Select.Popover>
             <ListBox>
@@ -37,7 +37,7 @@ export function SortAndPageSizeControls({
       </div>
       <div className="flex items-center gap-[7px]">
         <Label className="shrink-0 text-[11px] text-muted">نمایش</Label>
-        <Select aria-label="تعداد پلن در هر صفحه" className="w-[82px]" value={String(pageSize)} variant="secondary" onChange={(value) => value && onPageSizeChange(Number(value))}>
+        <Select aria-label="تعداد پلن در هر صفحه" className="w-[82px]" value={String(pageSize)} variant="primary" onChange={(value) => value && onPageSizeChange(Number(value))}>
           <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
           <Select.Popover>
             <ListBox>

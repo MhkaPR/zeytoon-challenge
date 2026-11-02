@@ -1,11 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Separator, Typography } from "@heroui/react";
 import { Building2, ClipboardCheck, LogOut } from "lucide-react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 
-import { opsStrings, strings } from "@/src/lib/i18n/strings";
 import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
@@ -15,6 +15,8 @@ import { useSession } from "./SessionProvider";
  * number followed by "my companies" and "logout". Mirrors the desktop user menu.
  */
 export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
+  const t = useTranslations("common");
+const ot = useTranslations("ops");
   const router = useRouter();
   const { identity, signOut } = useSession();
 
@@ -22,10 +24,10 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex w-full flex-col gap-[12px]">
       <div className="flex flex-col gap-[2px]">
         <Typography className="text-[12px]" color="muted">
-          {strings.userMenuLabel}
+          {t("userMenuLabel")}
         </Typography>
         <Typography className="text-[15px] font-medium">
-          {identity?.user?.phone ?? strings.userMenuLabel}
+          {identity?.user?.phone ?? t("userMenuLabel")}
         </Typography>
       </div>
       <Separator />
@@ -35,7 +37,7 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
         onClick={() => onNavigate?.()}
       >
         <Building2 className="size-4 shrink-0 text-muted" />
-        {strings.myCompanies}
+        {t("myCompanies")}
       </NextLink>
       {isOperatorRole(identityRole(identity)) && (
         <NextLink
@@ -44,7 +46,7 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
           onClick={() => onNavigate?.()}
         >
           <ClipboardCheck className="size-4 shrink-0 text-muted" />
-          {opsStrings.console}
+          {ot("console")}
         </NextLink>
       )}
       <Button
@@ -57,7 +59,7 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
         variant="ghost"
       >
         <LogOut className="size-4 shrink-0" />
-        {strings.logout}
+        {t("logout")}
       </Button>
     </div>
   );

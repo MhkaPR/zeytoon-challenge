@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Skeleton, Typography } from "@heroui/react";
 import { ArrowRight } from "lucide-react";
 import NextLink from "next/link";
@@ -8,7 +9,6 @@ import { use, useEffect, useState } from "react";
 import { LinkList } from "@/src/features/ops/links/LinkList";
 import { useOpsData } from "@/src/features/ops/useOpsData";
 import { discoverLinks, getSiteLinks } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsSiteLinksPageClient({
@@ -16,6 +16,7 @@ export default function OpsSiteLinksPageClient({
 }: {
   params: Promise<{ siteId: string }>;
 }) {
+  const ot = useTranslations("ops");
   const { siteId } = use(params);
   const id = Number(siteId);
   const { data, loading, error, reload } = useOpsData(
@@ -39,7 +40,7 @@ export default function OpsSiteLinksPageClient({
       setDiscoverMessage(`${result.candidates.length} لینک تازه پیدا شد؛ پردازش در صف قرار گرفت.`);
       await reload();
     } catch {
-      setDiscoverMessage(opsStrings.genericError);
+      setDiscoverMessage(ot("genericError"));
     } finally {
       setDiscovering(false);
     }
@@ -52,19 +53,19 @@ export default function OpsSiteLinksPageClient({
         href={`/ops/sites/${id}`}
       >
         <ArrowRight aria-hidden className="size-4" />
-        {opsStrings.backToSite}
+        {ot("backToSite")}
       </NextLink>
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.linksTitle}
+          {ot("linksTitle")}
         </Typography>
         <Typography className="text-[13px] text-muted">
-          {opsStrings.automaticPipelineHint}
+          {ot("automaticPipelineHint")}
         </Typography>
       </div>
       <div className="flex flex-wrap items-center gap-[12px]">
         <Button isDisabled={discovering} onPress={discoverNewLinks}>
-          {discovering ? "در حال بررسی دامنه…" : opsStrings.discoverLinks}
+          {discovering ? "در حال بررسی دامنه…" : ot("discoverLinks")}
         </Button>
         {discoverMessage && <Typography role="status" type="body-sm">{discoverMessage}</Typography>}
       </div>
@@ -72,7 +73,7 @@ export default function OpsSiteLinksPageClient({
         loading ? (
           <Skeleton className="h-[220px] rounded-[var(--radius)]" />
         ) : (
-          <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+          <Typography role="alert">{error ?? ot("genericError")}</Typography>
         )
       ) : (
         <>

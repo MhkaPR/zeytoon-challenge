@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Alert } from "@heroui/react";
 import { useEffect, useState } from "react";
 
@@ -16,6 +17,7 @@ function missingLabel(_missing: string[]): string {
  * prerequisite so the UI can block the action with the right message (FR-031).
  */
 export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
+  const t = useTranslations("common");
   const [eligibility, setEligibility] = useState<PlanEligibility | null>(null);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
       <Alert status="default" >
         <Alert.Indicator />
         <Alert.Content>
-          <Alert.Description>{strings.plansGateAllowed}</Alert.Description>
+          <Alert.Description>{t("plansGateAllowed")}</Alert.Description>
         </Alert.Content>
       </Alert>
     );

@@ -1,8 +1,8 @@
+import { useTranslations } from "next-intl";
 import { Link, Separator, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
 import { footerLinkGroups, strings } from "@/src/lib/i18n/strings";
-
 const SOCIAL_LINKS = [
   { label: strings.footerSocialInstagram, href: "https://instagram.com" },
   { label: strings.footerSocialTelegram, href: "https://telegram.org" },
@@ -15,14 +15,15 @@ const SOCIAL_LINKS = [
  * copyright line. Multi-column on desktop and stacked on mobile (DESIGN.md §9).
  */
 export function HomeFooter() {
+  const t = useTranslations("common");
   return (
     <footer className="w-full">
       <Separator />
       <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-[32px] px-[32px] py-[48px] sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col gap-[8px]">
-          <Typography className="text-[20px] font-semibold">{strings.appName}</Typography>
+          <Typography className="text-[20px] font-semibold">{t("appName")}</Typography>
           <Typography className="leading-[1.8]" color="muted" type="body-sm">
-            {strings.footerAbout}
+            {t("footerAbout")}
           </Typography>
         </div>
 
@@ -45,22 +46,22 @@ export function HomeFooter() {
 
         <div className="flex flex-col gap-[8px]">
           <Typography className="font-semibold" type="body-sm">
-            {strings.footerContactTitle}
+            {t("footerContactTitle")}
           </Typography>
-          <Link className="text-[14px]" href={`mailto:${strings.footerEmail}`}>
-            {strings.footerEmail}
+          <Link className="text-[14px]" href={`mailto:${t("footerEmail")}`}>
+            {t("footerEmail")}
           </Link>
           <Typography className="text-[14px]" color="muted" type="body-sm">
-            {strings.footerPhone}
+            {t("footerPhone")}
           </Typography>
           <Typography className="text-[14px]" color="muted" type="body-sm">
-            {strings.footerAddress}
+            {t("footerAddress")}
           </Typography>
         </div>
 
         <div className="flex flex-col gap-[8px]">
           <Typography className="font-semibold" type="body-sm">
-            {strings.footerSocialTitle}
+            {t("footerSocialTitle")}
           </Typography>
           <ul className="flex flex-row flex-wrap gap-[12px]">
             {SOCIAL_LINKS.map((link) => (
@@ -77,7 +78,7 @@ export function HomeFooter() {
       <Separator />
       <div className="mx-auto w-full max-w-[1200px] px-[32px] py-[24px]">
         <Typography className="text-[12px]" color="muted" type="body-xs">
-          {strings.footerCopyright}
+          {t("footerCopyright")}
         </Typography>
       </div>
     </footer>

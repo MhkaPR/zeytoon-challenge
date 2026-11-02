@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Button,
   Description,
@@ -11,7 +12,6 @@ import {
 import { useState } from "react";
 
 import { strings } from "@/src/lib/i18n/strings";
-
 export interface PriceRange {
   from: string;
   to: string;
@@ -40,6 +40,7 @@ export function PriceRangeBox({
   value: PriceRange;
   onChange: (next: PriceRange) => void;
 }) {
+  const t = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PriceRange>(value);
   const active = Boolean(value.from || value.to);
@@ -64,11 +65,11 @@ export function PriceRangeBox({
   return (
     <div className="flex w-full flex-col gap-[6px] sm:w-[200px]">
       <Typography className="px-[2px]" type="body-xs" color="muted">
-        {strings.priceRangeLabel}
+        {t("priceRangeLabel")}
       </Typography>
       <Popover isOpen={open} onOpenChange={handleOpenChange}>
         <Button
-          aria-label={strings.priceRangeLabel}
+          aria-label={t("priceRangeLabel")}
           className="w-full justify-between"
           variant={active ? "primary" : "secondary"}
         >
@@ -79,10 +80,10 @@ export function PriceRangeBox({
         </Button>
         <Popover.Content className="w-[300px]" placement="bottom end">
           <Popover.Dialog
-            aria-label={strings.priceRangeLabel}
+            aria-label={t("priceRangeLabel")}
             className="flex flex-col gap-[16px]"
           >
-            <Popover.Heading>{strings.priceRangeLabel}</Popover.Heading>
+            <Popover.Heading>{t("priceRangeLabel")}</Popover.Heading>
           <div className="flex flex-row items-end gap-[8px]">
             <NumberField
               className="flex-1"
@@ -91,7 +92,7 @@ export function PriceRangeBox({
               value={draft.from === "" ? undefined : Number(draft.from)}
               onChange={(next) => setDraft((prev) => ({ ...prev, from: Number.isNaN(next) ? "" : String(next) }))}
             >
-              <Label>{strings.priceFrom}</Label>
+              <Label>{t("priceFrom")}</Label>
               <NumberField.Group>
                 <NumberField.DecrementButton />
                 <NumberField.Input className="w-full" inputMode="numeric" />
@@ -105,7 +106,7 @@ export function PriceRangeBox({
               value={draft.to === "" ? undefined : Number(draft.to)}
               onChange={(next) => setDraft((prev) => ({ ...prev, to: Number.isNaN(next) ? "" : String(next) }))}
             >
-              <Label>{strings.priceTo}</Label>
+              <Label>{t("priceTo")}</Label>
               <NumberField.Group>
                 <NumberField.DecrementButton />
                 <NumberField.Input className="w-full" inputMode="numeric" />
@@ -120,10 +121,10 @@ export function PriceRangeBox({
           </Description>
           <div className="flex flex-row justify-end gap-[8px]">
             <Button onPress={clear} size="sm" variant="ghost">
-              {strings.priceRangeClear}
+              {t("priceRangeClear")}
             </Button>
             <Button onPress={apply} size="sm">
-              {strings.priceRangeApply}
+              {t("priceRangeApply")}
             </Button>
           </div>
         </Popover.Dialog>

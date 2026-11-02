@@ -1,10 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Modal } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { createContext, use, useCallback, useMemo, useState } from "react";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 import { LoginForm } from "./LoginForm";
 import { captureReturnUrl } from "./returnUrl";
@@ -26,6 +25,7 @@ const LoginDialogContext = createContext<LoginDialogContextValue | null>(null);
  * so a successful login returns the user to the page they triggered it from.
  */
 export function LoginDialogProvider({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("common");
   const router = useRouter();
   const { refresh } = useSession();
   const [isOpen, setOpen] = useState(false);
@@ -57,13 +57,13 @@ export function LoginDialogProvider({ children }: { children: React.ReactNode })
         <Modal.Backdrop>
           <Modal.Container>
             <Modal.Dialog
-              aria-label={strings.login}
+              aria-label={t("login")}
               className="w-full sm:max-w-[400px]"
             >
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading className="text-[28px] font-semibold">
-                  {strings.login}
+                  {t("login")}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>

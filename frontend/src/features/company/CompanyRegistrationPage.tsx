@@ -1,11 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { strings } from "@/src/lib/i18n/strings";
-
 import { CompanyForm } from "./CompanyForm";
 
 /** The two registration steps, shown below the intro so the owner knows what is coming. */
@@ -29,6 +29,7 @@ const HINTS = [
  * page with title, description, hints, steps, and a panel button after submission).
  */
 export function CompanyRegistrationPage() {
+  const t = useTranslations("common");
   const router = useRouter();
   const [createdId, setCreatedId] = useState<number | null>(null);
 
@@ -36,19 +37,19 @@ export function CompanyRegistrationPage() {
     <main className="mx-auto flex w-full max-w-[920px] flex-1 flex-col gap-[40px] px-[32px] py-[64px]">
       <header className="flex flex-col gap-[16px]">
         <Typography className="text-[40px] font-semibold" type="h1">
-          {strings.registerCompanyTitle}
+          {t("registerCompanyTitle")}
         </Typography>
         <Typography className="max-w-[680px] leading-[1.9]" color="muted">
-          {strings.registerCompanyIntro}
+          {t("registerCompanyIntro")}
         </Typography>
       </header>
 
       <section className="flex flex-col gap-[16px]">
         <Typography className="text-[24px] font-semibold" type="h2">
-          {strings.registerCompanyStepsTitle}
+          {t("registerCompanyStepsTitle")}
         </Typography>
         <Typography className="leading-[1.8]" color="muted">
-          {strings.registerCompanyStepsIntro}
+          {t("registerCompanyStepsIntro")}
         </Typography>
         <ol className="grid grid-cols-1 gap-[16px] md:grid-cols-2">
           {STEPS.map((step) => (
@@ -74,11 +75,11 @@ export function CompanyRegistrationPage() {
         <CompanyForm onCreated={setCreatedId} />
       ) : (
         <Card className="flex flex-col items-start gap-[16px] p-[32px]" variant="tertiary">
-          <Card.Title>{strings.registerCompanyCreatedTitle}</Card.Title>
+          <Card.Title>{t("registerCompanyCreatedTitle")}</Card.Title>
           <Typography className="leading-[1.8]" color="muted">
-            {strings.registerCompanyCreatedBody}
+            {t("registerCompanyCreatedBody")}
           </Typography>
-          <Button onPress={() => router.push("/panel")}>{strings.goToCompaniesPanel}</Button>
+          <Button onPress={() => router.push("/panel")}>{t("goToCompaniesPanel")}</Button>
         </Card>
       )}
     </main>

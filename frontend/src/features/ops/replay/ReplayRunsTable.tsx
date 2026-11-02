@@ -1,15 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Typography } from "@heroui/react";
 
 import type { ReplayRun } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 export function ReplayRunsTable({ runs }: { runs: ReplayRun[] }) {
+  const ot = useTranslations("ops");
   if (runs.length === 0) {
     return (
       <Typography className="text-[13px] text-muted" role="status">
-        {opsStrings.noReplayRuns}
+        {ot("noReplayRuns")}
       </Typography>
     );
   }
@@ -20,13 +20,13 @@ export function ReplayRunsTable({ runs }: { runs: ReplayRun[] }) {
         <thead>
           <tr className="border-b border-[var(--ds-border)] text-muted">
             <th className="py-[6px] font-medium">#</th>
-            <th className="py-[6px] font-medium">{opsStrings.status}</th>
-            <th className="py-[6px] font-medium">{opsStrings.beforeTrace}</th>
-            <th className="py-[6px] font-medium">{opsStrings.afterTrace}</th>
-            <th className="py-[6px] font-medium">{opsStrings.applied}</th>
-            <th className="py-[6px] font-medium">{opsStrings.skipped}</th>
-            <th className="py-[6px] font-medium">{opsStrings.failed}</th>
-            <th className="py-[6px] font-medium">{opsStrings.diffSummary}</th>
+            <th className="py-[6px] font-medium">{ot("status")}</th>
+            <th className="py-[6px] font-medium">{ot("beforeTrace")}</th>
+            <th className="py-[6px] font-medium">{ot("afterTrace")}</th>
+            <th className="py-[6px] font-medium">{ot("applied")}</th>
+            <th className="py-[6px] font-medium">{ot("skipped")}</th>
+            <th className="py-[6px] font-medium">{ot("failed")}</th>
+            <th className="py-[6px] font-medium">{ot("diffSummary")}</th>
           </tr>
         </thead>
         <tbody>
@@ -36,8 +36,8 @@ export function ReplayRunsTable({ runs }: { runs: ReplayRun[] }) {
                 {run.id} / {run.link_id}
               </td>
               <td className="py-[8px]">{run.state}</td>
-              <td className="py-[8px]">{run.before_trace_id ?? opsStrings.none}</td>
-              <td className="py-[8px]">{run.after_trace_id ?? opsStrings.none}</td>
+              <td className="py-[8px]">{run.before_trace_id ?? ot("none")}</td>
+              <td className="py-[8px]">{run.after_trace_id ?? ot("none")}</td>
               <td className="py-[8px]">{run.stats_applied}</td>
               <td className="py-[8px]">{run.stats_skipped}</td>
               <td className="py-[8px]">{run.stats_failed}</td>

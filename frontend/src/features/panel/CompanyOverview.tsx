@@ -1,11 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Separator, TextArea, Typography } from "@heroui/react";
 import { Building2, Globe, Phone, User } from "lucide-react";
 import { useState } from "react";
 
 import { addCompanyLinks, type Company } from "@/src/lib/api/companies";
-import { strings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 import { PlanEligibilityNotice } from "./PlanEligibilityNotice";
@@ -40,6 +40,7 @@ function InfoRow({
 }
 
 export function CompanyOverview({ company }: { company: Company }) {
+  const t = useTranslations("common");
   const [urlsText, setUrlsText] = useState("");
   const [linksBusy, setLinksBusy] = useState(false);
   const [linksMessage, setLinksMessage] = useState("");
@@ -56,7 +57,7 @@ export function CompanyOverview({ company }: { company: Company }) {
       setUrlsText("");
       setLinksMessage(`${result.links.length} لینک ثبت شد.`);
     } catch {
-      setLinksMessage(strings.genericError);
+      setLinksMessage(t("genericError"));
     } finally {
       setLinksBusy(false);
     }
@@ -95,12 +96,12 @@ export function CompanyOverview({ company }: { company: Company }) {
         <div className="flex flex-col">
           <InfoRow
             icon={<User className="size-4" />}
-            label={strings.representativeName}
+            label={t("representativeName")}
             value={company.representative_name}
           />
           <InfoRow
             icon={<Phone className="size-4" />}
-            label={strings.companyPhone}
+            label={t("companyPhone")}
             ltr
             value={
               company.internal_number
@@ -114,10 +115,10 @@ export function CompanyOverview({ company }: { company: Company }) {
       <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="default">
         <div className="flex flex-col gap-[4px]">
           <Typography className="text-[18px] font-semibold" type="h2">
-            {strings.plansGateTitle}
+            {t("plansGateTitle")}
           </Typography>
           <Typography className="text-[13px] leading-[1.8]" color="muted">
-            {strings.panelPermissionsHint}
+            {t("panelPermissionsHint")}
           </Typography>
         </div>
         <PlanEligibilityNotice companyId={company.id} />

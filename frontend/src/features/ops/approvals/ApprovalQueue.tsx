@@ -1,10 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Typography } from "@heroui/react";
 
 import type { ApprovalQueueEntry } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 import { CompanyReviewCard } from "./CompanyReviewCard";
 
 export function ApprovalQueue({
@@ -16,10 +15,11 @@ export function ApprovalQueue({
   busyCompanyId?: number | null;
   onDecision: (companyId: number, outcome: "approved" | "not_approved", note: string) => void;
 }) {
+  const ot = useTranslations("ops");
   if (entries.length === 0) {
     return (
       <Typography className="text-[14px] text-muted" role="status">
-        {opsStrings.approvalsEmpty}
+        {ot("approvalsEmpty")}
       </Typography>
     );
   }

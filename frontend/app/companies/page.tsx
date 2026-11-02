@@ -1,15 +1,15 @@
+import { getTranslations } from "next-intl/server";
 import { Card, Typography } from "@heroui/react";
 import Link from "next/link";
 
 import { getPublishedPlans, planName } from "@/src/lib/api/publicCatalog";
-import { strings } from "@/src/lib/i18n/strings";
-
 export default async function CompaniesPage() {
+  const t = await getTranslations("common");
   const plans = await getPublishedPlans();
   const providers = [...new Map(plans.map((plan) => [plan.domain, plan])).values()];
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-[32px] px-[32px] py-[64px]">
-      <div><Typography className="text-[40px] font-semibold" type="h1">{strings.navCompanies}</Typography><Typography color="muted">ارائه‌دهندگان دارای طرح منتشرشده و قابل مقایسه</Typography></div>
+      <div><Typography className="text-[40px] font-semibold" type="h1">{t("navCompanies")}</Typography><Typography color="muted">ارائه‌دهندگان دارای طرح منتشرشده و قابل مقایسه</Typography></div>
       {providers.length ? <div className="grid gap-[16px] sm:grid-cols-2 lg:grid-cols-3">
         {providers.map((provider) => {
           const providerPlans = plans.filter((plan) => plan.domain === provider.domain);

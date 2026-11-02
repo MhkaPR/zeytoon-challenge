@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {Button, Chip, Skeleton, Tabs, Typography} from "@heroui/react";
 import { useRouter, usePathname } from "next/navigation";
 import { use } from "react";
@@ -10,8 +11,6 @@ import { ContinueRegistration } from "@/src/features/company/ContinueRegistratio
 import { CompanyOverview } from "@/src/features/panel/CompanyOverview";
 import { useActiveCompany } from "@/src/features/panel/useActiveCompany";
 import { verificationColor, verificationLabel } from "@/src/features/panel/status";
-import { strings } from "@/src/lib/i18n/strings";
-
 /**
  * Panel route for a selected company. The backend resolves full-panel vs continue view and
  * never renders the full panel for an unverified company (FR-024, FR-025, FR-027).
@@ -21,6 +20,7 @@ export default function CompanyPanelPage({
 }: {
   params: Promise<{ companyId: string }>;
 }) {
+  const t = useTranslations("common");
   const { companyId } = use(params);
   const router = useRouter();
   const pathname = usePathname();
@@ -32,11 +32,11 @@ export default function CompanyPanelPage({
     <main className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col gap-[28px] px-[16px] py-[40px] sm:px-[24px] md:px-[32px] md:py-[64px]">
       <div className="flex flex-row justify-between">
         <Typography className="text-[26px] font-semibold sm:text-[32px]" type="h1">
-          {strings.companyPanel}
+          {t("companyPanel")}
         </Typography>
         <Button onPress={() => router.push("/panel/new")}>
           <Plus aria-hidden className="size-4" />
-          {strings.registerNewCompany}
+          {t("registerNewCompany")}
         </Button>
       </div>
 
@@ -55,7 +55,7 @@ export default function CompanyPanelPage({
             className="w-full"
           >
             <Tabs.ListContainer>
-              <Tabs.List aria-label={strings.switchCompany}>
+              <Tabs.List aria-label={t("switchCompany")}>
                 {companies.map((company) => (
                   <Tabs.Tab
                     key={company.id}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Button,
   Card,
@@ -17,8 +18,6 @@ import { useState } from "react";
 
 import type { CaptureSession } from "@/src/lib/api/ops";
 import type { DomtrackHealth } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 import { StageBadge } from "../pipeline/StageBadge";
 
 export type CaptureMode = "interactive" | "fixed_duration";
@@ -52,6 +51,7 @@ export function CapturePanel({
   domtrack?: DomtrackHealth | null;
   activeCapture?: CaptureSession | null;
 }) {
+  const ot = useTranslations("ops");
   const [mode, setMode] = useState<CaptureMode>("interactive");
   const [duration, setDuration] = useState("30000");
   const [file, setFile] = useState<File | null>(null);
@@ -64,12 +64,12 @@ export function CapturePanel({
           className={`text-[13px] ${traceStored ? "text-success" : "text-warning"}`}
           role="status"
         >
-          {traceStored ? opsStrings.traceStored : opsStrings.traceMissing}
+          {traceStored ? ot("traceStored") : ot("traceMissing")}
         </Typography>
       </div>
 
       <Card className="flex flex-col gap-[16px] p-[20px]" variant="default">
-        <Typography className="text-[13px] text-muted">{opsStrings.captureIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("captureIntro")}</Typography>
 
         <div className="flex flex-wrap items-center gap-[8px] text-[12px]">
           <Chip
@@ -77,31 +77,31 @@ export function CapturePanel({
             variant="soft"
           >
             {domtrack?.reachable
-              ? opsStrings.domtrackConnected
-              : opsStrings.domtrackDisconnected}
+              ? ot("domtrackConnected")
+              : ot("domtrackDisconnected")}
           </Chip>
           <span className="text-muted" dir="ltr">
             {domtrack?.base_url ?? ""}
           </span>
           <Button size="sm" variant="ghost" onPress={onRecheck}>
-            {opsStrings.domtrackRecheck}
+            {ot("domtrackRecheck")}
           </Button>
         </div>
         {domtrack && !domtrack.reachable && (
           <Typography className="text-[12px] text-warning" role="status">
-            {opsStrings.domtrackHint}
+            {ot("domtrackHint")}
           </Typography>
         )}
         {activeCapture && (
           <Typography className="text-[13px] text-warning" role="status">
-            {opsStrings.captureInProgress}
+            {ot("captureInProgress")}
           </Typography>
         )}
 
         <div className="flex flex-col gap-[6px]">
-          <Typography className="text-[12px] text-muted">{opsStrings.mode}</Typography>
+          <Typography className="text-[12px] text-muted">{ot("mode")}</Typography>
           <ToggleButtonGroup
-            aria-label={opsStrings.mode}
+            aria-label={ot("mode")}
             isDetached
             selectedKeys={[mode]}
             selectionMode="single"
@@ -110,21 +110,21 @@ export function CapturePanel({
               if (next === "interactive" || next === "fixed_duration") setMode(next);
             }}
           >
-            <ToggleButton id="interactive">{opsStrings.modeInteractive}</ToggleButton>
-            <ToggleButton id="fixed_duration">{opsStrings.modeFixed}</ToggleButton>
+            <ToggleButton id="interactive">{ot("modeInteractive")}</ToggleButton>
+            <ToggleButton id="fixed_duration">{ot("modeFixed")}</ToggleButton>
           </ToggleButtonGroup>
         </div>
 
         {mode === "fixed_duration" && (
           <TextField name="duration" value={duration} onChange={setDuration}>
-            <Label>{opsStrings.durationMs}</Label>
+            <Label>{ot("durationMs")}</Label>
             <Input inputMode="numeric" />
           </TextField>
         )}
         <Typography className="text-[11px] text-muted">
           {mode === "fixed_duration"
-            ? opsStrings.captureWindowHint
-            : opsStrings.captureInteractiveHint}
+            ? ot("captureWindowHint")
+            : ot("captureInteractiveHint")}
         </Typography>
 
         <div className="flex flex-wrap gap-[8px]">
@@ -138,21 +138,21 @@ export function CapturePanel({
             }
           >
             <Video aria-hidden className="size-4" />
-            {busy ? opsStrings.starting : opsStrings.startCapture}
+            {busy ? ot("starting") : ot("startCapture")}
           </Button>
           {capture && (
             <Button isDisabled={busy} onPress={onFail} variant="danger-soft">
-              {opsStrings.failCapture}
+              {ot("failCapture")}
             </Button>
           )}
         </div>
         <Typography className="text-[11px] text-muted">
-          {opsStrings.captureOneAtATime}
+          {ot("captureOneAtATime")}
         </Typography>
 
         {errorCode === "domtrack_unreachable" && (
           <Typography className="text-[13px] text-danger" role="alert">
-            {opsStrings.domtrackUnreachable}
+            {ot("domtrackUnreachable")}
           </Typography>
         )}
       </Card>
@@ -161,18 +161,18 @@ export function CapturePanel({
         <Card className="flex flex-col gap-[12px] p-[20px]" variant="secondary">
           <Separator />
           <Typography className="text-[15px] font-semibold" type="h3">
-            {opsStrings.manualUploadTitle}
+            {ot("manualUploadTitle")}
           </Typography>
           <Typography className="text-[12px] text-muted">
-            {opsStrings.manualUploadHint}
+            {ot("manualUploadHint")}
           </Typography>
           {capture.local_path && (
             <Typography className="text-[12px] text-muted" dir="ltr">
-              {opsStrings.localPath}: {capture.local_path}
+              {ot("localPath")}: {capture.local_path}
             </Typography>
           )}
           <input
-            aria-label={opsStrings.uploadTrace}
+            aria-label={ot("uploadTrace")}
             className="text-[13px]"
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             type="file"
@@ -184,7 +184,7 @@ export function CapturePanel({
             variant="secondary"
           >
             <Upload aria-hidden className="size-4" />
-            {busy ? opsStrings.uploading : opsStrings.uploadTrace}
+            {busy ? ot("uploading") : ot("uploadTrace")}
           </Button>
           {capture?.local_path && (
             <Button
@@ -194,7 +194,7 @@ export function CapturePanel({
               variant="secondary"
             >
               <Upload aria-hidden className="size-4" />
-              {opsStrings.loadLocalTrace}
+              {ot("loadLocalTrace")}
             </Button>
           )}
         </Card>
@@ -206,11 +206,11 @@ export function CapturePanel({
           onPress={onContinue}
           variant={traceStored ? "primary" : "secondary"}
         >
-          {traceStored ? opsStrings.continueToTables : opsStrings.advanceBlocked}
+          {traceStored ? ot("continueToTables") : ot("advanceBlocked")}
         </Button>
         {capture?.trace_id && (
           <Typography className="text-[12px] text-muted">
-            {opsStrings.traceId}: {capture.trace_id}
+            {ot("traceId")}: {capture.trace_id}
           </Typography>
         )}
       </div>

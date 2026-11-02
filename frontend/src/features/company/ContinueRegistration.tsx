@@ -1,12 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { AlertDialog, Button, Card, Chip, Typography } from "@heroui/react";
 import { AlertCircle, ArrowLeft, Globe } from "lucide-react";
 
 import type { Company, StepProgress as StepProgressItem } from "@/src/lib/api/companies";
 import { verificationColor, verificationLabel } from "@/src/features/panel/status";
 import { strings } from "@/src/lib/i18n/strings";
-
 import { StepProgress } from "./StepProgress";
 
 function statusHint(status: Company["verification_status"]): string {
@@ -30,6 +30,7 @@ export function ContinueRegistration({
   currentStep?: string | null;
   onContinue?: (companyId: number) => void;
 }) {
+  const t = useTranslations("common");
   return (
     <div className="flex flex-col gap-[24px]">
       <Card className="p-6">
@@ -56,10 +57,10 @@ export function ContinueRegistration({
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-[4px]">
             <Typography className="text-[18px] font-semibold" type="h2">
-              {strings.registerCompanyStepsTitle}
+              {t("registerCompanyStepsTitle")}
             </Typography>
             <Typography className="text-[13px] leading-[1.8]" color="muted">
-              {strings.nextStepHint}
+              {t("nextStepHint")}
             </Typography>
           </div>
           <StepProgress currentStep={currentStep} steps={steps} />
@@ -68,7 +69,7 @@ export function ContinueRegistration({
             onPress={() => onContinue?.(company.id)}
           >
             <ArrowLeft aria-hidden className="size-4" />
-            {strings.goToCurrentStep}
+            {t("goToCurrentStep")}
           </Button>
         </div>
       </Card>

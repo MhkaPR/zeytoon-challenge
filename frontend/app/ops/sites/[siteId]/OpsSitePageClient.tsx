@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Skeleton, Typography } from "@heroui/react";
 import { ArrowRight } from "lucide-react";
 import NextLink from "next/link";
@@ -9,13 +10,12 @@ import { LinkList } from "@/src/features/ops/links/LinkList";
 import { SiteOnboarding } from "@/src/features/ops/sites/SiteOnboarding";
 import { useOpsData } from "@/src/features/ops/useOpsData";
 import { getSite } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 export default function OpsSitePageClient({
   params,
 }: {
   params: Promise<{ siteId: string }>;
 }) {
+  const ot = useTranslations("ops");
   const { siteId } = use(params);
   const id = Number(siteId);
   const { data, loading, error, reload } = useOpsData(
@@ -34,20 +34,20 @@ export default function OpsSitePageClient({
         href="/ops/sites"
       >
         <ArrowRight aria-hidden className="size-4" />
-        {opsStrings.backToSites}
+        {ot("backToSites")}
       </NextLink>
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.siteTitle}
+          {ot("siteTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.siteIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("siteIntro")}</Typography>
       </div>
 
       {!data ? (
         loading ? (
           <Skeleton className="h-[220px] rounded-[var(--radius)]" />
         ) : (
-          <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+          <Typography role="alert">{error ?? ot("genericError")}</Typography>
         )
       ) : (
         <>

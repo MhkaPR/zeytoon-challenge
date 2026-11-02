@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ToggleButton, ToggleButtonGroup, Typography } from "@heroui/react";
 import { useState } from "react";
 
-import { strings } from "@/src/lib/i18n/strings";
 import { SERVICE_TYPES, type ServiceTypeKey } from "./serviceTypes";
 
 /**
@@ -12,14 +12,15 @@ import { SERVICE_TYPES, type ServiceTypeKey } from "./serviceTypes";
  * (PAGES.yaml "chips").
  */
 export function ServiceTypeChips() {
+  const t = useTranslations("common");
   const [value, setValue] = useState<ServiceTypeKey>("host");
   return (
     <div className="flex flex-col gap-[8px]">
       <Typography type="body-xs" color="muted">
-        {strings.serviceTypeLabel}
+        {t("serviceTypeLabel")}
       </Typography>
       <ToggleButtonGroup
-        aria-label={strings.serviceTypeLabel}
+        aria-label={t("serviceTypeLabel")}
         className="flex-wrap"
         isDetached
         selectedKeys={[value]}

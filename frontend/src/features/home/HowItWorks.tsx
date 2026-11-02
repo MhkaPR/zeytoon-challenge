@@ -1,20 +1,22 @@
+import { useTranslations } from "next-intl";
 import {Button, Card, Typography} from "@heroui/react";
 
-import { howItWorksSteps, strings } from "@/src/lib/i18n/strings";
+import { howItWorksSteps } from "@/src/lib/i18n/strings";
 import { ChevronLeft, ChevronDown} from "lucide-react";
 /**
  * Step-by-step guide to using the site. Three numbered steps form the olive tonal ramp from
  * DESIGN.md §4 (Develop → Preview → Ship), each step carrying its own olive tone.
  */
 export function HowItWorks() {
+  const t = useTranslations("common");
   return (
     <section className="flex flex-col gap-[24px]">
       <div className="flex flex-col gap-[8px]">
         <Typography className="text-[28px] font-semibold" type="h2">
-          {strings.howItWorksTitle}
+          {t("howItWorksTitle")}
         </Typography>
         <Typography className="max-w-[720px] leading-[1.8]" color="muted">
-          {strings.howItWorksIntro}
+          {t("howItWorksIntro")}
         </Typography>
       </div>
 

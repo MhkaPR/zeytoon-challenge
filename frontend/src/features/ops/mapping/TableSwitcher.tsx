@@ -1,10 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Label, ListBox, Select } from "@heroui/react";
 
 import type { ExtractedTable } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 export function TableSwitcher({
   tables,
   selectedId,
@@ -14,6 +13,7 @@ export function TableSwitcher({
   selectedId: number | null;
   onChange: (tableId: number) => void;
 }) {
+  const ot = useTranslations("ops");
   return (
     <Select
       className="w-full max-w-[360px]"
@@ -22,7 +22,7 @@ export function TableSwitcher({
         if (typeof key === "string") onChange(Number(key));
       }}
     >
-      <Label>{opsStrings.sourceTable}</Label>
+      <Label>{ot("sourceTable")}</Label>
       <Select.Trigger>
         <Select.Value />
         <Select.Indicator />
@@ -35,7 +35,7 @@ export function TableSwitcher({
               key={table.id}
               textValue={table.title || `Table ${index + 1}`}
             >
-              {table.title || `${opsStrings.tablesTitle} #${index + 1}`}
+              {table.title || `${ot("tablesTitle")} #${index + 1}`}
               <ListBox.ItemIndicator />
             </ListBox.Item>
           ))}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Button,
   Card,
@@ -11,8 +12,6 @@ import {
   Typography,
 } from "@heroui/react";
 import { useState } from "react";
-
-import { opsStrings } from "@/src/lib/i18n/strings";
 
 export function LlmCeilingForm({
   ceiling,
@@ -29,26 +28,27 @@ export function LlmCeilingForm({
   busy?: boolean;
   onSave: (amount: number | null, period: string) => void;
 }) {
+  const ot = useTranslations("ops");
   const [amount, setAmount] = useState(ceiling === null ? "" : String(ceiling));
   const [selectedPeriod, setSelectedPeriod] = useState(period || "monthly");
 
   return (
     <Card className="flex flex-col gap-[16px] p-[20px]" variant="secondary">
       <Typography className="text-[16px] font-semibold" type="h3">
-        {opsStrings.ceilingTitle}
+        {ot("ceilingTitle")}
       </Typography>
 
       <div className="flex flex-wrap gap-[8px] text-[12px]">
         <span className="text-muted">
-          {opsStrings.spend}: {spend.toFixed(2)}
+          {ot("spend")}: {spend.toFixed(2)}
         </span>
         <span className={exceeded ? "text-danger" : "text-success"}>
-          {exceeded ? opsStrings.ceilingExceeded : opsStrings.ceilingOk}
+          {exceeded ? ot("ceilingExceeded") : ot("ceilingOk")}
         </span>
       </div>
 
       <TextField name="ceiling" value={amount} onChange={setAmount}>
-        <Label>{opsStrings.ceilingAmount}</Label>
+        <Label>{ot("ceilingAmount")}</Label>
         <Input inputMode="decimal" />
       </TextField>
 
@@ -59,19 +59,19 @@ export function LlmCeilingForm({
           if (typeof key === "string") setSelectedPeriod(key);
         }}
       >
-        <Label>{opsStrings.ceilingPeriod}</Label>
+        <Label>{ot("ceilingPeriod")}</Label>
         <Select.Trigger>
           <Select.Value />
           <Select.Indicator />
         </Select.Trigger>
         <Select.Popover>
           <ListBox>
-            <ListBox.Item id="monthly" textValue={opsStrings.monthly}>
-              {opsStrings.monthly}
+            <ListBox.Item id="monthly" textValue={ot("monthly")}>
+              {ot("monthly")}
               <ListBox.ItemIndicator />
             </ListBox.Item>
-            <ListBox.Item id="daily" textValue={opsStrings.daily}>
-              {opsStrings.daily}
+            <ListBox.Item id="daily" textValue={ot("daily")}>
+              {ot("daily")}
               <ListBox.ItemIndicator />
             </ListBox.Item>
           </ListBox>
@@ -86,7 +86,7 @@ export function LlmCeilingForm({
         }
         variant="secondary"
       >
-        {busy ? opsStrings.saving : opsStrings.saveCeiling}
+        {busy ? ot("saving") : ot("saveCeiling")}
       </Button>
     </Card>
   );

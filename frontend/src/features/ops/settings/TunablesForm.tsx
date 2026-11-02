@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Button,
   Card,
@@ -13,7 +14,6 @@ import {
 import { useState } from "react";
 
 import { opsStrings } from "@/src/lib/i18n/strings";
-
 const NUMBER_FIELDS = [
   { key: "REPLAY_PERIOD_HOURS", label: opsStrings.replayPeriod },
   { key: "FAILURE_RATE_THRESHOLD", label: opsStrings.failureThreshold },
@@ -29,6 +29,7 @@ export function TunablesForm({
   busy?: boolean;
   onSave: (values: Record<string, unknown>) => void;
 }) {
+  const ot = useTranslations("ops");
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...values }));
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -39,9 +40,9 @@ export function TunablesForm({
   return (
     <Card className="flex flex-col gap-[16px] p-[20px]" variant="default">
       <Typography className="text-[16px] font-semibold" type="h3">
-        {opsStrings.settingsTitle}
+        {ot("settingsTitle")}
       </Typography>
-      <Typography className="text-[12px] text-muted">{opsStrings.settingsIntro}</Typography>
+      <Typography className="text-[12px] text-muted">{ot("settingsIntro")}</Typography>
 
       {NUMBER_FIELDS.map((field) => (
         <TextField
@@ -63,7 +64,7 @@ export function TunablesForm({
           <Switch.Control>
             <Switch.Thumb />
           </Switch.Control>
-          {opsStrings.labelingEnabled}
+          {ot("labelingEnabled")}
         </Switch.Content>
       </Switch>
 
@@ -76,7 +77,7 @@ export function TunablesForm({
         }
         onChange={(value) => update("CLEANING_RULES", value)}
       >
-        <Label>{opsStrings.cleaningRules}</Label>
+        <Label>{ot("cleaningRules")}</Label>
         <TextArea rows={4} />
       </TextField>
 
@@ -95,7 +96,7 @@ export function TunablesForm({
             try {
               payload.CLEANING_RULES = JSON.parse(payload.CLEANING_RULES);
             } catch {
-              setParseError(opsStrings.cleaningRules);
+              setParseError(ot("cleaningRules"));
               return;
             }
           }
@@ -103,7 +104,7 @@ export function TunablesForm({
           onSave(payload);
         }}
       >
-        {busy ? opsStrings.saving : opsStrings.saveSettings}
+        {busy ? ot("saving") : ot("saveSettings")}
       </Button>
     </Card>
   );
