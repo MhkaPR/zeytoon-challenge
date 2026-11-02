@@ -8,6 +8,18 @@
 
 **Input**: User description: "Remove user email; replace company charge/crawl flags with a company wallet; keep extracted plans private until charge eligibility; when funds are insufficient unpublish all company plans and stop its crawling and replay; discover new domain links and allow manual remaining links; clarify crawl query, URL hash, source, trace byte size, and natural key; show the user's phone in full in frontend and backend displays; show published plans on the main and other required pages. The wallet is implemented in this project, the payment library handles Iranian providers such as Zibal, and the required company wallet amount is configured through django-constance and Django admin. Item 11 was left blank."
 
+**Architecture clarification**: Pipeline domain code and data must live in a dedicated Django
+`pipeline` app, separate from `admin_console`, which is reserved for operator/admin APIs,
+authorization, and presentation entry points. Operator endpoints call pipeline
+behavior through a declared interface; `admin_console` must not own crawler, extraction,
+capture, replay, pipeline state, or pipeline model implementations.
+This includes moving the existing `llm.py`, pipeline models, tasks, services, discovery,
+capture/extraction and replay adapters, schemas, classifiers, events, constants, artifacts,
+admin registrations, migrations, and pipeline tests into `pipeline`. Split mixed
+`admin_console/services.py`: approval/verification orchestration stays in the console, while
+pipeline workflows move. Keep operator HTTP routes and request validation in `admin_console`,
+but refactor them to call `pipeline.interfaces` without importing pipeline internals.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Company wallet controls plan visibility (Priority: P1)
@@ -93,6 +105,7 @@ An end user does not need an email address to register or use the account, and s
 - **FR-018**: The system MUST record eligibility changes, payment/wallet outcomes, discovery refreshes, manual link submissions, plan withdrawals/restorations, and skipped crawl/replay work as auditable events without logging full phone numbers or payment secrets.
 - **FR-019**: The system MUST expose the reason a company is ineligible to authorized company users and operators, including insufficient balance or pending payment confirmation.
 - **FR-020**: The system MUST preserve existing authorization boundaries: company users may submit links only for companies they own, and operators may trigger or inspect company-wide discovery and eligibility operations only with their existing authorized role.
+- **FR-021**: The system MUST keep pipeline domain code and pipeline-owned data in a dedicated Django `pipeline` app separate from the `admin_console` app. `admin_console` MUST be limited to operator/admin APIs, authorization, and presentation, and MUST invoke pipeline operations through the pipeline's declared interface.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -115,6 +128,7 @@ An end user does not need an email address to register or use the account, and s
 - **SC-007**: 100% of authorized frontend and backend account/profile displays show the complete user's phone number; operational logs and telemetry do not contain full phone numbers.
 - **SC-008**: An eligible published plan is consistently available across every applicable main, search, detail, and comparison surface, and unavailable across all of them after withdrawal.
 - **SC-009**: No user email address is required for registration, authentication, or account/profile responses.
+- **SC-010**: Pipeline models, tasks, services, and crawler/extraction/replay implementations are owned by `pipeline`; `admin_console` contains no pipeline implementation and communicates with it only through its declared interface.
 
 ## Assumptions
 
@@ -124,6 +138,7 @@ An end user does not need an email address to register or use the account, and s
 - Public withdrawal is reversible: records are hidden from end users while ineligible and can become public again after eligibility is restored and publication quality checks still pass.
 - Financial ineligibility blocks new discovery, capture, crawling, and replay; it does not delete stored traces, extracted plans, or provenance.
 - The existing domain allowlist and URL normalization rules continue to apply to both automated and manually submitted links.
+- Pipeline code is a separate bounded Django app named `pipeline`; the operator/admin console is a separate interface app and calls it through `pipeline.interfaces`.
 - The supplied issue list ends with an empty "11-" item. **[NEEDS CLARIFICATION: Is there another bug or requirement for item 11?]**
 
 ## Out of Scope

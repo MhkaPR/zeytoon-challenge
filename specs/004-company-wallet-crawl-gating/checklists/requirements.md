@@ -26,6 +26,7 @@
 
 - [x] Functional requirements have clear acceptance criteria
 - [x] User scenarios cover wallet gating, discovery, and end-user presentation
+- [x] Pipeline domain code and data are explicitly separated from the operator/admin console
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No unnecessary implementation details leak into the specification
 
