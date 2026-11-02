@@ -46,12 +46,11 @@ def capture_failed(link, session, reason):
     _emit("ops_capture_failed", link_id=link.pk, session_id=session.pk, reason=reason)
 
 
-def trace_stored(trace, byte_size, sha256):
+def trace_stored(trace, sha256):
     _emit(
         "ops_trace_stored",
         trace_id=trace.pk,
         link_id=trace.link_id,
-        byte_size=byte_size,
         sha256=sha256,
     )
 

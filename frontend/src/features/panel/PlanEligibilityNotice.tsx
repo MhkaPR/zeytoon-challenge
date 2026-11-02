@@ -7,9 +7,7 @@ import { getPlanEligibility, type PlanEligibility } from "@/src/lib/api/companie
 import { strings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
-function missingLabel(missing: string[]): string {
-  if (missing.length > 1) return strings.panelBlockedBoth;
-  if (missing.includes("charged")) return strings.panelBlockedCharged;
+function missingLabel(_missing: string[]): string {
   return strings.panelBlockedVerified;
 }
 

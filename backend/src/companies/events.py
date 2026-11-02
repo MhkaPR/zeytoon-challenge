@@ -44,17 +44,6 @@ def plan_action_refused(company, missing, actor=None):
     )
 
 
-def credit_movement_recorded(company, direction, amount, reason, actor=None):
-    _emit(
-        "company_credit_movement",
-        company=company,
-        actor=actor,
-        direction=direction,
-        amount=amount,
-        reason=reason,
-    )
-
-
 def ownership_transfer_refused(company, actor=None):
     _emit("company_ownership_transfer_refused", company=company, actor=actor)
 

@@ -1,6 +1,4 @@
-"""Read-side helpers: owner scoping, step resolution, and the credit projection."""
-
-from django.db.models import Sum
+"""Read-side helpers: owner scoping and registration step resolution."""
 
 from companies import constants
 from companies.models import Company, CompanyStepProgress
@@ -65,45 +63,6 @@ def current_step(company):
             return key
         previous_approved = True
     return None
-
-
-def credit_projection(company):
-    """Return the company's current credit as the projection of its ledger (FR-034).
-
-    ``Σ charge − Σ decharge`` computed for this company only (FR-033). The ledger is the
-    source of truth; nothing is cached here, so the value always equals the running total
-    (SC-013).
-    """
-    from companies.models import CreditLedgerEntry
-
-    charges = (
-        company.credit_entries.filter(direction=CreditLedgerEntry.Direction.CHARGE)
-        .aggregate(total=Sum("amount"))
-        .get("total")
-        or 0
-    )
-    decharges = (
-        company.credit_entries.filter(direction=CreditLedgerEntry.Direction.DECHARGE)
-        .aggregate(total=Sum("amount"))
-        .get("total")
-        or 0
-    )
-    return int(charges) - int(decharges)
-
-
-def credit_entries_payload(company):
-    """Serialize the credit ledger, newest first (FR-034)."""
-    return [
-        {
-            "id": entry.pk,
-            "direction": entry.direction,
-            "amount": entry.amount,
-            "reason": entry.reason,
-            "reference": entry.reference,
-            "created_at": entry.created_at.isoformat(),
-        }
-        for entry in company.credit_entries.all()
-    ]
 
 
 def companies_awaiting_verification():

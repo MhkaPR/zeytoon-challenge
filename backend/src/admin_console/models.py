@@ -31,7 +31,6 @@ class Site(TimestampedModel):
         related_name="ops_site",
     )
     domain = models.CharField(max_length=255, db_index=True)
-    crawl_query = models.CharField(max_length=512, blank=True, default="")
     maintenance_state = models.CharField(
         max_length=16,
         choices=MaintenanceState.choices,
@@ -188,7 +187,6 @@ class Trace(TimestampedModel):
     )
     storage_key = models.CharField(max_length=512, unique=True)
     storage_backend = models.CharField(max_length=64, default="default")
-    byte_size = models.PositiveBigIntegerField(default=0)
     content_sha256 = models.CharField(max_length=64, db_index=True)
     is_valid_trace = models.BooleanField(default=False)
 

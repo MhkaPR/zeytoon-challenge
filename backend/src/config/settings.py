@@ -278,14 +278,6 @@ CONSTANCE_CONFIG = {
         ],
         "Ordered registration steps; the first step is company information, next is verification.",
     ),
-    "COMPANY_REQUIREMENT_MESSAGES": (
-        {
-            "verified": "The company must be verified first.",
-            "charged": "The company account must be charged.",
-            "both": "The company must be verified and its account must be charged.",
-        },
-        "Prerequisite messages surfaced when a plan action is blocked.",
-    ),
     "COMPANY_STEP_LOCKED_MESSAGE": (
         "This step is locked until the previous step is approved.",
         "Message shown when a locked registration step is addressed.",

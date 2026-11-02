@@ -1,8 +1,7 @@
 """Operator/admin-side reads of company state and hooks (FR-043, FR-044).
 
 This exposes state for the admin-side actor; it provides no fraud-management tooling and no
-company-owner UI. Verification decisions and credit movements are shown read-only because
-the rows are append-only.
+company-owner UI. Verification decisions are shown read-only because they are append-only.
 """
 
 from django.contrib import admin
@@ -29,15 +28,11 @@ class CompanyAdmin(admin.ModelAdmin):
         "domain",
         "owner",
         "verification_status",
-        "charge_status",
-        "crawl_enabled",
         "is_archived",
     )
     list_filter = (
         "verification_status",
-        "charge_status",
         "is_archived",
-        "crawl_enabled",
     )
     search_fields = ("company_name", "domain", "representative_name")
     inlines = (CompanyStepProgressInline,)

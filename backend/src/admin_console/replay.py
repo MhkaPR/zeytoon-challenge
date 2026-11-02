@@ -128,7 +128,6 @@ def _store_after_trace(link, after_path):
         origin=Trace.Origin.REPLAY_RECORDING,
         storage_key=key,
         storage_backend=backend,
-        byte_size=size,
         content_sha256=digest,
         is_valid_trace=True,
     )

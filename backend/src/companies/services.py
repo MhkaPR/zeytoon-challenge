@@ -1,4 +1,4 @@
-"""Domain services for company registration, verification, credit, and governance."""
+"""Domain services for company registration, verification, and governance."""
 
 from django.db import transaction
 from django.utils import timezone
@@ -10,7 +10,6 @@ from companies.models import (
     Company,
     CompanyRegistrationDraft,
     CompanyStepProgress,
-    CreditLedgerEntry,
     VerificationDecision,
 )
 
@@ -171,64 +170,20 @@ def record_verification_decision(company, actor, outcome, note=""):
 
 
 # ---------------------------------------------------------------------------
-# Plan eligibility, credit, and crawl (FR-030..FR-035)
+# Plan eligibility
 # ---------------------------------------------------------------------------
 
 
 def can_manage_plans(company):
-    """Return ``{allowed, missing}`` naming every unsatisfied prerequisite (FR-031)."""
+    """Only verified companies can manage plans; the service is free."""
     missing = []
     if not company.is_verified:
         missing.append("verified")
-    if not company.is_charged:
-        missing.append("charged")
     return {
         "allowed": not missing,
         "missing": missing,
-        "message": constants.requirement_message(missing),
+        "message": "Company must be verified before managing plans." if missing else "",
     }
-
-
-@transaction.atomic
-def record_credit_movement(
-    company, direction, amount, reason, reference="", actor=None
-):
-    """Append exactly one ledger entry and return the recomputed projection (FR-034)."""
-    if direction not in dict(CreditLedgerEntry.Direction.choices):
-        raise ApiError("invalid_movement", "Unknown credit direction.")
-    if reason not in dict(CreditLedgerEntry.Reason.choices):
-        raise ApiError("invalid_movement", "Unknown credit reason.")
-    try:
-        amount = int(amount)
-    except TypeError, ValueError:
-        raise ApiError("invalid_movement", "The credit amount is not valid.")
-    if amount <= 0:
-        raise ApiError("invalid_movement", "The credit amount must be positive.")
-
-    entry = CreditLedgerEntry.objects.create(
-        company=company,
-        direction=direction,
-        amount=amount,
-        reason=reason,
-        reference=reference or "",
-        actor=actor,
-    )
-    events.credit_movement_recorded(company, direction, amount, reason, actor=actor)
-    return entry
-
-
-def set_crawl_enabled(company, enabled):
-    """Enable/disable crawl; requires a charged account and records no movement (FR-035)."""
-    if enabled and not company.is_charged:
-        raise ApiError(
-            "company_requirement_missing",
-            constants.requirement_message(["charged"]),
-            http_status=409,
-            fields={"missing": ["charged"]},
-        )
-    company.crawl_enabled = bool(enabled)
-    company.save(update_fields=["crawl_enabled", "updated_at"])
-    return company
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""DRF views for company registration, the panel surface, verification, credit, and crawl.
+"""DRF views for company registration, the panel surface, verification, and link submission.
 
 All of this feature's endpoints live in the ``companies`` module (there is no separate
 ``panel`` app). Authentication reuses the ``accounts`` JWT: the caller is resolved from the
@@ -6,6 +6,7 @@ Bearer token, and every company-scoped request is limited to companies the calle
 """
 
 from django.utils import timezone
+from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
@@ -19,13 +20,8 @@ from companies.serializers import (
     CompanyInformationInput,
     CompanyInformationSerializer,
     CompanySerializer,
-    CrawlInputSerializer,
-    CreditMovementInputSerializer,
     ErrorSerializer,
     PlanEligibilitySerializer,
-    CreditResponseSerializer,
-    CreditMovementResponseSerializer,
-    CrawlResponseSerializer,
     CompanyDetailSerializer,
     PanelEntrySerializer,
     PanelSwitcherSerializer,
@@ -45,8 +41,6 @@ def _company_payload(company):
         "phone_number": company.phone_number,
         "internal_number": company.internal_number,
         "verification_status": company.verification_status,
-        "charge_status": company.charge_status,
-        "crawl_enabled": company.crawl_enabled,
         "is_archived": company.is_archived,
         "unverified": company.is_unverified,
     }
@@ -114,7 +108,6 @@ class CompanyDetailView(AuthenticatedView):
             "company": _company_payload(company),
             "step_progress": selectors.step_progress_payload(company),
             "current_step": selectors.current_step(company),
-            "credit": selectors.credit_projection(company),
         }
         return Response(body)
 
@@ -202,7 +195,6 @@ class PanelFullView(AuthenticatedView):
         return Response(
             {
                 "company": _company_payload(company),
-                "credit": selectors.credit_projection(company),
                 "plan_eligibility": services.can_manage_plans(company),
             }
         )
@@ -250,7 +242,7 @@ class VerificationDecisionView(AdminOnlyView):
 
 
 # ---------------------------------------------------------------------------
-# Plan eligibility, credit, crawl (US4)
+# Plan eligibility
 # ---------------------------------------------------------------------------
 
 
@@ -262,62 +254,33 @@ class PlanEligibilityView(AuthenticatedView):
         return Response(services.can_manage_plans(company))
 
 
-class CompanyCreditView(AuthenticatedView):
-    @extend_schema(responses={200: CreditResponseSerializer})
-    def get(self, request, pk):
-        user = self.caller(request)
-        company = selectors.owned_company_or_error(user, pk)
-        return Response(
-            {
-                "current_credit": selectors.credit_projection(company),
-                "currency": "credit",
-                "entries": selectors.credit_entries_payload(company),
-            }
-        )
+class CompanyLinksView(AuthenticatedView):
+    """Let a company submit additional pages from its own domain for crawling."""
 
-
-class CreditMovementView(AuthenticatedView):
-    @extend_schema(
-        request=CreditMovementInputSerializer,
-        responses={201: CreditMovementResponseSerializer},
-    )
     def post(self, request, pk):
+        from admin_console import discovery, services as crawl_services
+        from admin_console.models import Site
+        from admin_console.serializers import ManualLinksInput
+
         user = self.caller(request)
         company = selectors.owned_company_or_error(user, pk)
-        payload = parse_input(CreditMovementInputSerializer, request.data)
-        entry = services.record_credit_movement(
-            company,
-            direction=payload["direction"],
-            amount=payload["amount"],
-            reason=payload["reason"],
-            reference=payload.get("reference", ""),
-            actor=user,
+        payload = parse_input(ManualLinksInput, request.data)
+        site, _ = Site.objects.get_or_create(
+            company=company,
+            defaults={"domain": company.domain, "onboarded_at": timezone.now()},
         )
+        host = company.domain.lower().removeprefix("www.")
+        urls = discovery.apply_link_policy(payload.urls, host=host)
+        links = crawl_services.add_links_manually(site, urls, actor=user)
+        if links:
+            from admin_console.tasks import run_site_pipeline_task
+
+            transaction.on_commit(
+                lambda: run_site_pipeline_task.enqueue(site.pk, discover=False)
+            )
         return Response(
-            {
-                "entry": {
-                    "direction": entry.direction,
-                    "amount": entry.amount,
-                    "reason": entry.reason,
-                    "created_at": entry.created_at.isoformat(),
-                },
-                "current_credit": selectors.credit_projection(company),
-            },
+            {"links": [{"id": link.pk, "url": link.url} for link in links]},
             status=status.HTTP_201_CREATED,
-        )
-
-
-class CrawlView(AuthenticatedView):
-    @extend_schema(
-        request=CrawlInputSerializer, responses={200: CrawlResponseSerializer}
-    )
-    def post(self, request, pk):
-        user = self.caller(request)
-        company = selectors.owned_company_or_error(user, pk)
-        payload = parse_input(CrawlInputSerializer, request.data)
-        services.set_crawl_enabled(company, payload["enabled"])
-        return Response(
-            {"crawl_enabled": company.crawl_enabled, "credit_unchanged": True}
         )
 
 

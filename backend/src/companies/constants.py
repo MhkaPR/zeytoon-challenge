@@ -26,16 +26,6 @@ def step_keys():
     return [step["key"] for step in step_definitions()]
 
 
-def requirement_message(missing):
-    """Return the configured message for a set of missing prerequisites (FR-031)."""
-    messages = dict(config.COMPANY_REQUIREMENT_MESSAGES)
-    if len(missing) > 1:
-        return messages.get("both", "The company must satisfy every prerequisite.")
-    if missing:
-        return messages.get(missing[0], "A prerequisite is missing.")
-    return ""
-
-
 def step_locked_message():
     return str(config.COMPANY_STEP_LOCKED_MESSAGE)
 

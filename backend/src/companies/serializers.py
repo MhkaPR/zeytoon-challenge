@@ -61,8 +61,6 @@ class CompanySerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     internal_number = serializers.CharField()
     verification_status = serializers.CharField()
-    charge_status = serializers.CharField()
-    crawl_enabled = serializers.BooleanField()
     is_archived = serializers.BooleanField()
     unverified = serializers.BooleanField()
 
@@ -77,17 +75,6 @@ class StepProgressSerializer(serializers.Serializer):
 class VerificationDecisionInputSerializer(serializers.Serializer):
     outcome = serializers.ChoiceField(choices=["approved", "not_approved"])
     note = serializers.CharField(required=False, allow_blank=True)
-
-
-class CreditMovementInputSerializer(serializers.Serializer):
-    direction = serializers.ChoiceField(choices=["charge", "decharge"])
-    amount = serializers.IntegerField()
-    reason = serializers.ChoiceField(choices=["payment", "platform_view", "adjustment"])
-    reference = serializers.CharField(required=False, allow_blank=True)
-
-
-class CrawlInputSerializer(serializers.Serializer):
-    enabled = serializers.BooleanField()
 
 
 class ErrorSerializer(serializers.Serializer):
@@ -107,7 +94,6 @@ class CompanyDetailSerializer(serializers.Serializer):
     company = CompanySerializer()
     step_progress = StepProgressSerializer(many=True)
     current_step = serializers.CharField(allow_null=True)
-    credit = serializers.IntegerField()
 
 
 class PanelEntrySerializer(serializers.Serializer):
@@ -142,28 +128,3 @@ class PlanEligibilitySerializer(serializers.Serializer):
     allowed = serializers.BooleanField()
     missing = serializers.ListField(child=serializers.CharField())
     message = serializers.CharField(required=False)
-
-
-class CreditEntrySerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    direction = serializers.CharField()
-    amount = serializers.IntegerField()
-    reason = serializers.CharField()
-    reference = serializers.CharField()
-    created_at = serializers.CharField()
-
-
-class CreditResponseSerializer(serializers.Serializer):
-    current_credit = serializers.IntegerField()
-    currency = serializers.CharField()
-    entries = CreditEntrySerializer(many=True)
-
-
-class CreditMovementResponseSerializer(serializers.Serializer):
-    entry = serializers.DictField()
-    current_credit = serializers.IntegerField()
-
-
-class CrawlResponseSerializer(serializers.Serializer):
-    crawl_enabled = serializers.BooleanField()
-    credit_unchanged = serializers.BooleanField()

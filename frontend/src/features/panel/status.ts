@@ -16,13 +16,3 @@ export function verificationColor(status: VerificationStatus): ChipColor {
   if (status === "rejected") return "danger";
   return "warning";
 }
-
-/** Persian label for a company charge status. */
-export function chargeLabel(charged: boolean): string {
-  return charged ? strings.chargedStatus : strings.notChargedStatus;
-}
-
-/** Chip color for a company charge status. */
-export function chargeColor(charged: boolean): ChipColor {
-  return charged ? "success" : "warning";
-}

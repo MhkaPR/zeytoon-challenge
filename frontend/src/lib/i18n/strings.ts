@@ -64,25 +64,15 @@ export const strings = {
   internalNumber: "شماره داخلی (اختیاری)",
   submitCompany: "ثبت شرکت",
   panelBlockedVerified: "شرکت باید تأیید شده باشد.",
-  panelBlockedCharged: "حساب شرکت باید شارژ شده باشد.",
-  panelBlockedBoth: "شرکت باید تأیید شده و حساب آن شارژ شده باشد.",
   fullPanel: "پنل کامل شرکت",
 
-  panelSubtitle: "شرکت های خود را مدیریت کنید و وضعیت تأیید و حساب هر کدام را ببینید.",
+  panelSubtitle: "شرکت های خود را مدیریت کنید و وضعیت تأیید هر کدام را ببینید.",
   panelCompaniesTitle: "شرکت های من",
   panelEmptyTitle: "هنوز شرکتی ثبت نکرده اید",
   panelEmptyBody:
     "برای شروع، شرکت خود را ثبت کنید. پس از بررسی و تأیید کارشناسان، پنل کامل شرکت باز می شود.",
   panelLoading: "در حال بارگذاری…",
   companyStatusTitle: "وضعیت تأیید",
-  chargeStatusTitle: "وضعیت حساب",
-  chargedStatus: "شارژشده",
-  notChargedStatus: "شارژنشده",
-  creditTitle: "اعتبار شرکت",
-  crawlTitle: "خزش (Crawl)",
-  crawlEnabledStatus: "فعال",
-  crawlDisabledStatus: "غیرفعال",
-  crawlHint: "فعال سازی خزش رایگان است و نیاز به حساب شارژشده دارد.",
   currentStepTitle: "مرحله فعلی",
   nextStepHint: "برای ادامه، مرحله زیر را تکمیل کنید.",
   pendingHint:
@@ -94,7 +84,7 @@ export const strings = {
   plansGateAllowed: "همه پیش نیازها فراهم است؛ می توانید پلن های شرکت را مدیریت کنید.",
   panelPermissionsTitle: "دسترسی ها",
   panelPermissionsHint:
-    "برای ساخت و فعال سازی پلن، شرکت باید هم تأیید شده و هم حساب آن شارژشده باشد.",
+    "برای مدیریت پلن‌ها، شرکت باید تأیید شده باشد.",
 
   // Company registration page (requirement: dedicated registration page)
   registerCompanyTitle: "ثبت شرکت جدید در ترب هاست",

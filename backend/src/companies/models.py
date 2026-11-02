@@ -1,9 +1,7 @@
 """Company domain models.
 
-All models inherit :class:`utils.models.TimestampedModel`. The company's **current credit is
-never stored** — it is always the projection (running total) of its :class:`CreditLedgerEntry`
-rows (spec FR-034). Verification decisions and credit ledger entries are insert-only
-(append-only) and can never be altered or removed (FR-016, FR-017, FR-034).
+Historical credit ledger records remain stored for audit, but the free service exposes no
+credit or payment workflow.
 """
 
 from django.contrib.auth import get_user_model
@@ -25,9 +23,6 @@ class Company(TimestampedModel):
         VERIFIED = "verified", "Verified"
         REJECTED = "rejected", "Rejected"
 
-    class ChargeStatus(models.TextChoices):
-        CHARGED = "charged", "Charged"
-        NOT_CHARGED = "not_charged", "Not charged"
 
     owner = models.ForeignKey(
         User,
@@ -46,12 +41,6 @@ class Company(TimestampedModel):
         choices=VerificationStatus.choices,
         default=VerificationStatus.PENDING,
     )
-    charge_status = models.CharField(
-        max_length=16,
-        choices=ChargeStatus.choices,
-        default=ChargeStatus.NOT_CHARGED,
-    )
-    crawl_enabled = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False, db_index=True)
     archived_at = models.DateTimeField(null=True, blank=True)
 
@@ -65,10 +54,6 @@ class Company(TimestampedModel):
     @property
     def is_verified(self):
         return self.verification_status == self.VerificationStatus.VERIFIED
-
-    @property
-    def is_charged(self):
-        return self.charge_status == self.ChargeStatus.CHARGED
 
     @property
     def is_unverified(self):
@@ -122,7 +107,7 @@ class VerificationDecision(_AppendOnlyMixin, TimestampedModel):
 
 
 class CreditLedgerEntry(_AppendOnlyMixin, TimestampedModel):
-    """One append-only credit movement (charge/decharge) for a company (FR-034)."""
+    """Historical, append-only credit entry retained for audit purposes."""
 
     class Direction(models.TextChoices):
         CHARGE = "charge", "Charge"

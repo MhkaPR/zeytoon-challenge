@@ -34,7 +34,7 @@ def _national_format(value):
 
 
 def mask_phone(value):
-    """Mask a phone number in a form its owner still recognizes (e.g. ``0912***6789``).
+    """Mask a phone number in a form its owner still recognizes (e.g. ``0912****6789``).
 
     The national-format rendering keeps the number recognizable in the UI (the user sees
     their own number) while never exposing the full value (spec FR-026). Numbers that cannot
@@ -45,7 +45,7 @@ def mask_phone(value):
         return "*" * len(digits)
     if len(digits) <= 8:
         return f"{digits[:2]}{'*' * (len(digits) - 4)}{digits[-2:]}"
-    return f"{digits[:4]}***{digits[-4:]}"
+    return f"{digits[:4]}****{digits[-4:]}"
 
 
 def mask_text(text):

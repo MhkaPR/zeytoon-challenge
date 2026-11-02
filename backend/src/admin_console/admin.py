@@ -29,7 +29,7 @@ class SiteAdmin(admin.ModelAdmin):
 class LinkAdmin(admin.ModelAdmin):
     list_display = ("url", "site", "review_state", "pipeline_stage", "failure_rate")
     list_filter = ("review_state", "pipeline_stage", "source")
-    search_fields = ("url", "url_hash")
+    search_fields = ("url",)
 
 
 @admin.register(CaptureSession)
@@ -40,7 +40,7 @@ class CaptureSessionAdmin(admin.ModelAdmin):
 
 @admin.register(Trace)
 class TraceAdmin(admin.ModelAdmin):
-    list_display = ("storage_key", "link", "origin", "byte_size", "captured_at")
+    list_display = ("storage_key", "link", "origin", "captured_at")
     list_filter = ("origin", "is_valid_trace")
 
 

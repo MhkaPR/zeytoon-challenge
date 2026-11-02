@@ -1,8 +1,4 @@
-"""Company routes, mounted under /api/v1/companies/.
-
-The panel surface, verification decisions, plan eligibility, credit, and crawl all live in
-this module — there is no separate ``panel`` app.
-"""
+"""Company routes, mounted under /api/v1/companies/."""
 
 from django.urls import path
 
@@ -29,19 +25,13 @@ urlpatterns = [
         api.VerificationDecisionView.as_view(),
         name="verification-decision",
     ),
-    # Plan eligibility, credit, crawl (US4)
+    # Plan eligibility
     path(
         "<int:pk>/plan-eligibility",
         api.PlanEligibilityView.as_view(),
         name="plan-eligibility",
     ),
-    path("<int:pk>/credit", api.CompanyCreditView.as_view(), name="company-credit"),
-    path(
-        "<int:pk>/credit/movements",
-        api.CreditMovementView.as_view(),
-        name="credit-movement",
-    ),
-    path("<int:pk>/crawl", api.CrawlView.as_view(), name="company-crawl"),
+    path("<int:pk>/links", api.CompanyLinksView.as_view(), name="company-links"),
     # Ownership transfer refusal (US5)
     path(
         "<int:pk>/transfer-ownership",

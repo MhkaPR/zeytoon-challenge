@@ -34,19 +34,9 @@ export function HomeFooter() {
             <ul className="flex flex-col gap-[6px]">
               {group.links.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    className="text-[14px]"
-                    href={link.href}
-                    render={({ ref, ...domProps }) => (
-                      <NextLink
-                        {...domProps}
-                        ref={ref as React.Ref<HTMLAnchorElement>}
-                        href={link.href}
-                      />
-                    )}
-                  >
+                  <NextLink className="text-[14px]" href={link.href}>
                     {link.label}
-                  </Link>
+                  </NextLink>
                 </li>
               ))}
             </ul>

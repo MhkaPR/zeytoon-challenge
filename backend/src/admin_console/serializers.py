@@ -41,7 +41,6 @@ class SiteCreateInput(BaseModel):
 
 
 class DiscoverLinksInput(BaseModel):
-    query: str | None = None
     max_pages: int | None = None
     max_depth: int | None = None
 

@@ -125,7 +125,7 @@ def onboard_site(company_id, actor=None):
 def _store_links(site, urls, source):
     stored = []
     for url in urls:
-        link, _ = Link.objects.get_or_create(
+        link, created = Link.objects.get_or_create(
             site=site,
             url_hash=_url_hash(url),
             defaults={
@@ -135,7 +135,8 @@ def _store_links(site, urls, source):
                 "pipeline_stage": Link.PipelineStage.DISCOVERED,
             },
         )
-        stored.append(link)
+        if created:
+            stored.append(link)
     return stored
 
 
@@ -226,7 +227,6 @@ def start_capture(link, actor=None, duration_ms=None):
             origin=Trace.Origin.SERVER_CAPTURE,
             storage_key=key,
             storage_backend=backend,
-            byte_size=size,
             content_sha256=digest,
             is_valid_trace=True,
         )
@@ -238,7 +238,7 @@ def start_capture(link, actor=None, duration_ms=None):
         link.retry_count = 0
         link.last_error = ""
         link.save()
-    events.trace_stored(trace, size, digest)
+    events.trace_stored(trace, digest)
     return session
 
 

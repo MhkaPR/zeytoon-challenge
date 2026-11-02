@@ -28,6 +28,7 @@ class User(AbstractUser, TimestampedModel):
     ADMIN_GROUP = "admin"
 
     phone_number = models.CharField(max_length=32, unique=True)
+    email = None
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
     )

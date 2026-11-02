@@ -1,4 +1,4 @@
-import { Card, Chip, Link, Typography } from "@heroui/react";
+import { Card, Chip, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
 import { strings } from "@/src/lib/i18n/strings";
@@ -19,17 +19,10 @@ export function CompanyCard({
   serviceType?: string;
 }) {
   return (
-    <Link
+    <NextLink
       aria-label={name}
       className="block h-full rounded-[var(--radius)] focus-visible:outline-none"
       href={domain ? `/companies/${encodeURIComponent(domain)}` : "/companies"}
-      render={({ ref, ...domProps }) => (
-        <NextLink
-          {...domProps}
-          ref={ref as React.Ref<HTMLAnchorElement>}
-          href={domain ? `/companies/${encodeURIComponent(domain)}` : "/companies"}
-        />
-      )}
     >
       <Card
         className="flex h-full flex-col gap-[8px] p-[24px] transition-shadow hover:shadow-overlay"
@@ -50,6 +43,6 @@ export function CompanyCard({
         )}
         <Card.Description>{description || strings.companyCardFallback}</Card.Description>
       </Card>
-    </Link>
+    </NextLink>
   );
 }

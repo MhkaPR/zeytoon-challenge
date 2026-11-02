@@ -30,15 +30,13 @@ def user_from_request(request):
 
 def resolve_current_user(request):
     """Return a small identity dict for the current request (guest or authenticated)."""
-    from utils.logging import mask_phone
-
     user = user_from_request(request)
     if user is None:
         return {"authenticated": False, "role": GUEST}
     return {
         "authenticated": True,
         "role": user.role(),
-        "user": {"phone": mask_phone(user.phone_number), "role": user.role()},
+        "user": {"phone": user.phone_number, "role": user.role()},
     }
 
 

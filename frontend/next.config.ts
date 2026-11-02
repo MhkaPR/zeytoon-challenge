@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 // Where the API lives. When deployed, set ``NEXT_PUBLIC_API_BASE_URL`` to the absolute
 // backend origin. When it is unset (the local development default) the frontend talks to the
@@ -27,4 +28,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin("./src/lib/i18n/request.ts");
+
+export default withNextIntl(nextConfig);

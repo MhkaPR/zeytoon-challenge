@@ -2,6 +2,7 @@
 
 from drf_spectacular.utils import extend_schema
 from django.db.models import Count
+from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -59,7 +60,6 @@ def _site_payload(site):
         "id": site.pk,
         "company_id": site.company_id,
         "domain": site.domain,
-        "crawl_query": site.crawl_query,
         "maintenance_state": site.maintenance_state,
         "onboarded_at": site.onboarded_at.isoformat() if site.onboarded_at else None,
     }
@@ -253,15 +253,17 @@ class DiscoverLinksView(OperatorOnlyView):
         )
         bounds = {}
         if payload is not None:
-            bounds = {
-                "query": payload.query,
-                "max_pages": payload.max_pages,
-                "max_depth": payload.max_depth,
-            }
+            bounds = {"max_pages": payload.max_pages, "max_depth": payload.max_depth}
         try:
             result = services.discover_and_store_links(site, bounds=bounds)
         except Exception as exc:  # noqa: BLE001 - crawl/network failure
             raise ApiError("crawl_failed", str(exc)[:200], http_status=502) from exc
+        if result["links"]:
+            from admin_console.tasks import run_site_pipeline_task
+
+            transaction.on_commit(
+                lambda: run_site_pipeline_task.enqueue(site.pk, discover=False)
+            )
         return Response(
             {
                 "site": _site_payload(site),

@@ -20,7 +20,7 @@ export function RankingCriteria() {
 
       <div className="grid grid-cols-1 gap-[16px] sm:grid-cols-2 lg:grid-cols-3">
         {rankingCriteria.map((criterion, index) => (
-          <Card key={criterion.title} className="flex flex-col gap-[8px] p-[24px]" variant="secondary">
+          <Card key={criterion.title} className="flex flex-col gap-[8px] p-[24px]">
             <div className="flex flex-row items-center justify-between gap-[8px]">
               <Card.Title>{criterion.title}</Card.Title>
               <span aria-hidden className="font-mono text-[12px] font-medium text-muted">

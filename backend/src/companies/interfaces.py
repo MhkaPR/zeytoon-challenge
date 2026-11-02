@@ -29,10 +29,6 @@ class CompaniesInterface:
         return selectors.current_step(company)
 
     @staticmethod
-    def credit_projection(company):
-        return selectors.credit_projection(company)
-
-    @staticmethod
     def can_manage_plans(company):
         return services.can_manage_plans(company)
 
@@ -49,10 +45,6 @@ class CompaniesInterface:
         return selectors.company_or_error(company_id)
 
     # --- write ---
-    @staticmethod
-    def record_credit_movement(company, **kwargs):
-        return services.record_credit_movement(company, **kwargs)
-
     @staticmethod
     def record_verification_decision(company, actor, outcome, note=""):
         return services.record_verification_decision(company, actor, outcome, note=note)

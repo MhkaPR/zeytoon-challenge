@@ -38,6 +38,35 @@ class AdminConsoleInterface:
         }
 
     @staticmethod
+    def public_site_details(site_ids):
+        """Return site identity needed to render the public catalog."""
+        return {
+            site.pk: {
+                "domain": site.domain,
+                "company_name": site.company.company_name,
+            }
+            for site in Site.objects.filter(pk__in=site_ids).select_related("company")
+        }
+
+    @staticmethod
+    def public_recent_companies(since):
+        """Return verified public companies created since the supplied timestamp."""
+        return [
+            {
+                "domain": site.domain,
+                "company_name": site.company.company_name,
+                "created_at": site.company.created_at,
+            }
+            for site in Site.objects.filter(
+                company__verification_status="verified",
+                company__is_archived=False,
+                company__created_at__gte=since,
+            )
+            .select_related("company")
+            .order_by("-company__created_at", "company__company_name")[:3]
+        ]
+
+    @staticmethod
     def open_alert_count():
         return FailureAlert.objects.filter(state=FailureAlert.State.OPEN).count()
 

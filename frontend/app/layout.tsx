@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
 
 import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
@@ -29,12 +30,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${vazirmatn.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--ds-white)] text-[var(--ds-ink)]">
-        <SessionProvider>
-          <LoginDialogProvider>
-            <Header />
-            {children}
-          </LoginDialogProvider>
-        </SessionProvider>
+        <NextIntlClientProvider>
+          <SessionProvider>
+            <LoginDialogProvider>
+              <Header />
+              {children}
+            </LoginDialogProvider>
+          </SessionProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

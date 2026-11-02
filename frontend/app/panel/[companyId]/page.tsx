@@ -61,7 +61,7 @@ export default function CompanyPanelPage({
                     key={company.id}
                     id={String(company.id)}
                     href={`/panel/${company.id}`}
-                    render={(domProps) => <NextLink {...(domProps as any)} />}
+                    render={(domProps) => <NextLink {...domProps} />}
                   >
                     <div className="flex min-w-0 flex-row items-center gap-[6px] text-left">
                       <span className="block min-w-0 max-w-20 truncate" title={company.company_name}>
