@@ -17,6 +17,32 @@ const NUMBER_FIELDS = [
   { key: "REPLAY_PERIOD_HOURS", labelKey: "replayPeriod" },
   { key: "FAILURE_RATE_THRESHOLD", labelKey: "failureThreshold" },
   { key: "FAILURE_RATE_WINDOW_RUNS", labelKey: "failureWindow" },
+  { key: "CATALOG_PRICE_MIN", labelKey: "catalogPriceMin" },
+  { key: "CATALOG_PRICE_MAX", labelKey: "catalogPriceMax" },
+  { key: "CATALOG_PRICE_STEP", labelKey: "catalogPriceStep" },
+  { key: "CATALOG_PAGE_SIZE_DEFAULT", labelKey: "catalogPageSizeDefault" },
+  {
+    key: "CATALOG_COMPANY_FILTER_VISIBLE",
+    labelKey: "catalogCompanyFilterVisible",
+  },
+  { key: "OPS_SITE_REFRESH_MS", labelKey: "opsSiteRefreshMs" },
+  { key: "OPS_LINKS_REFRESH_MS", labelKey: "opsLinksRefreshMs" },
+  { key: "CAPTURE_FIXED_DURATION_MS", labelKey: "captureFixedDurationMs" },
+] as const;
+
+const TEXT_FIELDS = [
+  { key: "CONTACT_EMAIL", labelKey: "contactEmail" },
+  { key: "CONTACT_PHONE", labelKey: "contactPhone" },
+  { key: "CONTACT_ADDRESS", labelKey: "contactAddress" },
+  { key: "SOCIAL_INSTAGRAM_URL", labelKey: "socialInstagramUrl" },
+  { key: "SOCIAL_TELEGRAM_URL", labelKey: "socialTelegramUrl" },
+  { key: "SOCIAL_LINKEDIN_URL", labelKey: "socialLinkedinUrl" },
+  { key: "SOCIAL_GITHUB_URL", labelKey: "socialGithubUrl" },
+] as const;
+
+const JSON_FIELDS = [
+  { key: "CATALOG_PAGE_SIZES", labelKey: "catalogPageSizes" },
+  { key: "CATALOG_RESOURCE_OPTIONS", labelKey: "catalogResourceOptions" },
 ] as const;
 
 export function TunablesForm({
@@ -52,6 +78,34 @@ export function TunablesForm({
         >
           <Label>{ot(field.labelKey)}</Label>
           <Input inputMode="decimal" />
+        </TextField>
+      ))}
+
+      {TEXT_FIELDS.map((field) => (
+        <TextField
+          key={field.key}
+          name={field.key}
+          value={String(draft[field.key] ?? "")}
+          onChange={(value) => update(field.key, value)}
+        >
+          <Label>{ot(field.labelKey)}</Label>
+          <Input />
+        </TextField>
+      ))}
+
+      {JSON_FIELDS.map((field) => (
+        <TextField
+          key={field.key}
+          name={field.key}
+          value={
+            typeof draft[field.key] === "string"
+              ? String(draft[field.key])
+              : JSON.stringify(draft[field.key] ?? null, null, 2)
+          }
+          onChange={(value) => update(field.key, value)}
+        >
+          <Label>{ot(field.labelKey)}</Label>
+          <TextArea rows={4} />
         </TextField>
       ))}
 
@@ -91,6 +145,15 @@ export function TunablesForm({
         isDisabled={busy}
         onPress={() => {
           const payload: Record<string, unknown> = { ...draft };
+          for (const field of JSON_FIELDS) {
+            if (typeof payload[field.key] !== "string") continue;
+            try {
+              payload[field.key] = JSON.parse(String(payload[field.key]));
+            } catch {
+              setParseError(ot(field.labelKey));
+              return;
+            }
+          }
           if (typeof payload.CLEANING_RULES === "string") {
             try {
               payload.CLEANING_RULES = JSON.parse(payload.CLEANING_RULES);

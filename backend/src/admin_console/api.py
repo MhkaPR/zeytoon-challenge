@@ -626,8 +626,9 @@ class SettingsView(OperatorOnlyView):
 
 def _settings_snapshot():
     from admin_console import constants
+    from core.site_config import settings_snapshot as frontend_settings_snapshot
 
-    return {
+    values = {
         "REPLAY_PERIOD_HOURS": constants.replay_period_hours(),
         "FAILURE_RATE_THRESHOLD": constants.failure_rate_threshold(),
         "LINK_CRAWL_MAX_PAGES": constants.link_crawl_max_pages(),
@@ -637,6 +638,8 @@ def _settings_snapshot():
         "LABELING_PROVIDER": constants.labeling_provider(),
         "LABELING_MODEL": constants.labeling_model() or "",
     }
+    values.update(frontend_settings_snapshot())
+    return values
 
 
 class TokenBudgetView(OperatorOnlyView):

@@ -6,12 +6,24 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
+
 import { RESOURCE_LABELS, type ResourceKey } from "../serviceTypes";
 import { formatPrice } from "../planCatalogUtils";
 
+/** Persian ↔ Arabic normalization + English case-insensitive matching. */
+function normalizeSearch(value: string): string {
+  return value
+    .replace(/ي/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/[\u064B-\u0652]/g, "") // strip Persian diacritics
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 type CheckboxOption = { value: string | number; label: string };
 
-/** Reusable labeled checkbox list used by all checkbox-based filters. */
 function CheckboxList({
   options,
   selected,
@@ -44,7 +56,6 @@ function CheckboxList({
   );
 }
 
-/** A collapsed-by-default HeroUI accordion section for compact filter groups. */
 function FilterDisclosure({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <Accordion.Item id={id}>
@@ -61,7 +72,6 @@ function FilterDisclosure({ id, title, children }: { id: string; title: string; 
   );
 }
 
-/** Searchable, alphabetized provider filter with a bounded expanded list. */
 function CompanyFilterSection({
   companies,
   selected,
@@ -76,12 +86,19 @@ function CompanyFilterSection({
   onToggle: (value: string) => void;
 }) {
   const ot = useTranslations();
+  const config = useSiteConfig();
   const [expanded, setExpanded] = useState(false);
-  const filteredCompanies = companies.filter((name) => name.toLocaleLowerCase("fa").includes(search.trim().toLocaleLowerCase("fa")));
-  const visibleCompanies = expanded ? filteredCompanies : filteredCompanies.slice(0, 5);
+  const query = normalizeSearch(search);
+  const filteredCompanies = companies.filter((name) => normalizeSearch(name).includes(query));
+  const visibleCount = config.catalog.companyFilterVisible;
+  const visibleCompanies = expanded ? filteredCompanies : filteredCompanies.slice(0, visibleCount);
+  const hasNoResults = query.length > 0 && filteredCompanies.length === 0;
 
   return (
-    <FilterDisclosure id="companies" title={`${ot("companiesFilterTitle")}${selected.length ? ` (${selected.length})` : ""}`}>
+    <FilterDisclosure
+      id="companies"
+      title={`${ot("companiesFilterTitle")}${selected.length ? ` (${selected.length})` : ""}`}
+    >
       <div className="flex flex-col gap-[10px]">
         <SearchField
           aria-label={ot("searchCompany")}
@@ -97,45 +114,81 @@ function CompanyFilterSection({
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
-        <div className={expanded ? "max-h-[190px] overflow-y-auto" : ""}>
-          <CheckboxList
-            onToggle={(value) => onToggle(String(value))}
-            options={visibleCompanies.map((name) => ({ value: name, label: name }))}
-            selected={selected}
-          />
-        </div>
-        {filteredCompanies.length > 5 && (
-          <Button className="justify-between px-0 text-[11px]" size="sm" variant="ghost" onPress={() => setExpanded((value) => !value)}>
-            {expanded ? ot("showLess") : ot("showAllCount", { count: filteredCompanies.length })}
-            {expanded ? <ChevronDown aria-hidden="true" className="size-[14px] rotate-180" /> : <ChevronDown aria-hidden="true" className="size-[14px]" />}
-          </Button>
+
+        {hasNoResults ? (
+          <Typography color="muted" type="body-xs">{ot("companyNotFound")}</Typography>
+        ) : (
+          <>
+            <div className={expanded ? "max-h-[190px] overflow-y-auto" : ""}>
+              <CheckboxList
+                onToggle={(value) => onToggle(String(value))}
+                options={visibleCompanies.map((name) => ({ value: name, label: name }))}
+                selected={selected}
+              />
+            </div>
+            {filteredCompanies.length > visibleCount && (
+              <Button
+                className="justify-between px-0 text-[11px]"
+                size="sm"
+                variant="ghost"
+                onPress={() => setExpanded((value) => !value)}
+              >
+                {expanded ? ot("showLess") : ot("showAllCount", { count: filteredCompanies.length })}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`size-[14px] ${expanded ? "rotate-180" : ""}`}
+                />
+              </Button>
+            )}
+          </>
         )}
-        {search && filteredCompanies.length === 0 && <Typography color="muted" type="body-xs">{ot("companyNotFound")}</Typography>}
       </div>
     </FilterDisclosure>
   );
 }
 
-/** Monthly price range filter with its label and RTL-safe slider track. */
-function PriceRangeFilter({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+function PriceRangeFilter({
+  value,
+  priceMax,
+  onChange,
+}: {
+  value: number;
+  priceMax: number;
+  onChange: (value: number) => void;
+}) {
   const ot = useTranslations();
+  const config = useSiteConfig();
+  const step = config.catalog.priceStep;
+  const upper = Math.max(step, Math.ceil(Math.max(priceMax, step) / step) * step);
+  const clamped = Math.min(upper, Math.max(0, value));
+
   return (
     <section className="flex flex-col gap-[10px] border-b border-[var(--separator)] pb-[16px]">
       <Label className="font-semibold">{ot("monthlyPriceRange")}</Label>
-      <div dir="ltr">
-        <Slider aria-label={ot("maxMonthlyPriceAria")} maxValue={1500000} minValue={300000} step={50000} value={value} onChange={(next) => typeof next === "number" && onChange(next)}>
+      {/* No `dir` override: inherits page direction so the thumb follows the drag in both RTL and LTR. */}
+      <div>
+        <Slider
+          aria-label={ot("maxMonthlyPriceAria")}
+          maxValue={upper}
+          minValue={0}
+          step={step}
+          value={clamped}
+          onChange={(next) => typeof next === "number" && onChange(next)}
+        >
           <Slider.Track><Slider.Fill /><Slider.Thumb /></Slider.Track>
         </Slider>
       </div>
-      <Typography color="muted" type="body-xs">{ot("upToPrice", { price: formatPrice(value) })}</Typography>
+      <Typography color="muted" type="body-xs">
+        {ot("upToPrice", { price: formatPrice(clamped) })}
+      </Typography>
     </section>
   );
 }
 
-/** Global filter layout; each compact group is composed from the focused sections above. */
 export function CatalogFilters({
   companies,
   maxPrice,
+  priceMax,
   onMaxPriceChange,
   providers,
   onProvidersChange,
@@ -151,9 +204,12 @@ export function CatalogFilters({
   onLocationsChange,
   companySearch,
   onCompanySearchChange,
+  onApply,
+  isDirty = false,
 }: {
   companies: string[];
   maxPrice: number;
+  priceMax: number;
   onMaxPriceChange: (value: number) => void;
   providers: string[];
   onProvidersChange: (value: string) => void;
@@ -169,15 +225,31 @@ export function CatalogFilters({
   onLocationsChange: (value: string) => void;
   companySearch: string;
   onCompanySearchChange: (value: string) => void;
+  onApply: () => void;
+  isDirty?: boolean;
 }) {
   const ot = useTranslations();
+
   return (
-    <aside className="flex flex-col gap-[16px] rounded-[var(--radius)] border border-[var(--separator)] p-[16px] lg:rounded-none lg:border-0 lg:border-e lg:pe-[22px]">
+    <aside
+      className="flex flex-col gap-[16px] rounded-[var(--radius)] border border-[var(--separator)] p-[16px] lg:sticky lg:top-[88px] lg:max-h-[calc(100dvh-112px)] lg:overflow-y-auto lg:rounded-none lg:border-0 lg:border-e lg:pe-[22px]"
+    >
       <Typography className="font-semibold" type="body-sm">{ot("filtersLabel")}</Typography>
+
       <Accordion allowsMultipleExpanded className="w-full">
-        <CompanyFilterSection companies={companies} onSearchChange={onCompanySearchChange} onToggle={onProvidersChange} search={companySearch} selected={providers} />
+        <CompanyFilterSection
+          companies={companies}
+          onSearchChange={onCompanySearchChange}
+          onToggle={onProvidersChange}
+          search={companySearch}
+          selected={providers}
+        />
         {activeResources.map((resource) => (
-          <FilterDisclosure id={`resource-${resource}`} key={resource} title={`${ot(RESOURCE_LABELS[resource])}${resourceValues[resource]?.length ? ` (${resourceValues[resource]!.length})` : ""}`}>
+          <FilterDisclosure
+            id={`resource-${resource}`}
+            key={resource}
+            title={`${ot(RESOURCE_LABELS[resource])}${resourceValues[resource]?.length ? ` (${resourceValues[resource]!.length})` : ""}`}
+          >
             <CheckboxList
               onToggle={(value) => onResourceValuesChange(resource, Number(value))}
               options={resourceOptions(resource).map((value) => ({ value, label: value.toLocaleString("fa-IR") }))}
@@ -186,18 +258,36 @@ export function CatalogFilters({
           </FilterDisclosure>
         ))}
         {operatingSystems.length > 0 && (
-          <FilterDisclosure id="operating-system" title={`${ot("operatingSystemLabel")}${selectedOs.length ? ` (${selectedOs.length})` : ""}`}>
-            <CheckboxList onToggle={(value) => onOsChange(String(value))} options={operatingSystems.map((value) => ({ value, label: value }))} selected={selectedOs} />
+          <FilterDisclosure
+            id="operating-system"
+            title={`${ot("operatingSystemLabel")}${selectedOs.length ? ` (${selectedOs.length})` : ""}`}
+          >
+            <CheckboxList
+              onToggle={(value) => onOsChange(String(value))}
+              options={operatingSystems.map((value) => ({ value, label: value }))}
+              selected={selectedOs}
+            />
           </FilterDisclosure>
         )}
         {locations.length > 0 && (
-          <FilterDisclosure id="locations" title={`${ot("serverLocationLabel")}${selectedLocations.length ? ` (${selectedLocations.length})` : ""}`}>
-            <CheckboxList onToggle={(value) => onLocationsChange(String(value))} options={locations.map((value) => ({ value, label: value }))} selected={selectedLocations} />
+          <FilterDisclosure
+            id="locations"
+            title={`${ot("serverLocationLabel")}${selectedLocations.length ? ` (${selectedLocations.length})` : ""}`}
+          >
+            <CheckboxList
+              onToggle={(value) => onLocationsChange(String(value))}
+              options={locations.map((value) => ({ value, label: value }))}
+              selected={selectedLocations}
+            />
           </FilterDisclosure>
         )}
       </Accordion>
-      <PriceRangeFilter onChange={onMaxPriceChange} value={maxPrice} />
+
+      <PriceRangeFilter onChange={onMaxPriceChange} priceMax={priceMax} value={maxPrice} />
+
+      <Button className="w-full" variant="primary" isDisabled={!isDirty} onPress={onApply}>
+        {ot("applyFilters")}
+      </Button>
     </aside>
   );
 }
-

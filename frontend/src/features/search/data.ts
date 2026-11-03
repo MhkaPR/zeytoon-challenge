@@ -1,3 +1,5 @@
+import { DEFAULT_SITE_CONFIG } from "@/src/lib/config/siteConfig";
+
 export type ServiceKey = "host" | "virtual_server" | "dedicated_server" | "cdn";
 export type ResultKind = "company" | "plan";
 
@@ -47,13 +49,8 @@ export const RESOURCE_LABELS = {
   traffic: "resourceTraffic",
 } as const;
 
-/** Ordered small → big; in production these come from the API. */
-export const RESOURCE_VALUES = {
-  ram: [1, 2, 4, 8, 16, 32, 64],
-  cpu: [1, 2, 4, 8, 16],
-  disk: [20, 50, 100, 250, 500, 1000],
-  traffic: [100, 500, 1000, 2000, 5000, 10000],
-} as const;
+/** Ordered small → big; runtime overrides come from the public site config. */
+export const RESOURCE_VALUES = DEFAULT_SITE_CONFIG.catalog.resourceOptions;
 
 /** Server location message keys, resolved per service type from the API in production. */
 export const SERVER_LOCATIONS: Record<ServiceKey, string[]> = {

@@ -421,6 +421,65 @@ CONSTANCE_CONFIG = {
         True,
         "Whether domtrack's third-party detector suppresses chat/support widget noise.",
     ),
+    # Frontend runtime configuration (Principle XIII). These values are served to the
+    # public site and editable from the operator settings interface.
+    "CATALOG_PRICE_MIN": (
+        300000,
+        "Minimum monthly price offered by the public catalog price filter (IRR).",
+    ),
+    "CATALOG_PRICE_MAX": (
+        1500000,
+        "Maximum monthly price offered by the public catalog price filter (IRR).",
+    ),
+    "CATALOG_PRICE_STEP": (
+        50000,
+        "Step size for the public catalog price filter (IRR).",
+    ),
+    "CATALOG_PAGE_SIZES": (
+        [8, 12, 20],
+        "Page-size options offered by the public plan catalog.",
+    ),
+    "CATALOG_PAGE_SIZE_DEFAULT": (
+        8,
+        "Default page size for the public plan catalog.",
+    ),
+    "CATALOG_RESOURCE_OPTIONS": (
+        {
+            "ram": [1, 2, 4, 8, 16, 32, 64],
+            "cpu": [1, 2, 4, 8, 16],
+            "disk": [20, 50, 100, 250, 500, 1000],
+            "traffic": [100, 500, 1000, 2000, 5000, 10000],
+        },
+        "Ordered resource filter options for the public plan catalog.",
+    ),
+    "CATALOG_COMPANY_FILTER_VISIBLE": (
+        5,
+        "Providers shown before the catalog provider filter expands.",
+    ),
+    "OPS_SITE_REFRESH_MS": (
+        8000,
+        "Polling interval for the operator site page, in milliseconds.",
+    ),
+    "OPS_LINKS_REFRESH_MS": (
+        5000,
+        "Polling interval for the operator site-links page, in milliseconds.",
+    ),
+    "CONTACT_EMAIL": (
+        "support@torobhost.ir",
+        "Public support email shown in the site footer.",
+    ),
+    "CONTACT_PHONE": (
+        "021-12345678",
+        "Public support phone shown in the site footer.",
+    ),
+    "CONTACT_ADDRESS": (
+        "تهران، ایران",
+        "Public address shown in the site footer.",
+    ),
+    "SOCIAL_INSTAGRAM_URL": ("https://instagram.com", "Instagram profile URL."),
+    "SOCIAL_TELEGRAM_URL": ("https://telegram.org", "Telegram profile URL."),
+    "SOCIAL_LINKEDIN_URL": ("https://linkedin.com", "LinkedIn profile URL."),
+    "SOCIAL_GITHUB_URL": ("https://github.com", "GitHub profile URL."),
 }
 
 

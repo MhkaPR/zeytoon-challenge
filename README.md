@@ -151,6 +151,11 @@ refresh cookie is first-party and the session survives a page reload. Set
 `NEXT_PUBLIC_API_BASE_URL` to an absolute backend origin only for a split-host deployment
 (then the proxy is disabled and the browser calls that origin directly).
 
+Frontend runtime values (catalog price step/page sizes, resource options, contact and social
+links, ops polling intervals, and the default capture duration) are stored in
+django-constance. Edit them from the operator settings page at `/ops/settings`; the SPA
+loads the resolved values from `GET /api/v1/catalog/site-config`.
+
 ### 3. Full stack with Docker
 
 ```bash

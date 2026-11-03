@@ -8,6 +8,7 @@ import { use, useEffect, useState } from "react";
 
 import { LinkList } from "@/src/features/ops/links/LinkList";
 import { useOpsData } from "@/src/features/ops/useOpsData";
+import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 import { discoverLinks, getSiteLinks } from "@/src/lib/api/ops";
 import { getAccessToken } from "@/src/lib/session";
 
@@ -17,6 +18,7 @@ export default function OpsSiteLinksPageClient({
   params: Promise<{ siteId: string }>;
 }) {
   const ot = useTranslations();
+  const config = useSiteConfig();
   const { siteId } = use(params);
   const id = Number(siteId);
   const { data, loading, error, reload } = useOpsData(
@@ -26,9 +28,9 @@ export default function OpsSiteLinksPageClient({
   const [discovering, setDiscovering] = useState(false);
   const [discoverMessage, setDiscoverMessage] = useState("");
   useEffect(() => {
-    const interval = window.setInterval(reload, 5000);
+    const interval = window.setInterval(reload, config.ops.linksRefreshMs);
     return () => window.clearInterval(interval);
-  }, [reload]);
+  }, [config.ops.linksRefreshMs, reload]);
 
   async function discoverNewLinks() {
     const token = getAccessToken();

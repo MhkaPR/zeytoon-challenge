@@ -16,6 +16,7 @@ import {
 import { Upload, Video } from "lucide-react";
 import { useState } from "react";
 
+import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 import type { CaptureSession } from "@/src/lib/api/ops";
 import type { DomtrackHealth } from "@/src/lib/api/ops";
 import { StageBadge } from "../pipeline/StageBadge";
@@ -52,9 +53,12 @@ export function CapturePanel({
   activeCapture?: CaptureSession | null;
 }) {
   const ot = useTranslations();
+  const config = useSiteConfig();
+  const defaultDuration = config.ops.captureDefaultDurationMs;
   const [mode, setMode] = useState<CaptureMode>("interactive");
-  const [duration, setDuration] = useState("30000");
+  const [duration, setDuration] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const effectiveDuration = duration ?? String(defaultDuration);
 
   return (
     <div className="flex flex-col gap-[20px]">
@@ -116,7 +120,7 @@ export function CapturePanel({
         </div>
 
         {mode === "fixed_duration" && (
-          <TextField name="duration" value={duration} onChange={setDuration}>
+          <TextField name="duration" value={effectiveDuration} onChange={setDuration}>
             <Label>{ot("durationMs")}</Label>
             <Input inputMode="numeric" />
           </TextField>
@@ -133,7 +137,7 @@ export function CapturePanel({
             onPress={() =>
               onStart(
                 mode,
-                mode === "fixed_duration" ? Number(duration) || 30000 : undefined,
+                mode === "fixed_duration" ? Number(effectiveDuration) || defaultDuration : undefined,
               )
             }
           >

@@ -3,8 +3,9 @@
 import { Label, ListBox, Pagination, Select } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
+import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
+
 type SortOrder = "default" | "price" | "expensive";
-const PAGE_SIZES = [8, 12, 20] as const;
 const SORT_OPTIONS: { id: SortOrder; labelKey: string }[] = [
   { id: "default", labelKey: "sortDefault" },
   { id: "price", labelKey: "sortPriceAsc" },
@@ -24,6 +25,7 @@ export function SortAndPageSizeControls({
   onPageSizeChange: (value: number) => void;
 }) {
   const ot = useTranslations();
+  const config = useSiteConfig();
   return (
     <div className="flex flex-wrap items-center gap-[12px]">
       <div className="flex items-center gap-[7px]">
@@ -43,7 +45,7 @@ export function SortAndPageSizeControls({
           <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
           <Select.Popover>
             <ListBox>
-              {PAGE_SIZES.map((size) => <ListBox.Item id={String(size)} key={size} textValue={String(size)}>{ot("plansCount", { count: size.toLocaleString("fa-IR") })}<ListBox.ItemIndicator /></ListBox.Item>)}
+              {config.catalog.pageSizes.map((size) => <ListBox.Item id={String(size)} key={size} textValue={String(size)}>{ot("plansCount", { count: size.toLocaleString("fa-IR") })}<ListBox.ItemIndicator /></ListBox.Item>)}
             </ListBox>
           </Select.Popover>
         </Select>

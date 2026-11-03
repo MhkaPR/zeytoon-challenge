@@ -8,6 +8,7 @@ import { use, useEffect } from "react";
 
 import { LinkList } from "@/src/features/ops/links/LinkList";
 import { SiteOnboarding } from "@/src/features/ops/sites/SiteOnboarding";
+import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 import { useOpsData } from "@/src/features/ops/useOpsData";
 import { getSite } from "@/src/lib/api/ops";
 export default function OpsSitePageClient({
@@ -16,6 +17,7 @@ export default function OpsSitePageClient({
   params: Promise<{ siteId: string }>;
 }) {
   const ot = useTranslations();
+  const config = useSiteConfig();
   const { siteId } = use(params);
   const id = Number(siteId);
   const { data, loading, error, reload } = useOpsData(
@@ -23,9 +25,9 @@ export default function OpsSitePageClient({
     String(id),
   );
   useEffect(() => {
-    const interval = window.setInterval(reload, 8000);
+    const interval = window.setInterval(reload, config.ops.siteRefreshMs);
     return () => window.clearInterval(interval);
-  }, [reload]);
+  }, [config.ops.siteRefreshMs, reload]);
 
   return (
     <main className="flex flex-col gap-[20px]">

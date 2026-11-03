@@ -6,6 +6,17 @@ from django.utils import timezone
 
 from admin_console.interfaces import AdminConsoleInterface
 from catalog.models import PublishedRecord
+from core.site_config import public_site_config
+
+
+class SiteConfigView(APIView):
+    """Public runtime configuration consumed by the frontend SPA."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        return Response(public_site_config())
 
 
 class PublishedPlansView(APIView):

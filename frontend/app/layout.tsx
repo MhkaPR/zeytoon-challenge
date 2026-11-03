@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
 import { Header } from "@/src/features/site/Header";
+import { SiteConfigProvider } from "@/src/features/site/SiteConfigProvider";
 
 import { geistMono, geistSans, vazirmatn } from "./fonts";
 import "./globals.css";
@@ -32,12 +33,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-[var(--ds-white)] text-[var(--ds-ink)]">
         <NextIntlClientProvider>
-          <SessionProvider>
-            <LoginDialogProvider>
-              <Header />
-              {children}
-            </LoginDialogProvider>
-          </SessionProvider>
+          <SiteConfigProvider>
+            <SessionProvider>
+              <LoginDialogProvider>
+                <Header />
+                {children}
+              </LoginDialogProvider>
+            </SessionProvider>
+          </SiteConfigProvider>
         </NextIntlClientProvider>
       </body>
     </html>

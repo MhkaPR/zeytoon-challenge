@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 import { Link, Separator, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
+import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 
 /**
  * Site footer: quick links, legal information, contact details, and social links, plus the
@@ -9,12 +10,13 @@ import NextLink from "next/link";
  */
 export function HomeFooter() {
   const ot = useTranslations();
+  const config = useSiteConfig();
   const footerLinkGroups = ot.raw("footerLinkGroups") as Array<{ title: string; links: Array<{ label: string; href: string }> }>;
   const socialLinks = [
-    { label: ot("footerSocialInstagram"), href: "https://instagram.com" },
-    { label: ot("footerSocialTelegram"), href: "https://telegram.org" },
-    { label: ot("footerSocialLinkedin"), href: "https://linkedin.com" },
-    { label: ot("footerSocialGithub"), href: "https://github.com" },
+    { label: ot("footerSocialInstagram"), href: config.social.instagram },
+    { label: ot("footerSocialTelegram"), href: config.social.telegram },
+    { label: ot("footerSocialLinkedin"), href: config.social.linkedin },
+    { label: ot("footerSocialGithub"), href: config.social.github },
   ];
   return (
     <footer className="w-full">
@@ -48,14 +50,14 @@ export function HomeFooter() {
           <Typography className="font-semibold" type="body-sm">
             {ot("footerContactTitle")}
           </Typography>
-          <Link className="text-[14px]" href={`mailto:${ot("footerEmail")}`}>
-            {ot("footerEmail")}
+          <Link className="text-[14px]" href={`mailto:${config.contact.email}`}>
+            {config.contact.email}
           </Link>
           <Typography className="text-[14px]" color="muted" type="body-sm">
-            {ot("footerPhone")}
+            {config.contact.phone}
           </Typography>
           <Typography className="text-[14px]" color="muted" type="body-sm">
-            {ot("footerAddress")}
+            {config.contact.address}
           </Typography>
         </div>
 

@@ -1,6 +1,8 @@
 
+import { DEFAULT_SITE_CONFIG, type ResourceKey as ConfigResourceKey } from "@/src/lib/config/siteConfig";
+
 export type ServiceTypeKey = "host" | "virtual_server" | "dedicated_server" | "cdn";
-export type ResourceKey = "ram" | "cpu" | "disk" | "traffic";
+export type ResourceKey = ConfigResourceKey;
 
 export interface ServiceType {
   key: ServiceTypeKey;
@@ -37,16 +39,9 @@ export const RESOURCE_LABELS: Record<ResourceKey, string> = {
   traffic: "resourceTraffic",
 };
 
-/**
- * Ordered resource values (small → big). In production these come from the API; exported
- * here so the choosers share one ordering source.
- */
-export const RESOURCE_OPTIONS: Record<ResourceKey, number[]> = {
-  ram: [1, 2, 4, 8, 16, 32, 64],
-  cpu: [1, 2, 4, 8, 16],
-  disk: [20, 50, 100, 250, 500, 1000],
-  traffic: [100, 500, 1000, 2000, 5000, 10000],
-};
+/** Built-in resource ordering; runtime values are loaded by `useSiteConfig`. */
+export const RESOURCE_OPTIONS: Record<ResourceKey, number[]> =
+  DEFAULT_SITE_CONFIG.catalog.resourceOptions;
 
 /**
  * Server locations per service type, as message keys. The list is resolved dynamically from
