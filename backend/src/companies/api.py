@@ -9,8 +9,9 @@ from django.utils import timezone
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.views import APIView
+
 
 from accounts import selectors as account_selectors
 from accounts.exceptions import ApiError
@@ -46,7 +47,7 @@ def _company_payload(company):
     }
 
 
-class AuthenticatedView(APIView):
+class AuthenticatedView(GenericAPIView):
     """Base view resolving the JWT caller and refusing guests."""
 
     def caller(self, request):

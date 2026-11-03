@@ -7,8 +7,9 @@ requires an authenticated operator (admin role); recipients are admin-managed.
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.views import APIView
+
 
 from accounts import selectors as account_selectors
 from accounts.exceptions import ApiError
@@ -24,7 +25,7 @@ from notifications.serializers import (
 User = get_user_model()
 
 
-class _AdminOnlyView(APIView):
+class _AdminOnlyView(GenericAPIView):
     def caller(self, request):
         user = account_selectors.user_from_request(request)
         if user is None:

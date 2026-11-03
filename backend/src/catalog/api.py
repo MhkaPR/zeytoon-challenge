@@ -1,7 +1,8 @@
 """Read-only public API for currently published plans."""
-
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.views import APIView
+
 from django.utils import timezone
 
 from admin_console.interfaces import AdminConsoleInterface
@@ -10,7 +11,7 @@ from catalog.models import PublishedRecord
 from core.site_config import public_site_config
 
 
-class SiteConfigView(APIView):
+class SiteConfigView(GenericAPIView):
     """Public runtime configuration consumed by the frontend SPA."""
 
     authentication_classes = []
@@ -20,15 +21,20 @@ class SiteConfigView(APIView):
         return Response(public_site_config())
 
 
-class PublishedPlansView(APIView):
+class PublishedPlansView(GenericAPIView):
     authentication_classes = []
     permission_classes = []
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = PublishedPlanFilter
 
-    def get(self, request):
-        queryset = PublishedRecord.objects.filter(is_published=True).order_by(
+
+    def get_queryset(self):
+        return PublishedRecord.objects.filter(is_published=True).order_by(
             "-published_at", "id"
         )
-        queryset = PublishedPlanFilter(request.query_params, queryset=queryset).qs
+
+    def get(self, request):
+        queryset = self.get_queryset()
 
         records = list(queryset)
         sites = AdminConsoleInterface.public_site_details(
@@ -56,10 +62,10 @@ class PublishedPlansView(APIView):
         return Response({"plans": results})
 
 
-class RecentCompaniesView(APIView):
+class RecentCompaniesView(GenericAPIView):
     authentication_classes = []
     permission_classes = []
-
+    
     def get(self, request):
         now = timezone.localtime()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

@@ -4,8 +4,9 @@ from django.conf import settings
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.views import APIView
+
 
 from accounts import selectors, services
 from accounts.exceptions import ApiError
@@ -45,7 +46,7 @@ def _set_refresh_cookie(response, refresh_token):
     return response
 
 
-class OtpRequestView(APIView):
+class OtpRequestView(GenericAPIView):
     authentication_classes = []
     throttle_classes = [OtpRequestPhoneThrottle, OtpSourceThrottle]
 
@@ -61,7 +62,7 @@ class OtpRequestView(APIView):
         return response
 
 
-class OtpVerifyView(APIView):
+class OtpVerifyView(GenericAPIView):
     authentication_classes = []
     throttle_classes = [OtpVerifyPhoneThrottle, OtpSourceThrottle]
 
@@ -86,7 +87,7 @@ class OtpVerifyView(APIView):
         return _set_refresh_cookie(response, result["tokens"]["refresh_token"])
 
 
-class TokenRefreshView(APIView):
+class TokenRefreshView(GenericAPIView):
     # A token refresh is NOT an OTP action: it must not consume the per-source OTP budget,
     # because the frontend refreshes on every page load. It still falls under the global
     # anon/user limits, which is plenty for abuse protection (FR-019 covers OTP only).
@@ -128,7 +129,7 @@ class TokenRefreshView(APIView):
         return _set_refresh_cookie(response, str(refresh))
 
 
-class LogoutView(APIView):
+class LogoutView(GenericAPIView):
     authentication_classes = []
 
     @extend_schema(request=None, responses={200: StatusSerializer})
@@ -141,7 +142,7 @@ class LogoutView(APIView):
         return response
 
 
-class SessionView(APIView):
+class SessionView(GenericAPIView):
     authentication_classes = []
 
     @extend_schema(responses={200: SessionResponseSerializer})
