@@ -3,7 +3,7 @@
 import { Button, Skeleton, Tabs, Typography } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import { RotateCcw } from "lucide-react";
-import { useMemo, useState } from "react";
+import {useEffect, useMemo, useState} from "react";
 
 import type { PublicPlan } from "@/src/lib/api/publicCatalog";
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
@@ -191,9 +191,9 @@ export function HomePlanCatalog({
     currentPage * effectivePageSize,
   );
 
-  // useEffect(() => {
-  //   setPage(1);
-  // }, [type, applied, sort, pageSize]);
+  useEffect(() => {
+    setPage(1);
+  }, [type, applied, sort, pageSize]);
 
   function updateDraft(patch: Partial<CatalogFilterValues>) {
     setDraft((prev) => ({ ...prev, ...patch }));

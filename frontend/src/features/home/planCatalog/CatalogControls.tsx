@@ -39,17 +39,6 @@ export function SortAndPageSizeControls({
           </Select.Popover>
         </Select>
       </div>
-      <div className="flex items-center gap-[7px]">
-        <Label className="shrink-0 text-[11px] text-muted">{ot("pageSizeLabel")}</Label>
-        <Select aria-label={ot("pageSizeAria")} className="w-[82px]" value={String(pageSize)} variant="primary" onChange={(value) => value && onPageSizeChange(Number(value))}>
-          <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              {config.catalog.pageSizes.map((size) => <ListBox.Item id={String(size)} key={size} textValue={String(size)}>{ot("plansCount", { count: size.toLocaleString("fa-IR") })}<ListBox.ItemIndicator /></ListBox.Item>)}
-            </ListBox>
-          </Select.Popover>
-        </Select>
-      </div>
     </div>
   );
 }
