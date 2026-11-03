@@ -15,7 +15,7 @@ export function ApprovalQueue({
   busyCompanyId?: number | null;
   onDecision: (companyId: number, outcome: "approved" | "not_approved", note: string) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   if (entries.length === 0) {
     return (
       <Typography className="text-[14px] text-muted" role="status">

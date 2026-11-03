@@ -17,7 +17,7 @@ interface DecisionOutcome {
 }
 
 export default function OpsApprovalsPage() {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { data, loading, error, reload } = useOpsData(getApprovalQueue, "approvals");
   const [busyCompanyId, setBusyCompanyId] = useState<number | null>(null);
   const [results, setResults] = useState<Record<number, DecisionOutcome>>({});
@@ -46,7 +46,7 @@ export default function OpsApprovalsPage() {
       reload();
       sites.reload();
     } catch (err) {
-      setFailure(opsErrorMessage(err));
+      setFailure(opsErrorMessage(err, ot));
     } finally {
       setBusyCompanyId(null);
     }
@@ -105,7 +105,7 @@ export default function OpsApprovalsPage() {
 
       {Object.entries(results).map(([companyId, result]) => (
         <Typography className="text-[13px] text-success" key={companyId} role="status">
-          {result.outcome === "approved" ? ot("approvedHint") : ot("rejectedHint")}{" "}
+          {result.outcome === "approved" ? ot("approvedHint") : ot("opsRejectedHint")}{" "}
           {result.siteId !== null && (
             <NextLink className="underline" href={`/ops/sites/${result.siteId}`}>
               {ot("openSite")}
@@ -135,7 +135,7 @@ export default function OpsApprovalsPage() {
 }
 
 function PipelineSiteCard({ site }: { site: Site & { links_count: number } }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const stages = [
     "discovered",
     "captured",
@@ -161,7 +161,7 @@ function PipelineSiteCard({ site }: { site: Site & { links_count: number } }) {
               className="rounded-[var(--radius)] bg-surface-secondary p-[8px] text-[12px]"
               key={stage}
             >
-              {ot("pipelineStage")[stage] ?? stage}: {site.stage_counts?.[stage] ?? 0}
+              {ot.raw("pipelineStage")[stage] ?? stage}: {site.stage_counts?.[stage] ?? 0}
             </div>
           ))}
         </div>

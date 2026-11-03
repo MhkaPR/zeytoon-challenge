@@ -2,6 +2,7 @@
 
 import { Accordion, Button, Checkbox, Label, SearchField, Slider, Typography } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
@@ -20,8 +21,9 @@ function CheckboxList({
   selected: (string | number)[];
   onToggle: (value: string | number) => void;
 }) {
+  const ot = useTranslations();
   if (!options.length) {
-    return <Typography color="muted" type="body-xs">گزینه‌ای برای این فیلتر موجود نیست.</Typography>;
+    return <Typography color="muted" type="body-xs">{ot("noFilterOptions")}</Typography>;
   }
 
   return (
@@ -73,24 +75,25 @@ function CompanyFilterSection({
   onSearchChange: (value: string) => void;
   onToggle: (value: string) => void;
 }) {
+  const ot = useTranslations();
   const [expanded, setExpanded] = useState(false);
   const filteredCompanies = companies.filter((name) => name.toLocaleLowerCase("fa").includes(search.trim().toLocaleLowerCase("fa")));
   const visibleCompanies = expanded ? filteredCompanies : filteredCompanies.slice(0, 5);
 
   return (
-    <FilterDisclosure id="companies" title={`شرکت‌ها${selected.length ? ` (${selected.length})` : ""}`}>
+    <FilterDisclosure id="companies" title={`${ot("companiesFilterTitle")}${selected.length ? ` (${selected.length})` : ""}`}>
       <div className="flex flex-col gap-[10px]">
         <SearchField
-          aria-label="جست‌وجوی شرکت"
+          aria-label={ot("searchCompany")}
           className="w-full"
           value={search}
           variant="secondary"
           onChange={onSearchChange}
         >
-          <Label className="sr-only">جست‌وجوی شرکت</Label>
+          <Label className="sr-only">{ot("searchCompany")}</Label>
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input className="w-full text-[11px]" placeholder="نام شرکت" />
+            <SearchField.Input className="w-full text-[11px]" placeholder={ot("companyName")} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
@@ -103,11 +106,11 @@ function CompanyFilterSection({
         </div>
         {filteredCompanies.length > 5 && (
           <Button className="justify-between px-0 text-[11px]" size="sm" variant="ghost" onPress={() => setExpanded((value) => !value)}>
-            {expanded ? "نمایش کمتر" : `نمایش همه (${filteredCompanies.length})`}
+            {expanded ? ot("showLess") : ot("showAllCount", { count: filteredCompanies.length })}
             {expanded ? <ChevronDown aria-hidden="true" className="size-[14px] rotate-180" /> : <ChevronDown aria-hidden="true" className="size-[14px]" />}
           </Button>
         )}
-        {search && filteredCompanies.length === 0 && <Typography color="muted" type="body-xs">شرکتی پیدا نشد.</Typography>}
+        {search && filteredCompanies.length === 0 && <Typography color="muted" type="body-xs">{ot("companyNotFound")}</Typography>}
       </div>
     </FilterDisclosure>
   );
@@ -115,15 +118,16 @@ function CompanyFilterSection({
 
 /** Monthly price range filter with its label and RTL-safe slider track. */
 function PriceRangeFilter({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const ot = useTranslations();
   return (
     <section className="flex flex-col gap-[10px] border-b border-[var(--separator)] pb-[16px]">
-      <Label className="font-semibold">محدوده هزینه ماهانه</Label>
+      <Label className="font-semibold">{ot("monthlyPriceRange")}</Label>
       <div dir="ltr">
-        <Slider aria-label="حداکثر قیمت ماهانه" maxValue={1500000} minValue={300000} step={50000} value={value} onChange={(next) => typeof next === "number" && onChange(next)}>
+        <Slider aria-label={ot("maxMonthlyPriceAria")} maxValue={1500000} minValue={300000} step={50000} value={value} onChange={(next) => typeof next === "number" && onChange(next)}>
           <Slider.Track><Slider.Fill /><Slider.Thumb /></Slider.Track>
         </Slider>
       </div>
-      <Typography color="muted" type="body-xs">تا {formatPrice(value)} تومان</Typography>
+      <Typography color="muted" type="body-xs">{ot("upToPrice", { price: formatPrice(value) })}</Typography>
     </section>
   );
 }
@@ -166,13 +170,14 @@ export function CatalogFilters({
   companySearch: string;
   onCompanySearchChange: (value: string) => void;
 }) {
+  const ot = useTranslations();
   return (
     <aside className="flex flex-col gap-[16px] rounded-[var(--radius)] border border-[var(--separator)] p-[16px] lg:rounded-none lg:border-0 lg:border-e lg:pe-[22px]">
-      <Typography className="font-semibold" type="body-sm">فیلترها</Typography>
+      <Typography className="font-semibold" type="body-sm">{ot("filtersLabel")}</Typography>
       <Accordion allowsMultipleExpanded className="w-full">
         <CompanyFilterSection companies={companies} onSearchChange={onCompanySearchChange} onToggle={onProvidersChange} search={companySearch} selected={providers} />
         {activeResources.map((resource) => (
-          <FilterDisclosure id={`resource-${resource}`} key={resource} title={`${RESOURCE_LABELS[resource]}${resourceValues[resource]?.length ? ` (${resourceValues[resource]!.length})` : ""}`}>
+          <FilterDisclosure id={`resource-${resource}`} key={resource} title={`${ot(RESOURCE_LABELS[resource])}${resourceValues[resource]?.length ? ` (${resourceValues[resource]!.length})` : ""}`}>
             <CheckboxList
               onToggle={(value) => onResourceValuesChange(resource, Number(value))}
               options={resourceOptions(resource).map((value) => ({ value, label: value.toLocaleString("fa-IR") }))}
@@ -181,12 +186,12 @@ export function CatalogFilters({
           </FilterDisclosure>
         ))}
         {operatingSystems.length > 0 && (
-          <FilterDisclosure id="operating-system" title={`سیستم‌عامل${selectedOs.length ? ` (${selectedOs.length})` : ""}`}>
+          <FilterDisclosure id="operating-system" title={`${ot("operatingSystemLabel")}${selectedOs.length ? ` (${selectedOs.length})` : ""}`}>
             <CheckboxList onToggle={(value) => onOsChange(String(value))} options={operatingSystems.map((value) => ({ value, label: value }))} selected={selectedOs} />
           </FilterDisclosure>
         )}
         {locations.length > 0 && (
-          <FilterDisclosure id="locations" title={`موقعیت سرور${selectedLocations.length ? ` (${selectedLocations.length})` : ""}`}>
+          <FilterDisclosure id="locations" title={`${ot("serverLocationLabel")}${selectedLocations.length ? ` (${selectedLocations.length})` : ""}`}>
             <CheckboxList onToggle={(value) => onLocationsChange(String(value))} options={locations.map((value) => ({ value, label: value }))} selected={selectedLocations} />
           </FilterDisclosure>
         )}

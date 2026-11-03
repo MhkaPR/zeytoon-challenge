@@ -4,16 +4,6 @@ import { useTranslations } from "next-intl";
 import { Check, Clock, Lock, X } from "lucide-react";
 
 import type { StepProgress as StepProgressItem } from "@/src/lib/api/companies";
-import { strings } from "@/src/lib/i18n/strings";
-const STEP_LABELS: Record<string, string> = {
-  company_information: strings.stepCompanyInfo,
-  verification: strings.stepVerification,
-};
-
-const STEP_DESCRIPTIONS: Record<string, string> = {
-  company_information: strings.registerStepInfoDesc,
-  verification: strings.registerStepVerificationDesc,
-};
 
 type StepState = {
   label: string;
@@ -22,10 +12,10 @@ type StepState = {
   ring: string;
 };
 
-function resolveState(state: string, completed: boolean): StepState {
+function resolveState(state: string, completed: boolean, labels: Record<string, string>): StepState {
   if (completed) {
     return {
-      label: strings.stepDone,
+      label: labels.done,
       tone: "bg-success-soft text-success-soft-foreground",
       icon: <Check className="size-4" />,
       ring: "ring-success/30",
@@ -33,7 +23,7 @@ function resolveState(state: string, completed: boolean): StepState {
   }
   if (state === "locked") {
     return {
-      label: strings.stepLocked,
+      label: labels.locked,
       tone: "bg-default text-muted",
       icon: <Lock className="size-4" />,
       ring: "ring-border",
@@ -41,14 +31,14 @@ function resolveState(state: string, completed: boolean): StepState {
   }
   else if ( state === "rejected") {
     return {
-      label: strings.stepRejected,
+      label: labels.rejected,
       tone: "bg-danger text-white",
       icon: <X className="size-4"/>,
       ring: "ring-border",
     }
   }
   return {
-    label: strings.stepPending,
+    label: labels.pending,
     tone: "bg-warning-soft text-warning-soft-foreground",
     icon: <Clock className="size-4" />,
     ring: "ring-warning/30",
@@ -66,11 +56,16 @@ export function StepProgress({
   steps: StepProgressItem[];
   currentStep?: string | null;
 }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
+  const labels = {
+    done: ot("stepDone"), locked: ot("stepLocked"), rejected: ot("stepRejected"), pending: ot("stepPending"),
+  };
+  const stepLabels: Record<string, string> = { company_information: ot("stepCompanyInfo"), verification: ot("stepVerification") };
+  const stepDescriptions: Record<string, string> = { company_information: ot("registerStepInfoDesc"), verification: ot("registerStepVerificationDesc") };
   return (
     <ol className="flex flex-col">
       {steps.map((step, index) => {
-        const resolved = resolveState(step.state, step.completed);
+        const resolved = resolveState(step.state, step.completed, labels);
         const isCurrent = step.step_key === currentStep;
         const last = index === steps.length - 1;
         return (
@@ -87,7 +82,7 @@ export function StepProgress({
             <div className={`flex flex-1 flex-col gap-[4px] ${last ? "pb-0" : "pb-[20px]"}`}>
               <div className="flex flex-wrap items-center gap-[8px]">
                 <span className="text-[15px] font-semibold">
-                  {STEP_LABELS[step.step_key] ?? step.step_key}
+                  {stepLabels[step.step_key] ?? step.step_key}
                 </span>
                 <span
                   className={`rounded-full px-[8px] py-[2px] text-[12px] font-medium ${resolved.tone}`}
@@ -96,13 +91,13 @@ export function StepProgress({
                 </span>
                 {isCurrent && (
                   <span className="rounded-full bg-accent-soft px-[8px] py-[2px] text-[12px] font-medium text-accent-soft-foreground">
-                    {t("currentStepTitle")}
+                    {ot("currentStepTitle")}
                   </span>
                 )}
               </div>
-              {STEP_DESCRIPTIONS[step.step_key] && (
+              {stepDescriptions[step.step_key] && (
                 <span className="text-[13px] leading-[1.8] text-muted">
-                  {STEP_DESCRIPTIONS[step.step_key]}
+                  {stepDescriptions[step.step_key]}
                 </span>
               )}
             </div>

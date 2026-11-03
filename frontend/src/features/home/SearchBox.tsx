@@ -10,7 +10,7 @@ import { useState } from "react";
  * matching plans and companies are rendered below the (sticky) search field.
  */
 export function SearchBox() {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const router = useRouter();
   const [query, setQuery] = useState("");
 
@@ -30,15 +30,15 @@ export function SearchBox() {
     >
       <div className="flex-1">
         <SearchField
-          aria-label={t("searchTitle")}
+          aria-label={ot("searchTitle")}
           name="q"
           value={query}
           onChange={setQuery}
         >
-          <Label className="sr-only">{t("searchTitle")}</Label>
+          <Label className="sr-only">{ot("searchTitle")}</Label>
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input placeholder={t("searchPlaceholder")} />
+            <SearchField.Input placeholder={ot("searchPlaceholder")} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>

@@ -26,7 +26,7 @@ export default function OpsCapturePage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { linkId } = use(params);
   const id = Number(linkId);
   const router = useRouter();
@@ -44,7 +44,7 @@ export default function OpsCapturePage({
 
   function fail(err: unknown) {
     setErrorCode(err instanceof AuthApiError ? err.code : null);
-    setFailure(opsErrorMessage(err));
+    setFailure(opsErrorMessage(err, ot));
   }
 
   async function start(mode: CaptureMode, durationMs?: number) {

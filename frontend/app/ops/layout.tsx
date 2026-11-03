@@ -9,14 +9,13 @@ import { Suspense, useEffect } from "react";
 
 import { useSession } from "@/src/features/auth/SessionProvider";
 import { LoginButton } from "@/src/features/auth/LoginButton";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 const NAV = [
-  { href: "/ops", label: opsStrings.navApprovals, icon: ClipboardCheck },
-  { href: "/ops/sites", label: opsStrings.navSites, icon: Globe },
-  { href: "/ops/replay", label: opsStrings.navReplay, icon: RefreshCw },
-  { href: "/ops/settings", label: opsStrings.navSettings, icon: Settings },
+  { href: "/ops", labelKey: "navApprovals", icon: ClipboardCheck },
+  { href: "/ops/sites", labelKey: "navSites", icon: Globe },
+  { href: "/ops/replay", labelKey: "navReplay", icon: RefreshCw },
+  { href: "/ops/settings", labelKey: "navSettings", icon: Settings },
 ] as const;
 
 /**
@@ -39,7 +38,7 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
 }
 
 function OpsShell({ children }: { children: React.ReactNode }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { identity } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -111,7 +110,7 @@ function OpsShell({ children }: { children: React.ReactNode }) {
                     href={item.href}
                   >
                     <Icon aria-hidden className="size-4" />
-                    {item.label}
+                    {ot(item.labelKey)}
                   </NextLink>
                 </li>
               );

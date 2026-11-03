@@ -50,7 +50,7 @@ export function FieldBindingPanel({
   bindings: Record<string, RecipeBinding>;
   onChange: (fieldKey: string, binding: RecipeBinding) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   return (
     <div className="flex flex-col gap-[12px]">
       {fields.map((field) => {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
@@ -8,10 +9,10 @@ import { Header } from "@/src/features/site/Header";
 import { geistMono, geistSans, vazirmatn } from "./fonts";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "ترب — مقایسه پلنهای میزبانی و سرور",
-  description: "جستوجو و مقایسه پلنهای میزبانی و سرور میان ارائهدهندگان مختلف.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const ot = await getTranslations();
+  return { title: ot("metaTitle"), description: ot("metaDescription") };
+}
 
 /**
  * Root layout. The product is Persian-first and fully RTL: ``lang="fa"`` and ``dir="rtl"``

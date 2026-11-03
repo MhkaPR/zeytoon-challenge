@@ -18,7 +18,7 @@ export function LoginButton({
   variant?: "header" | "menu";
   onPress?: () => void;
 }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const { open } = useLoginDialog();
 
   if (variant === "menu") {
@@ -31,7 +31,7 @@ export function LoginButton({
         }}
         variant="ghost"
       >
-        {t("login")}
+        {ot("login")}
       </Button>
     );
   }
@@ -44,7 +44,7 @@ export function LoginButton({
         open();
       }}
     >
-      {t("login")}
+      {ot("login")}
     </Button>
   );
 }

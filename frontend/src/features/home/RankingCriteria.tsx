@@ -1,21 +1,21 @@
 import { useTranslations } from "next-intl";
 import { Card, Typography } from "@heroui/react";
 
-import { rankingCriteria } from "@/src/lib/i18n/strings";
 /** Persian digits, so criterion markers read as ۱، ۲، ۳ … (DESIGN.md §8). */
 const ORDINALS = ["۱", "۲", "۳", "۴", "۵"] as const;
 
 /** Transparent explanation of the criteria used to rank companies and hosts (homepage). */
 export function RankingCriteria() {
-  const t = useTranslations("common");
+  const ot = useTranslations();
+  const rankingCriteria = ot.raw("rankingCriteria") as Array<{ title: string; body: string }>;
   return (
     <section className="flex flex-col gap-[24px]">
       <div className="flex flex-col gap-[8px]">
         <Typography className="text-[28px] font-semibold" type="h2">
-          {t("rankingTitle")}
+          {ot("rankingTitle")}
         </Typography>
         <Typography className="max-w-[720px] leading-[1.8]" color="muted">
-          {t("rankingIntro")}
+          {ot("rankingIntro")}
         </Typography>
       </div>
 

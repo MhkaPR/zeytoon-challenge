@@ -24,7 +24,7 @@ import {
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsReplayPage() {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const runs = useOpsData((token) => listReplayRuns(token), "runs");
   const alerts = useOpsData((token) => listAlerts(token), "alerts");
   const recipients = useOpsData((token) => listRecipients(token), "recipients");
@@ -45,7 +45,7 @@ export default function OpsReplayPage() {
       alerts.reload();
       recipients.reload();
     } catch (err) {
-      setFailure(opsErrorMessage(err));
+      setFailure(opsErrorMessage(err, ot));
     } finally {
       setBusy(false);
     }
@@ -61,7 +61,7 @@ export default function OpsReplayPage() {
       runs.reload();
       alerts.reload();
     } catch (err) {
-      setFailure(opsErrorMessage(err));
+      setFailure(opsErrorMessage(err, ot));
     } finally {
       setBusyLinkId(null);
     }

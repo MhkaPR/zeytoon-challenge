@@ -7,18 +7,17 @@ import NextLink from "next/link";
 
 import { getAccessToken } from "@/src/lib/session";
 import { rerunLink, type Link } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { StageBadge } from "../pipeline/StageBadge";
 
-const REVIEW_LABEL: Record<string, string> = {
-  candidate: opsStrings.reviewCandidate,
-  kept: opsStrings.reviewKept,
-  removed: opsStrings.reviewRemoved,
+const REVIEW_LABEL_KEY: Record<string, string> = {
+  candidate: "reviewCandidate",
+  kept: "reviewKept",
+  removed: "reviewRemoved",
 };
 
 /** The links already stored for a site, so manual additions are visibly recorded. */
 export function LinkList({ links }: { links: Link[] }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const [retrying, setRetrying] = useState<Set<number>>(() => new Set());
   const [queued, setQueued] = useState<Set<number>>(() => new Set());
   const [retryError, setRetryError] = useState<string | null>(null);
@@ -111,7 +110,7 @@ export function LinkList({ links }: { links: Link[] }) {
                   <StageBadge stage={link.pipeline_stage} />
                 </td>
                 <td className="py-[10px]">
-                  {REVIEW_LABEL[link.review_state] ?? link.review_state}
+                  {ot(REVIEW_LABEL_KEY[link.review_state] ?? "") || link.review_state}
                 </td>
                 <td className="py-[10px]">
                   {link.pipeline_stage === "plans_extracted" ? (

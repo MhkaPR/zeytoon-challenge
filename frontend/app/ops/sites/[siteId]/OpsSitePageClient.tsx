@@ -15,7 +15,7 @@ export default function OpsSitePageClient({
 }: {
   params: Promise<{ siteId: string }>;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { siteId } = use(params);
   const id = Number(siteId);
   const { data, loading, error, reload } = useOpsData(

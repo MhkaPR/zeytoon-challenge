@@ -8,17 +8,17 @@ import NextLink from "next/link";
  * ``next/link`` so the olive primary/secondary styles apply to real navigation anchors.
  */
 export function HomeCtas() {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   return (
     <div className="flex flex-row w-full flex-col items-stretch justify-center gap-[12px] sm:flex-row sm:items-center">
       <NextLink className={buttonVariants({ size: "lg" })} href="/companies">
-        {t("ctaViewCompanies")}
+        {ot("ctaViewCompanies")}
       </NextLink>
       <NextLink
         className={buttonVariants({ size: "lg", variant: "secondary" })}
         href="/search"
       >
-        {t("ctaViewHosts")}
+        {ot("ctaViewHosts")}
       </NextLink>
     </div>
   );

@@ -6,15 +6,14 @@ import NextLink from "next/link";
 
 import { useOpsData } from "@/src/features/ops/useOpsData";
 import { listSites } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-const STATE_LABEL: Record<string, string> = {
-  onboarding: opsStrings.stateOnboarding,
-  active: opsStrings.stateActive,
-  suspended: opsStrings.stateSuspended,
+const STATE_LABEL_KEY: Record<string, string> = {
+  onboarding: "stateOnboarding",
+  active: "stateActive",
+  suspended: "stateSuspended",
 };
 
 export default function OpsSitesPage() {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { data, loading, error } = useOpsData(listSites, "sites");
 
   return (
@@ -53,7 +52,7 @@ export default function OpsSitesPage() {
                   size="sm"
                   variant="soft"
                 >
-                  {STATE_LABEL[site.maintenance_state] ?? site.maintenance_state}
+                  {ot(STATE_LABEL_KEY[site.maintenance_state] ?? "") || site.maintenance_state}
                 </Chip>
               </div>
               <Typography className="text-[12px] text-muted">

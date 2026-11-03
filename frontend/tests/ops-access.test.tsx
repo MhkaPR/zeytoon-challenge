@@ -25,7 +25,7 @@ vi.mock("@/src/features/auth/LoginButton", () => ({
 }));
 
 import OpsLayout from "@/app/ops/layout";
-import { opsStrings } from "@/src/lib/i18n/strings";
+import { opsStrings } from "./messages";
 
 beforeEach(() => {
   replace.mockReset();

@@ -8,12 +8,12 @@ import { useRouter } from "next/navigation";
 import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
+import { maskPhone } from "./maskPhone";
 
 // The authenticated header action: the user's masked phone number opens a dropdown listing
 // "my companies" and "logout". It replaces the login button once the session is authenticated.
 export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
-  const t = useTranslations("common");
-const ot = useTranslations("ops");
+  const ot = useTranslations();
   const router = useRouter();
   const { identity, signOut } = useSession();
   const phone = identity?.user?.phone;
@@ -37,14 +37,14 @@ const ot = useTranslations("ops");
   return (
     <Dropdown>
       <Button className="gap-[6px]" variant="ghost">
-        <span className="font-medium text-foreground">{phone ?? t("userMenuLabel")}</span>
+        <span className="font-medium text-foreground">{phone ? maskPhone(phone) : ot("userMenuLabel")}</span>
         <ChevronDown aria-hidden className="size-4 text-muted" />
       </Button>
       <Dropdown.Popover>
         <Dropdown.Menu onAction={handleAction}>
-          <Dropdown.Item id="companies" textValue={t("myCompanies")}>
+          <Dropdown.Item id="companies" textValue={ot("myCompanies")}>
             <Building2 className="size-4 shrink-0 text-muted" />
-            <Label>{t("myCompanies")}</Label>
+            <Label>{ot("myCompanies")}</Label>
           </Dropdown.Item>
           {isOperatorRole(identityRole(identity)) && (
             <Dropdown.Item id="ops" textValue={ot("console")}>
@@ -52,9 +52,9 @@ const ot = useTranslations("ops");
               <Label>{ot("console")}</Label>
             </Dropdown.Item>
           )}
-          <Dropdown.Item id="logout" textValue={t("logout")} variant="danger">
+          <Dropdown.Item id="logout" textValue={ot("logout")} variant="danger">
             <LogOut className="size-4 shrink-0 text-danger" />
-            <Label>{t("logout")}</Label>
+            <Label>{ot("logout")}</Label>
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>

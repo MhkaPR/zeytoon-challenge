@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import type { ApprovalQueueEntry } from "@/src/lib/api/ops";
 function Info({ label, value, ltr }: { label: string; value: string; ltr?: boolean }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   return (
     <div className="flex items-center justify-between gap-[12px]">
       <span className="text-[12px] text-muted">{label}</span>
@@ -27,7 +27,7 @@ export function CompanyReviewCard({
   busy?: boolean;
   onDecision: (companyId: number, outcome: "approved" | "not_approved", note: string) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const [note, setNote] = useState("");
 
   return (
@@ -96,7 +96,7 @@ export function CompanyReviewCard({
 
       <div className="flex flex-wrap gap-[8px]">
         <Button isDisabled={busy} onPress={() => onDecision(entry.company_id, "approved", note)}>
-          {busy ? ot("deciding") : ot("approve")}
+          {busy ? ot("deciding") : ot("opsApprove")}
         </Button>
         <Button
           isDisabled={busy}

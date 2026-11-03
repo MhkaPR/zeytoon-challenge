@@ -46,6 +46,12 @@ export function planName(plan: PublicPlan) {
   return String(plan.values.plan_name ?? plan.values.name ?? plan.plan_type);
 }
 
-export function displayField(key: string) {
-  return key.replaceAll("_", " ");
+export function displayField(key: string, labels?: Record<string, string>) {
+  return labels?.[key] ?? key.replaceAll("_", " ");
+}
+
+export function ensureHttps(url: string) {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  return `https://${url}`;
 }

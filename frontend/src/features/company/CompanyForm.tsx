@@ -10,7 +10,7 @@ import { getAccessToken } from "@/src/lib/session";
 
 /** Standalone company-information form (step one). Only this step's input is collected. */
 export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const [fields, setFields] = useState({
     domain: "",
     company_name: "",
@@ -29,7 +29,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
     event.preventDefault();
     const token = getAccessToken();
     if (!token) {
-      setError(t("pleaseLogin"));
+      setError(ot("pleaseLogin"));
       return;
     }
     setBusy(true);
@@ -42,7 +42,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
         const missing = (err.fields as { fields?: string[] }).fields;
         setError(missing?.length ? `${err.message} (${missing.join(", ")})` : err.message);
       } else {
-        setError(t("genericError"));
+        setError(ot("genericError"));
       }
     } finally {
       setBusy(false);
@@ -52,12 +52,12 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
   return (
     <Card className="p-[32px]" variant="tertiary">
       <Card.Header>
-        <Card.Title>{t("registerNewCompany")}</Card.Title>
+        <Card.Title>{ot("registerNewCompany")}</Card.Title>
       </Card.Header>
       <Card.Content className="mt-[16px]">
       <form className="flex flex-col gap-[16px]" onSubmit={submit}>
         <TextField name="domain" value={fields.domain} onChange={(v) => update("domain", v)} isRequired>
-          <Label>{t("companyDomain")}</Label>
+          <Label>{ot("companyDomain")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -66,7 +66,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           onChange={(v) => update("company_name", v)}
           isRequired
         >
-          <Label>{t("companyName")}</Label>
+          <Label>{ot("companyName")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -75,7 +75,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           onChange={(v) => update("representative_name", v)}
           isRequired
         >
-          <Label>{t("representativeName")}</Label>
+          <Label>{ot("representativeName")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -84,7 +84,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           onChange={(v) => update("phone_number", v)}
           isRequired
         >
-          <Label>{t("companyPhone")}</Label>
+          <Label>{ot("companyPhone")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -92,7 +92,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           value={fields.internal_number}
           onChange={(v) => update("internal_number", v)}
         >
-          <Label>{t("internalNumber")}</Label>
+          <Label>{ot("internalNumber")}</Label>
           <Input />
         </TextField>
         {error ? (
@@ -101,7 +101,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           </Typography>
         ) : null}
         <Button className="self-start" isDisabled={busy} type="submit">
-          {t("submitCompany")}
+          {ot("submitCompany")}
         </Button>
       </form>
       </Card.Content>

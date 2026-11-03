@@ -19,7 +19,7 @@ import type { PublicPlan, RecentPublicCompany } from "@/src/lib/api/publicCatalo
  * Published catalog records are passed in by the server-rendered home route.
  */
 export function MainBody({ brandLogo, plans, recentCompanies }: { brandLogo?: ReactNode; plans: PublicPlan[]; recentCompanies: RecentPublicCompany[] }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   return (
     <>
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-[24px] sm:px-[32px]">
@@ -27,28 +27,25 @@ export function MainBody({ brandLogo, plans, recentCompanies }: { brandLogo?: Re
           <div className="flex flex-col items-center gap-[12px]">
             {brandLogo ?? (
               <Typography className="font-semibold text-accent" type="body-sm">
-                {t("appName")}
+                {ot("appName")}
               </Typography>
             )}
             <Typography className="text-[12px] font-medium text-accent" type="body-xs">
-              {t("brandTagline")}
+              {ot("brandTagline")}
             </Typography>
             <Typography
               className="max-w-[720px] text-[30px] font-semibold leading-[1.55] sm:text-[38px]"
               type="h1"
             >
-              {t("searchTitle")}
+              {ot("searchTitle")}
             </Typography>
             <Typography className="max-w-[600px] text-[14px] leading-[1.9] sm:text-[16px]" color="muted">
-              {t("heroSubtitle")}
+              {ot("heroSubtitle")}
             </Typography>
           </div>
 
           <div className="w-full max-w-[720px] rounded-[var(--radius)] border border-[var(--separator)] bg-surface p-[8px] shadow-overlay">
             <SearchBox />
-          </div>
-          <div className="w-full max-w-[520px]">
-            <HomeCtas />
           </div>
         </section>
 

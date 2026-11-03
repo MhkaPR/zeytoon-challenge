@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SiteOnboarding } from "@/src/features/ops/sites/SiteOnboarding";
 import type { Site } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
+import { opsStrings } from "./messages";
 import { LinkList } from "@/src/features/ops/links/LinkList";
 import { rerunLink } from "@/src/lib/api/ops";
 

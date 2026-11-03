@@ -5,19 +5,14 @@ import { Alert } from "@heroui/react";
 import { useEffect, useState } from "react";
 
 import { getPlanEligibility, type PlanEligibility } from "@/src/lib/api/companies";
-import { strings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
-
-function missingLabel(_missing: string[]): string {
-  return strings.panelBlockedVerified;
-}
 
 /**
  * Shows the plan-eligibility gate result for a verified company and names every missing
  * prerequisite so the UI can block the action with the right message (FR-031).
  */
 export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const [eligibility, setEligibility] = useState<PlanEligibility | null>(null);
 
   useEffect(() => {
@@ -34,7 +29,7 @@ export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
       <Alert status="default" >
         <Alert.Indicator />
         <Alert.Content>
-          <Alert.Description>{t("plansGateAllowed")}</Alert.Description>
+          <Alert.Description>{ot("plansGateAllowed")}</Alert.Description>
         </Alert.Content>
       </Alert>
     );
@@ -43,7 +38,7 @@ export function PlanEligibilityNotice({ companyId }: { companyId: number }) {
     <Alert status="warning">
       <Alert.Indicator />
       <Alert.Content>
-        <Alert.Description>{missingLabel(eligibility.missing)}</Alert.Description>
+        <Alert.Description>{ot("panelBlockedVerified")}</Alert.Description>
       </Alert.Content>
     </Alert>
   );

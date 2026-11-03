@@ -17,7 +17,7 @@ export function CompanyCard({
   description?: string;
   serviceType?: string;
 }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   return (
     <NextLink
       aria-label={name}
@@ -41,7 +41,7 @@ export function CompanyCard({
             {domain}
           </Typography>
         )}
-        <Card.Description>{description || t("companyCardFallback")}</Card.Description>
+        <Card.Description>{description || ot("companyCardFallback")}</Card.Description>
       </Card>
     </NextLink>
   );

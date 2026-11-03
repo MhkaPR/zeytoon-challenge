@@ -13,11 +13,10 @@ import {
 } from "@heroui/react";
 import { useState } from "react";
 
-import { opsStrings } from "@/src/lib/i18n/strings";
 const NUMBER_FIELDS = [
-  { key: "REPLAY_PERIOD_HOURS", label: opsStrings.replayPeriod },
-  { key: "FAILURE_RATE_THRESHOLD", label: opsStrings.failureThreshold },
-  { key: "FAILURE_RATE_WINDOW_RUNS", label: opsStrings.failureWindow },
+  { key: "REPLAY_PERIOD_HOURS", labelKey: "replayPeriod" },
+  { key: "FAILURE_RATE_THRESHOLD", labelKey: "failureThreshold" },
+  { key: "FAILURE_RATE_WINDOW_RUNS", labelKey: "failureWindow" },
 ] as const;
 
 export function TunablesForm({
@@ -29,7 +28,7 @@ export function TunablesForm({
   busy?: boolean;
   onSave: (values: Record<string, unknown>) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...values }));
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -51,7 +50,7 @@ export function TunablesForm({
           value={String(draft[field.key] ?? "")}
           onChange={(value) => update(field.key, Number(value))}
         >
-          <Label>{field.label}</Label>
+          <Label>{ot(field.labelKey)}</Label>
           <Input inputMode="decimal" />
         </TextField>
       ))}

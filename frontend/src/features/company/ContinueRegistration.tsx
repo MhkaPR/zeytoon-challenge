@@ -5,14 +5,8 @@ import { AlertDialog, Button, Card, Chip, Typography } from "@heroui/react";
 import { AlertCircle, ArrowLeft, Globe } from "lucide-react";
 
 import type { Company, StepProgress as StepProgressItem } from "@/src/lib/api/companies";
-import { verificationColor, verificationLabel } from "@/src/features/panel/status";
-import { strings } from "@/src/lib/i18n/strings";
+import { verificationColor, verificationLabelKey } from "@/src/features/panel/status";
 import { StepProgress } from "./StepProgress";
-
-function statusHint(status: Company["verification_status"]): string {
-  if (status === "rejected") return strings.rejectedHint;
-  return strings.pendingHint;
-}
 
 /**
  * Shown instead of the full panel for a pending or rejected company (FR-025). It states the
@@ -30,7 +24,7 @@ export function ContinueRegistration({
   currentStep?: string | null;
   onContinue?: (companyId: number) => void;
 }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   return (
     <div className="flex flex-col gap-[24px]">
       <Card className="p-6">
@@ -50,17 +44,17 @@ export function ContinueRegistration({
           </div>
 
           <Chip color={verificationColor(company.verification_status)} variant="primary">
-            {verificationLabel(company.verification_status)}
+            {ot(verificationLabelKey(company.verification_status))}
           </Chip>
         </div>
 
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-[4px]">
             <Typography className="text-[18px] font-semibold" type="h2">
-              {t("registerCompanyStepsTitle")}
+              {ot("registerCompanyStepsTitle")}
             </Typography>
             <Typography className="text-[13px] leading-[1.8]" color="muted">
-              {t("nextStepHint")}
+              {ot("nextStepHint")}
             </Typography>
           </div>
           <StepProgress currentStep={currentStep} steps={steps} />
@@ -69,7 +63,7 @@ export function ContinueRegistration({
             onPress={() => onContinue?.(company.id)}
           >
             <ArrowLeft aria-hidden className="size-4" />
-            {t("goToCurrentStep")}
+            {ot("goToCurrentStep")}
           </Button>
         </div>
       </Card>

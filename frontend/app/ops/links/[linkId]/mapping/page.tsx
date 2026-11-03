@@ -16,7 +16,7 @@ export default function OpsMappingPage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { linkId } = use(params);
   const id = Number(linkId);
   const recipeState = useOpsData((token) => getRecipe(token, id), String(id));
@@ -37,7 +37,7 @@ export default function OpsMappingPage({
       if (err instanceof AuthApiError && err.code === "recipe_incomplete") {
         setFailure(ot("recipeIncomplete"));
       } else {
-        setFailure(opsErrorMessage(err));
+        setFailure(opsErrorMessage(err, ot));
       }
     } finally {
       setBusy(false);

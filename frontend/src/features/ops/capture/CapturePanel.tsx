@@ -51,7 +51,7 @@ export function CapturePanel({
   domtrack?: DomtrackHealth | null;
   activeCapture?: CaptureSession | null;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const [mode, setMode] = useState<CaptureMode>("interactive");
   const [duration, setDuration] = useState("30000");
   const [file, setFile] = useState<File | null>(null);

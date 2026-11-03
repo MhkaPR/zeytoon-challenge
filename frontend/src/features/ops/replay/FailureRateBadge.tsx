@@ -10,7 +10,7 @@ export function FailureRateBadge({
   rate: number;
   threshold: number;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const exceeded = rate >= threshold;
   return (
     <Chip color={exceeded ? "danger" : "success"} size="sm" variant="soft">

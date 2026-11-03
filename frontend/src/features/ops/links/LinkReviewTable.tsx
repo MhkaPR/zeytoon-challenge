@@ -17,7 +17,7 @@ export function LinkReviewTable({
   busy?: boolean;
   onReview: (keepIds: number[], removeIds: number[]) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const [removed, setRemoved] = useState<Set<number>>(
     () => new Set(links.filter((link) => link.review_state === "removed").map((link) => link.id)),
   );

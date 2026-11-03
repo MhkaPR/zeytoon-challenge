@@ -12,15 +12,15 @@ import { SERVICE_TYPES, type ServiceTypeKey } from "./serviceTypes";
  * (PAGES.yaml "chips").
  */
 export function ServiceTypeChips() {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const [value, setValue] = useState<ServiceTypeKey>("host");
   return (
     <div className="flex flex-col gap-[8px]">
       <Typography type="body-xs" color="muted">
-        {t("serviceTypeLabel")}
+        {ot("serviceTypeLabel")}
       </Typography>
       <ToggleButtonGroup
-        aria-label={t("serviceTypeLabel")}
+        aria-label={ot("serviceTypeLabel")}
         className="flex-wrap"
         isDetached
         selectedKeys={[value]}
@@ -32,7 +32,7 @@ export function ServiceTypeChips() {
       >
         {SERVICE_TYPES.map((type) => (
           <ToggleButton className="rounded-full" id={type.key} key={type.key}>
-            {type.label}
+            {ot(type.labelKey)}
           </ToggleButton>
         ))}
       </ToggleButtonGroup>

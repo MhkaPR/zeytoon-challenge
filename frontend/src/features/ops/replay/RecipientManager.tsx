@@ -16,7 +16,7 @@ export function RecipientManager({
   onAdd: (userId: number, name: string) => void;
   onDeactivate: (recipientId: number) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const [userId, setUserId] = useState("");
   const [name, setName] = useState("");
 

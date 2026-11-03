@@ -10,7 +10,7 @@ import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
 import { Header } from "@/src/features/site/Header";
 import { setAccessToken } from "@/src/lib/session";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

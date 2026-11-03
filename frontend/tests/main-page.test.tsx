@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyCard } from "@/src/features/company/CompanyCard";
 import { SearchBox } from "@/src/features/home/SearchBox";
 import { MainBody } from "@/src/features/home/MainBody";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -17,21 +17,11 @@ afterEach(() => {
 
 describe("MainBody", () => {
   it("renders the hero, service categories, and reference sections", () => {
-    render(<MainBody />);
+    render(<MainBody plans={[]} recentCompanies={[]} />);
     expect(screen.getByRole("search")).toBeInTheDocument();
-    // Four service-type chips, host selected by default. HeroUI renders the single-select
-    // ToggleButtonGroup as a radiogroup, so the active chip is the checked radio.
-    expect(screen.getByRole("radio", { name: strings.serviceHost })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
-    for (const label of [
-      strings.serviceVirtualServer,
-      strings.serviceDedicatedServer,
-      strings.serviceCdn,
-    ]) {
-      expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();
-    }
+    // The two primary calls to action sit under the search box.
+    expect(screen.getAllByRole("link", { name: strings.ctaViewCompanies }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: strings.ctaViewHosts }).length).toBeGreaterThan(0);
     expect(document.getElementById("pricing")).toBeInTheDocument();
     expect(document.getElementById("providers")).toBeInTheDocument();
     expect(document.getElementById("steps")).toBeInTheDocument();

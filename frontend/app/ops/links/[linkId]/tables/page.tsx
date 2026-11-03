@@ -16,7 +16,7 @@ export default function OpsTablesPage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { linkId } = use(params);
   const id = Number(linkId);
   const { data, loading, error, reload } = useOpsData(
@@ -40,7 +40,7 @@ export default function OpsTablesPage({
       if (err instanceof AuthApiError && err.code === "labeling_disabled") {
         setFailure(ot("labelingDisabled"));
       } else {
-        setFailure(opsErrorMessage(err));
+        setFailure(opsErrorMessage(err, ot));
       }
     } finally {
       setBusy(false);

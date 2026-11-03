@@ -5,16 +5,16 @@ import NextLink from "next/link";
 import type { RecentPublicCompany } from "@/src/lib/api/publicCatalog";
 /** The three newest verified companies registered during the current month. */
 export function RecentlyApproved({ companies }: { companies: RecentPublicCompany[] }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   return (
     <section className="flex flex-col">
       <div className="flex flex-row items-end justify-between gap-[16px] py-2">
         <div className="flex flex-col gap-[8px]">
           <Typography className="text-[28px] font-semibold" type="h2">
-            {t("recentlyApprovedTitle")}
+            {ot("recentlyApprovedTitle")}
           </Typography>
           <Typography className="max-w-[720px] leading-[1.8]" color="muted">
-            {t("recentlyApprovedIntro")}
+            {ot("recentlyApprovedIntro")}
           </Typography>
         </div>
       </div>
@@ -43,7 +43,7 @@ export function RecentlyApproved({ companies }: { companies: RecentPublicCompany
         </div>
       )) : (
         <Typography className="py-[20px]" color="muted" type="body-sm">
-          در این ماه شرکتی برای نمایش اضافه نشده است.
+          {ot("recentlyApprovedEmpty")}
         </Typography>
       )}
     </section>

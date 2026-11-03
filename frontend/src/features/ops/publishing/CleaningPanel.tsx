@@ -24,7 +24,7 @@ export function CleaningPanel({
   onClean: () => void;
   onPublish: () => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   return (
     <div className="flex flex-col gap-[16px]">
       <StageBadge stage={published?.pipeline_stage ?? stage} />

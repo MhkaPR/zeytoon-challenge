@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GuestGate } from "@/src/features/auth/GuestGate";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

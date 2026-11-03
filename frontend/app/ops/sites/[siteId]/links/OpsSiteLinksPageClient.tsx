@@ -16,7 +16,7 @@ export default function OpsSiteLinksPageClient({
 }: {
   params: Promise<{ siteId: string }>;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { siteId } = use(params);
   const id = Number(siteId);
   const { data, loading, error, reload } = useOpsData(
@@ -37,7 +37,7 @@ export default function OpsSiteLinksPageClient({
     setDiscoverMessage("");
     try {
       const result = await discoverLinks(token, id);
-      setDiscoverMessage(`${result.candidates.length} لینک تازه پیدا شد؛ پردازش در صف قرار گرفت.`);
+      setDiscoverMessage(ot("linksDiscovered", { count: result.candidates.length }));
       await reload();
     } catch {
       setDiscoverMessage(ot("genericError"));
@@ -65,7 +65,7 @@ export default function OpsSiteLinksPageClient({
       </div>
       <div className="flex flex-wrap items-center gap-[12px]">
         <Button isDisabled={discovering} onPress={discoverNewLinks}>
-          {discovering ? "در حال بررسی دامنه…" : ot("discoverLinks")}
+          {discovering ? ot("checkingDomain") : ot("discoverLinks")}
         </Button>
         {discoverMessage && <Typography role="status" type="body-sm">{discoverMessage}</Typography>}
       </div>

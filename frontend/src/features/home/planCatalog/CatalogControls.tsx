@@ -1,13 +1,14 @@
 "use client";
 
 import { Label, ListBox, Pagination, Select } from "@heroui/react";
+import { useTranslations } from "next-intl";
 
 type SortOrder = "default" | "price" | "expensive";
 const PAGE_SIZES = [8, 12, 20] as const;
-const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
-  { id: "default", label: "ترتیب پیش‌فرض" },
-  { id: "price", label: "ارزان‌ترین" },
-  { id: "expensive", label: "گران‌ترین" },
+const SORT_OPTIONS: { id: SortOrder; labelKey: string }[] = [
+  { id: "default", labelKey: "sortDefault" },
+  { id: "price", labelKey: "sortPriceAsc" },
+  { id: "expensive", labelKey: "sortPriceDesc" },
 ];
 
 /** Compact HeroUI sort and page-size controls. */
@@ -22,26 +23,27 @@ export function SortAndPageSizeControls({
   pageSize: number;
   onPageSizeChange: (value: number) => void;
 }) {
+  const ot = useTranslations();
   return (
     <div className="flex flex-wrap items-center gap-[12px]">
       <div className="flex items-center gap-[7px]">
-        <Label className="shrink-0 text-[11px] text-muted">مرتب‌سازی</Label>
-        <Select aria-label="مرتب‌سازی" className="w-[145px]" value={sort} variant="primary" onChange={(value) => value && onSortChange(value as SortOrder)}>
+        <Label className="shrink-0 text-[11px] text-muted">{ot("sortLabel")}</Label>
+        <Select aria-label={ot("sortLabel")} className="w-[145px]" value={sort} variant="primary" onChange={(value) => value && onSortChange(value as SortOrder)}>
           <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
           <Select.Popover>
             <ListBox>
-              {SORT_OPTIONS.map((option) => <ListBox.Item id={option.id} key={option.id} textValue={option.label}>{option.label}<ListBox.ItemIndicator /></ListBox.Item>)}
+              {SORT_OPTIONS.map((option) => <ListBox.Item id={option.id} key={option.id} textValue={ot(option.labelKey)}>{ot(option.labelKey)}<ListBox.ItemIndicator /></ListBox.Item>)}
             </ListBox>
           </Select.Popover>
         </Select>
       </div>
       <div className="flex items-center gap-[7px]">
-        <Label className="shrink-0 text-[11px] text-muted">نمایش</Label>
-        <Select aria-label="تعداد پلن در هر صفحه" className="w-[82px]" value={String(pageSize)} variant="primary" onChange={(value) => value && onPageSizeChange(Number(value))}>
+        <Label className="shrink-0 text-[11px] text-muted">{ot("pageSizeLabel")}</Label>
+        <Select aria-label={ot("pageSizeAria")} className="w-[82px]" value={String(pageSize)} variant="primary" onChange={(value) => value && onPageSizeChange(Number(value))}>
           <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
           <Select.Popover>
             <ListBox>
-              {PAGE_SIZES.map((size) => <ListBox.Item id={String(size)} key={size} textValue={String(size)}>{size.toLocaleString("fa-IR")} پلن<ListBox.ItemIndicator /></ListBox.Item>)}
+              {PAGE_SIZES.map((size) => <ListBox.Item id={String(size)} key={size} textValue={String(size)}>{ot("plansCount", { count: size.toLocaleString("fa-IR") })}<ListBox.ItemIndicator /></ListBox.Item>)}
             </ListBox>
           </Select.Popover>
         </Select>
@@ -52,6 +54,7 @@ export function SortAndPageSizeControls({
 
 /** HeroUI pagination control for the current filtered result set. */
 export function PlanPagination({ page, totalPages, onPageChange }: { page: number; totalPages: number; onPageChange: (page: number) => void }) {
+  const ot = useTranslations();
   if (totalPages <= 1) return null;
   const pages: (number | "ellipsis")[] = [];
   if (totalPages <= 7) {
@@ -65,11 +68,11 @@ export function PlanPagination({ page, totalPages, onPageChange }: { page: numbe
   }
 
   return (
-    <Pagination aria-label="صفحه‌بندی پلن‌ها" className="justify-center" size="sm">
+    <Pagination aria-label={ot("paginationLabel")} className="justify-center" size="sm">
       <Pagination.Content>
         <Pagination.Item>
           <Pagination.Previous isDisabled={page === 1} onPress={() => onPageChange(page - 1)}>
-            <Pagination.PreviousIcon /><span>قبلی</span>
+            <Pagination.PreviousIcon /><span>{ot("previousPage")}</span>
           </Pagination.Previous>
         </Pagination.Item>
         {pages.map((item, index) => item === "ellipsis" ? (
@@ -81,7 +84,7 @@ export function PlanPagination({ page, totalPages, onPageChange }: { page: numbe
         ))}
         <Pagination.Item>
           <Pagination.Next isDisabled={page === totalPages} onPress={() => onPageChange(page + 1)}>
-            <span>بعدی</span><Pagination.NextIcon />
+            <span>{ot("nextPage")}</span><Pagination.NextIcon />
           </Pagination.Next>
         </Pagination.Item>
       </Pagination.Content>

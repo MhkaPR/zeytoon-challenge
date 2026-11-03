@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
 import { Header } from "@/src/features/site/Header";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 import { setAccessToken } from "@/src/lib/session";
 
 afterEach(() => {

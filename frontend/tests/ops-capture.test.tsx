@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CapturePanel } from "@/src/features/ops/capture/CapturePanel";
 import type { CaptureSession } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
+import { opsStrings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

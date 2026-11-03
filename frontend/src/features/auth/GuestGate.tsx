@@ -19,7 +19,7 @@ export interface GuestGateProps {
  * them to the originating page afterwards (spec FR-010, US2).
  */
 export function GuestGate({ children }: GuestGateProps) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const session = useOptionalSession();
   // Fallback identity for isolated renders (e.g. tests) where no provider is present.
   const [localIdentity, setLocalIdentity] = useState<SessionIdentity | null>(null);
@@ -37,8 +37,8 @@ export function GuestGate({ children }: GuestGateProps) {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col gap-[16px]">
-        <Typography>{t("pleaseLogin")}</Typography>
-        {!isOpen && <Button onPress={open}>{t("login")}</Button>}
+        <Typography>{ot("pleaseLogin")}</Typography>
+        {!isOpen && <Button onPress={open}>{ot("login")}</Button>}
       </div>
     );
   }

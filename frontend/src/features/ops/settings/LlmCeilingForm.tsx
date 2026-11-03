@@ -28,7 +28,7 @@ export function LlmCeilingForm({
   busy?: boolean;
   onSave: (amount: number | null, period: string) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const [amount, setAmount] = useState(ceiling === null ? "" : String(ceiling));
   const [selectedPeriod, setSelectedPeriod] = useState(period || "monthly");
 

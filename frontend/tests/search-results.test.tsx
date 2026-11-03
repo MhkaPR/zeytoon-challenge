@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 
 import { CompanyCard } from "@/src/features/company/CompanyCard";
 import { ResultsList } from "@/src/features/search/ResultsList";
-import { SEARCH_INDEX, SERVICE_TYPES, suggest } from "@/src/features/search/data";
-import { strings } from "@/src/lib/i18n/strings";
+import { SERVICE_TYPES, searchIndexFrom, suggest } from "@/src/features/search/data";
+import fa from "@/src/lib/i18n/messages/fa.json";
+import { strings } from "./messages";
+
+const searchIndex = searchIndexFrom((fa as Record<string, unknown>).searchIndex);
 
 describe("search data", () => {
   it("exposes the four service-type chips", () => {
-    expect(SERVICE_TYPES.map((type) => type.label)).toEqual([
+    expect(SERVICE_TYPES.map((type) => strings[type.labelKey])).toEqual([
       strings.serviceHost,
       strings.serviceVirtualServer,
       strings.serviceDedicatedServer,
@@ -17,17 +20,17 @@ describe("search data", () => {
   });
 
   it("suggests matches and honours the service filter", () => {
-    const all = suggest("سرور");
+    const all = suggest(searchIndex, "سرور");
     expect(all.length).toBeGreaterThan(0);
-    const cdnOnly = suggest("شبکه", "cdn");
+    const cdnOnly = suggest(searchIndex, "شبکه", "cdn");
     expect(cdnOnly.every((result) => result.service === "cdn")).toBe(true);
-    expect(suggest("", "host")).toEqual([]);
+    expect(suggest(searchIndex, "", "host")).toEqual([]);
   });
 });
 
 describe("ResultsList", () => {
   it("renders one list item per result", () => {
-    const { container } = render(<ResultsList results={SEARCH_INDEX.slice(0, 3)} />);
+    const { container } = render(<ResultsList results={searchIndex.slice(0, 3)} />);
     expect(container.querySelectorAll('[role="option"]')).toHaveLength(3);
   });
 

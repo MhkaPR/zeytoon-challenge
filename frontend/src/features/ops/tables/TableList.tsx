@@ -25,7 +25,7 @@ export function TableList({
   onExtract: () => void;
   onLabel: () => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   return (
     <div className="flex flex-col gap-[16px]">
       <div className="flex flex-wrap items-center gap-[8px]">

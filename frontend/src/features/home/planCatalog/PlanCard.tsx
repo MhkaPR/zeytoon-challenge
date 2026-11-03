@@ -1,11 +1,14 @@
 "use client";
 
-import { Card, Typography } from "@heroui/react";
-import { Building2 } from "lucide-react";
+import {Button, Card, Typography} from "@heroui/react";
+import {Building2,} from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import type { PublicPlan } from "@/src/lib/api/publicCatalog";
+import {ensureHttps, PublicPlan} from "@/src/lib/api/publicCatalog";
 import { fieldValue, formatPrice, priceOf } from "../planCatalogUtils";
+import NextLink from "next/link";
+import * as domain from "node:domain";
 
 /** Company icon with a neutral local fallback when the domain has no favicon. */
 function CompanyFavicon({ domain }: { domain: string }) {
@@ -35,6 +38,7 @@ function CompanyFavicon({ domain }: { domain: string }) {
 
 /** One published service plan. Plan name is the primary heading; provider is secondary. */
 export function PlanCard({ plan }: { plan: PublicPlan }) {
+  const ot = useTranslations();
   const price = priceOf(plan);
   const cpu = plan.values.vcpu_cores ?? plan.values.cpu_cores ?? plan.values.cpu;
   const ram = plan.values.ram_amount ?? plan.values.ram;
@@ -65,34 +69,38 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
             {price ? (
               <>
                 <Typography className="text-[15px] font-semibold" type="body-sm">{formatPrice(price)}</Typography>
-                <Typography className="text-[10px]" color="muted" type="body-xs">تومان / ماه</Typography>
+                <Typography className="text-[10px]" color="muted" type="body-xs">{ot("pricePerMonth")}</Typography>
               </>
-            ) : <Typography color="muted" type="body-sm">قیمت نامشخص</Typography>}
+            ) : <Typography color="muted" type="body-sm">{ot("priceUnknown")}</Typography>}
           </div>
         </div>
 
         <dl className="grid grid-cols-2 gap-x-[12px] gap-y-[10px] border-t border-[var(--separator)] pt-[14px] text-[11px]">
           <div className="flex flex-col gap-[3px]">
-            <dt className="text-muted">پردازنده</dt>
+            <dt className="text-muted">{ot("resourceCpu")}</dt>
             <dd>{cpu == null ? "—" : `${String(cpu)} vCPU`}</dd>
           </div>
           <div className="flex flex-col gap-[3px]">
-            <dt className="text-muted">حافظه رم</dt>
+            <dt className="text-muted">{ot("specRam")}</dt>
             <dd>{ram == null ? "—" : `${String(ram)} ${String(plan.values.ram_unit ?? "GB")}`}</dd>
           </div>
           <div className="flex flex-col gap-[3px]">
-            <dt className="text-muted">فضای ذخیره‌سازی</dt>
+            <dt className="text-muted">{ot("resourceDisk")}</dt>
             <dd>{disk == null ? "—" : `${String(disk)} ${String(plan.values.storage_unit ?? plan.values.disk_unit ?? "GB")}`}</dd>
           </div>
           <div className="flex flex-col gap-[3px]">
-            <dt className="text-muted">موقعیت</dt>
+            <dt className="text-muted">{ot("topHostsLocationLabel")}</dt>
             <dd>{location == null ? "—" : String(location)}</dd>
           </div>
         </dl>
-
-        <a className="mt-auto text-[12px] font-medium text-accent" href={`/companies/${encodeURIComponent(plan.domain)}`}>
-          مشاهده جزئیات پلن
+        <div className="flex gap-2 w-full">
+        <NextLink className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={`/companies/${encodeURIComponent(plan.domain)}`}>
+         <Button className="w-full" variant="secondary">{ot("viewPlanDetails")}</Button>
+        </NextLink>
+        <a  target="_blank" rel="noopener noreferrer" className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={ensureHttps(plan.domain)}>
+         <Button className="w-full" variant="primary">{ot("viewPlanPage")}</Button>
         </a>
+        </div>
       </Card.Content>
     </Card>
   );

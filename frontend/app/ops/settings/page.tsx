@@ -11,7 +11,7 @@ import { getLlmCeiling, getSettings, setLlmCeiling, updateSettings } from "@/src
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsSettingsPage() {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const settings = useOpsData(getSettings, "settings");
   const ceilingState = useOpsData(getLlmCeiling, "ceiling");
   const [busy, setBusy] = useState(false);
@@ -28,7 +28,7 @@ export default function OpsSettingsPage() {
       settings.reload();
       ceilingState.reload();
     } catch (err) {
-      setFailure(opsErrorMessage(err));
+      setFailure(opsErrorMessage(err, ot));
     } finally {
       setBusy(false);
     }

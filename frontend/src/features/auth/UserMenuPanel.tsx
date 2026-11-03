@@ -9,14 +9,14 @@ import { useRouter } from "next/navigation";
 import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
+import { maskPhone } from "./maskPhone";
 
 /**
  * The account block shown inside the mobile drawer: the user's recognizable masked phone
  * number followed by "my companies" and "logout". Mirrors the desktop user menu.
  */
 export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
-  const t = useTranslations("common");
-const ot = useTranslations("ops");
+  const ot = useTranslations();
   const router = useRouter();
   const { identity, signOut } = useSession();
 
@@ -24,10 +24,10 @@ const ot = useTranslations("ops");
     <div className="flex w-full flex-col gap-[12px]">
       <div className="flex flex-col gap-[2px]">
         <Typography className="text-[12px]" color="muted">
-          {t("userMenuLabel")}
+          {ot("userMenuLabel")}
         </Typography>
         <Typography className="text-[15px] font-medium">
-          {identity?.user?.phone ?? t("userMenuLabel")}
+          {identity?.user?.phone ? maskPhone(identity.user.phone) : ot("userMenuLabel")}
         </Typography>
       </div>
       <Separator />
@@ -37,7 +37,7 @@ const ot = useTranslations("ops");
         onClick={() => onNavigate?.()}
       >
         <Building2 className="size-4 shrink-0 text-muted" />
-        {t("myCompanies")}
+        {ot("myCompanies")}
       </NextLink>
       {isOperatorRole(identityRole(identity)) && (
         <NextLink
@@ -59,7 +59,7 @@ const ot = useTranslations("ops");
         variant="ghost"
       >
         <LogOut className="size-4 shrink-0" />
-        {t("logout")}
+        {ot("logout")}
       </Button>
     </div>
   );

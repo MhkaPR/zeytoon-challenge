@@ -4,13 +4,6 @@ import { useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
 import NextLink from "next/link";
 
-import { opsStrings } from "@/src/lib/i18n/strings";
-const STAGES = [
-  { key: "capture", label: opsStrings.openCapture },
-  { key: "tables", label: opsStrings.openTables },
-  { key: "mapping", label: opsStrings.openMapping },
-  { key: "publish", label: opsStrings.openPublishing },
-] as const;
 
 /** Reachable stage switcher for one link, so every console screen has a path in the UI. */
 export function LinkStageNav({
@@ -22,7 +15,11 @@ export function LinkStageNav({
   active: string;
   siteId?: number | null;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
+  const stages = [
+    { key: "capture", label: ot("openCapture") }, { key: "tables", label: ot("openTables") },
+    { key: "mapping", label: ot("openMapping") }, { key: "publish", label: ot("openPublishing") },
+  ] as const;
   return (
     <div className="flex flex-col gap-[8px]">
       {siteId != null && (
@@ -36,7 +33,7 @@ export function LinkStageNav({
       )}
       <nav aria-label={ot("console")}>
         <ul className="flex flex-wrap gap-[6px]">
-          {STAGES.map((stage) => {
+          {stages.map((stage) => {
             const isActive = stage.key === active;
             return (
               <li key={stage.key}>

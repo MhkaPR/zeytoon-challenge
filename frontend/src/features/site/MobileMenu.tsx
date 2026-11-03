@@ -19,7 +19,7 @@ import { NAV_ITEMS } from "./navItems";
  * nothing — ``SiteMenu`` shows the inline links instead (requirement: mobile header layout).
  */
 export function MobileMenu() {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const pathname = usePathname();
   const { identity, isAuthenticated } = useSession();
   const [open, setOpen] = useState(false);
@@ -28,7 +28,7 @@ export function MobileMenu() {
     <div className="md:hidden">
       <Drawer isOpen={open} onOpenChange={setOpen}>
         <Button
-          aria-label={t("menuOpen")}
+          aria-label={ot("menuOpen")}
           isIconOnly
           onPress={() => setOpen(true)}
           variant="ghost"
@@ -37,13 +37,13 @@ export function MobileMenu() {
         </Button>
         <Drawer.Backdrop>
           <Drawer.Content placement="left">
-            <Drawer.Dialog aria-label={t("menuTitle")} className="w-[300px] max-w-[85vw]">
+            <Drawer.Dialog aria-label={ot("menuTitle")} className="w-[300px] max-w-[85vw]">
               <Drawer.CloseTrigger />
               <Drawer.Header>
                 <Logo />
               </Drawer.Header>
               <Drawer.Body className="flex flex-col gap-[4px]">
-                <nav aria-label={t("menuTitle")}>
+                <nav aria-label={ot("menuTitle")}>
                   <ul className="flex flex-col">
                     {NAV_ITEMS.map((item) => (
                       <li key={item.href}>
@@ -53,7 +53,7 @@ export function MobileMenu() {
                           href={item.href}
                           onClick={() => setOpen(false)}
                         >
-                          {item.label}
+                          {ot(item.labelKey)}
                         </NextLink>
                       </li>
                     ))}

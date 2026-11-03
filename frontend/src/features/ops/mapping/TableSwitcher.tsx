@@ -13,7 +13,7 @@ export function TableSwitcher({
   selectedId: number | null;
   onChange: (tableId: number) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   return (
     <Select
       className="w-full max-w-[360px]"

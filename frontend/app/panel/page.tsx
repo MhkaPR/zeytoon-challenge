@@ -13,7 +13,7 @@ import { useActiveCompany } from "@/src/features/panel/useActiveCompany";
  * no companies, otherwise the company switcher plus the register action (FR-022, FR-023).
  */
 export default function PanelPage() {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const router = useRouter();
   const { switcher, loading } = useActiveCompany();
   const companies = switcher?.companies ?? [];
@@ -23,16 +23,16 @@ export default function PanelPage() {
       <header className="flex flex-wrap items-end justify-between gap-[16px]">
         <div className="flex flex-col gap-[6px]">
           <Typography className="text-[28px] font-semibold sm:text-[34px]" type="h1">
-            {t("companyPanel")}
+            {ot("companyPanel")}
           </Typography>
           <Typography className="max-w-[560px] text-[14px] leading-[1.8]" color="muted">
-            {t("panelSubtitle")}
+            {ot("panelSubtitle")}
           </Typography>
         </div>
         {!loading && companies.length > 0 && (
           <Button onPress={() => router.push("/panel/new")}>
             <Plus aria-hidden className="size-4" />
-            {t("registerNewCompany")}
+            {ot("registerNewCompany")}
           </Button>
         )}
       </header>
@@ -47,7 +47,7 @@ export default function PanelPage() {
       ) : (
         <div className="flex flex-col gap-[24px]">
           <Typography className="text-[18px] font-semibold" type="h2">
-            {t("panelCompaniesTitle")}
+            {ot("panelCompaniesTitle")}
           </Typography>
           <CompanySwitcher companies={companies} />
         </div>

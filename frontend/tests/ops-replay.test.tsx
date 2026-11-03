@@ -7,7 +7,7 @@ import { FailureRateBadge } from "@/src/features/ops/replay/FailureRateBadge";
 import { RecipientManager } from "@/src/features/ops/replay/RecipientManager";
 import { ReplayRunsTable } from "@/src/features/ops/replay/ReplayRunsTable";
 import type { FailureAlert, ReplayRun } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
+import { opsStrings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

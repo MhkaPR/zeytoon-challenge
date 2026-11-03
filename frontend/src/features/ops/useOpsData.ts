@@ -2,34 +2,37 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { AuthApiError } from "@/src/lib/api/auth";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
+type Translator = (key: string) => string;
+
 /** Map an API failure to a Persian message while keeping the contract code visible. */
-export function opsErrorMessage(error: unknown): string {
+export function opsErrorMessage(error: unknown, ot: Translator): string {
   if (error instanceof AuthApiError) {
     switch (error.code) {
       case "recipe_incomplete":
-        return opsStrings.recipeIncomplete;
+        return ot("recipeIncomplete");
       case "trace_required":
-        return opsStrings.traceMissing;
+        return ot("traceMissing");
       case "labeling_disabled":
-        return opsStrings.labelingDisabled;
+        return ot("labelingDisabled");
       case "llm_ceiling_exceeded":
-        return opsStrings.ceilingExceeded;
+        return ot("ceilingExceeded");
       case "admin_required":
       case "not_authenticated":
-        return opsStrings.adminOnly;
+        return ot("adminOnly");
       case "domtrack_unreachable":
-        return opsStrings.domtrackUnreachable;
+        return ot("domtrackUnreachable");
       case "capture_failed":
-        return opsStrings.captureAborted;
+        return ot("captureAborted");
       default:
-        return `${opsStrings.genericError} (${error.code})`;
+        return `${ot("genericError")} (${error.code})`;
     }
   }
-  return opsStrings.genericError;
+  return ot("genericError");
 }
 
 /**
@@ -40,6 +43,7 @@ export function useOpsData<T>(
   loader: (token: string | null) => Promise<T>,
   key: string = "",
 ) {
+  const ot = useTranslations();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +67,7 @@ export function useOpsData<T>(
         if (active) setData(result);
       })
       .catch((failure) => {
-        if (active) setError(opsErrorMessage(failure));
+        if (active) setError(opsErrorMessage(failure, ot));
       })
       .finally(() => {
         if (active) setLoading(false);

@@ -8,7 +8,7 @@ import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { getPlans, publishLink, setPlanIgnored } from "@/src/lib/api/ops";
 import { getAccessToken } from "@/src/lib/session";
 
-function flattenOther(value: unknown, parentKey = "", depth = 0): Array<{ key: string; value: string }> {
+function flattenOther(value: unknown, parentKey = "", depth = 0, fallbackLabel = ""): Array<{ key: string; value: string }> {
   if (depth > 5 || value == null) return [];
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -28,7 +28,7 @@ function flattenOther(value: unknown, parentKey = "", depth = 0): Array<{ key: s
         }
       }
     }
-    return trimmed ? [{ key: parentKey || "سایر مشخصات", value: trimmed }] : [];
+    return trimmed ? [{ key: parentKey || fallbackLabel, value: trimmed }] : [];
   }
   if (Array.isArray(value)) {
     return value.flatMap((entry) => flattenOther(entry, parentKey, depth + 1));
@@ -37,7 +37,7 @@ function flattenOther(value: unknown, parentKey = "", depth = 0): Array<{ key: s
 
   const record = value as Record<string, unknown>;
   if ("key" in record || "value" in record) {
-    const key = String(record.key ?? parentKey ?? "سایر مشخصات");
+    const key = String(record.key ?? parentKey ?? fallbackLabel);
     if (key === "values.other") return flattenOther(record.value, "", depth + 1);
     if (record.value === "" || record.value == null) return [{ key, value: "" }];
     return flattenOther(record.value, key, depth + 1);
@@ -54,7 +54,7 @@ export default function OpsPublishPage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   const { linkId } = use(params);
   const id = Number(linkId);
   const { data, loading, error, reload } = useOpsData(
@@ -74,7 +74,7 @@ export default function OpsPublishPage({
       setAccepted(false);
       reload();
     } catch (issue) {
-      setFailure(opsErrorMessage(issue));
+      setFailure(opsErrorMessage(issue, ot));
     } finally {
       setSavingPlanId(null);
     }
@@ -88,7 +88,7 @@ export default function OpsPublishPage({
       setAccepted(true);
       reload();
     } catch (issue) {
-      setFailure(opsErrorMessage(issue));
+      setFailure(opsErrorMessage(issue, ot));
     } finally {
       setBusy(false);
     }
@@ -170,7 +170,7 @@ export default function OpsPublishPage({
                       if (!details.length) return [];
                       return [
                         <div className="rounded-[var(--radius)] bg-surface-secondary p-[12px]" key="other">
-                          <dt className="mb-[8px] text-[12px] font-medium text-muted">سایر مشخصات</dt>
+                          <dt className="mb-[8px] text-[12px] font-medium text-muted">{ot("otherAttributes")}</dt>
                           <dd>
                             <ul className="flex flex-col gap-[6px]">
                               {details.map((item, index) => (

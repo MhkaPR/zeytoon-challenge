@@ -9,7 +9,7 @@ import { addCompanyLinks, type Company } from "@/src/lib/api/companies";
 import { getAccessToken } from "@/src/lib/session";
 
 import { PlanEligibilityNotice } from "./PlanEligibilityNotice";
-import { verificationColor, verificationLabel } from "./status";
+import { verificationColor, verificationLabelKey } from "./status";
 
 // Company panel: identity, verification, plan eligibility and domain link submission.
 
@@ -40,7 +40,7 @@ function InfoRow({
 }
 
 export function CompanyOverview({ company }: { company: Company }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const [urlsText, setUrlsText] = useState("");
   const [linksBusy, setLinksBusy] = useState(false);
   const [linksMessage, setLinksMessage] = useState("");
@@ -55,9 +55,9 @@ export function CompanyOverview({ company }: { company: Company }) {
     try {
       const result = await addCompanyLinks(token, company.id, urls);
       setUrlsText("");
-      setLinksMessage(`${result.links.length} لینک ثبت شد.`);
+      setLinksMessage(ot("linksAddedCount", { count: result.links.length }));
     } catch {
-      setLinksMessage(t("genericError"));
+      setLinksMessage(ot("genericError"));
     } finally {
       setLinksBusy(false);
     }
@@ -86,7 +86,7 @@ export function CompanyOverview({ company }: { company: Company }) {
           </div>
           <div className="flex flex-wrap items-center gap-[8px]">
             <Chip color={verificationColor(company.verification_status)} variant="soft">
-              {verificationLabel(company.verification_status)}
+              {ot(verificationLabelKey(company.verification_status))}
             </Chip>
           </div>
         </div>
@@ -96,12 +96,12 @@ export function CompanyOverview({ company }: { company: Company }) {
         <div className="flex flex-col">
           <InfoRow
             icon={<User className="size-4" />}
-            label={t("representativeName")}
+            label={ot("representativeName")}
             value={company.representative_name}
           />
           <InfoRow
             icon={<Phone className="size-4" />}
-            label={t("companyPhone")}
+            label={ot("companyPhone")}
             ltr
             value={
               company.internal_number
@@ -115,10 +115,10 @@ export function CompanyOverview({ company }: { company: Company }) {
       <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="default">
         <div className="flex flex-col gap-[4px]">
           <Typography className="text-[18px] font-semibold" type="h2">
-            {t("plansGateTitle")}
+            {ot("plansGateTitle")}
           </Typography>
           <Typography className="text-[13px] leading-[1.8]" color="muted">
-            {t("panelPermissionsHint")}
+            {ot("panelPermissionsHint")}
           </Typography>
         </div>
         <PlanEligibilityNotice companyId={company.id} />
@@ -126,12 +126,12 @@ export function CompanyOverview({ company }: { company: Company }) {
 
       <Card className="flex flex-col gap-[16px] p-[24px] sm:p-[32px]" variant="default">
         <div className="flex flex-col gap-[4px]">
-          <Typography className="text-[18px] font-semibold" type="h2">افزودن لینک‌های سرویس</Typography>
-          <Typography className="text-[13px] leading-[1.8]" color="muted">هر آدرس را در یک خط وارد کنید. فقط لینک‌های دامنهٔ شرکت پذیرفته می‌شوند.</Typography>
+          <Typography className="text-[18px] font-semibold" type="h2">{ot("serviceLinksTitle")}</Typography>
+          <Typography className="text-[13px] leading-[1.8]" color="muted">{ot("serviceLinksHint")}</Typography>
         </div>
-        <TextArea aria-label="لینک‌های سرویس" value={urlsText} onChange={(event) => setUrlsText(event.target.value)} placeholder="https://example.com/plans" rows={5} />
+        <TextArea aria-label={ot("serviceLinksAria")} value={urlsText} onChange={(event) => setUrlsText(event.target.value)} placeholder="https://example.com/plans" rows={5} />
         <div className="flex items-center gap-[12px]">
-          <Button isDisabled={linksBusy} onPress={submitLinks}>{linksBusy ? "در حال ثبت…" : "ثبت لینک‌ها"}</Button>
+          <Button isDisabled={linksBusy} onPress={submitLinks}>{linksBusy ? ot("submittingLinks") : ot("submitLinks")}</Button>
           {linksMessage && <Typography role="status" type="body-sm">{linksMessage}</Typography>}
         </div>
       </Card>

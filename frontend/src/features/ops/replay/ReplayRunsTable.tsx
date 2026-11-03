@@ -5,7 +5,7 @@ import { Typography } from "@heroui/react";
 
 import type { ReplayRun } from "@/src/lib/api/ops";
 export function ReplayRunsTable({ runs }: { runs: ReplayRun[] }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   if (runs.length === 0) {
     return (
       <Typography className="text-[13px] text-muted" role="status">

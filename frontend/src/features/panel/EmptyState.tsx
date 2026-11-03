@@ -6,7 +6,7 @@ import { Building2 } from "lucide-react";
 
 /** Empty state shown when the user owns no companies (FR-023). */
 export function EmptyState({ onRegister }: { onRegister?: () => void }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   return (
     <Card className="items-center gap-[20px] p-[40px] text-center" variant="default">
       <span
@@ -17,13 +17,13 @@ export function EmptyState({ onRegister }: { onRegister?: () => void }) {
       </span>
       <div className="flex flex-col gap-[8px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {t("panelEmptyTitle")}
+          {ot("panelEmptyTitle")}
         </Typography>
         <Typography className="max-w-[440px] leading-[1.8]" color="muted">
-          {t("panelEmptyBody")}
+          {ot("panelEmptyBody")}
         </Typography>
       </div>
-      <Button onPress={onRegister}>{t("registerNewCompany")}</Button>
+      <Button onPress={onRegister}>{ot("registerNewCompany")}</Button>
     </Card>
   );
 }

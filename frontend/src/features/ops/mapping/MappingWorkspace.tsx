@@ -42,7 +42,7 @@ export function MappingWorkspace({
   errorText?: string | null;
   onSave: (planType: string, bindings: RecipeBinding[]) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
 
   const [planType, setPlanType] = useState(
     initialRecipe?.plan_type ?? planTypes[0]?.key ?? "",
@@ -108,7 +108,7 @@ export function MappingWorkspace({
             if (typeof key === "string") changePlan(key);
           }}
         >
-          <Label>{ot("planType")}</Label>
+          <Label>{ot("opsPlanType")}</Label>
           <Select.Trigger>
             <Select.Value />
             <Select.Indicator />

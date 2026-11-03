@@ -18,7 +18,7 @@ export function AlertsPanel({
   busyLinkId?: number | null;
   onRerun: (linkId: number) => void;
 }) {
-  const ot = useTranslations("ops");
+  const ot = useTranslations();
   return (
     <div className="flex flex-col gap-[12px]">
       <Typography className="text-[13px] text-muted">{ot("alertsIntro")}</Typography>

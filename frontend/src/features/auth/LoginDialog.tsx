@@ -25,7 +25,7 @@ const LoginDialogContext = createContext<LoginDialogContextValue | null>(null);
  * so a successful login returns the user to the page they triggered it from.
  */
 export function LoginDialogProvider({ children }: { children: React.ReactNode }) {
-  const t = useTranslations("common");
+  const ot = useTranslations();
   const router = useRouter();
   const { refresh } = useSession();
   const [isOpen, setOpen] = useState(false);
@@ -57,13 +57,13 @@ export function LoginDialogProvider({ children }: { children: React.ReactNode })
         <Modal.Backdrop>
           <Modal.Container>
             <Modal.Dialog
-              aria-label={t("login")}
+              aria-label={ot("login")}
               className="w-full sm:max-w-[400px]"
             >
               <Modal.CloseTrigger />
               <Modal.Header>
                 <Modal.Heading className="text-[28px] font-semibold">
-                  {t("login")}
+                  {ot("login")}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>

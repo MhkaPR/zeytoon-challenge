@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LoginForm } from "@/src/features/auth/LoginForm";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

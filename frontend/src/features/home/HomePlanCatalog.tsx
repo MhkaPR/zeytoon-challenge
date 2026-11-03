@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Tabs, Typography } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -22,10 +23,6 @@ type ServiceTab = "all" | ServiceTypeKey;
 type SortOrder = "default" | "price" | "expensive";
 
 const PAGE_SIZES = [8, 12, 20] as const;
-const SERVICE_TABS: { id: ServiceTab; label: string }[] = [
-  { id: "all", label: "همه سرویس‌ها" },
-  ...SERVICE_TYPES.map(({ key, label }) => ({ id: key, label })),
-];
 const SERVICE_FOR_PLAN: Record<string, ServiceTypeKey | undefined> = {
   hosting: "host",
   wordpress: "host",
@@ -46,6 +43,11 @@ function serviceOf(plan: PublicPlan): ServiceTypeKey | undefined {
 }
 
 export function HomePlanCatalog({ plans }: { plans: PublicPlan[] }) {
+  const ot = useTranslations();
+  const serviceTabs: { id: ServiceTab; label: string }[] = [
+    { id: "all", label: ot("anyOption") },
+    ...SERVICE_TYPES.map(({ key, labelKey }) => ({ id: key, label: ot(labelKey) })),
+  ];
   const [type, setType] = useState<ServiceTab>("all");
   const [providers, setProviders] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(1500000);
@@ -138,19 +140,19 @@ export function HomePlanCatalog({ plans }: { plans: PublicPlan[] }) {
     <section className="flex flex-col gap-[24px]" aria-labelledby="home-plans-title">
       <div className="flex flex-col items-start justify-between gap-[12px] sm:flex-row sm:items-end">
         <div className="flex flex-col gap-[6px]">
-          <Typography className="text-[22px] font-semibold sm:text-[25px]" id="home-plans-title" type="h2">قیمت‌ها را کنار هم ببینید.</Typography>
-          <Typography color="muted" type="body-sm">منابع سخت‌افزاری، موقعیت جغرافیایی و امکانات را مقایسه کنید.</Typography>
+          <Typography className="text-[22px] font-semibold sm:text-[25px]" id="home-plans-title" type="h2">{ot("homePlansTitle")}</Typography>
+          <Typography color="muted" type="body-sm">{ot("homePlansIntro")}</Typography>
         </div>
-        <NextLink className="text-[13px] font-semibold text-accent" href="/companies">مشاهده همه ارائه‌دهندگان ←</NextLink>
+        <NextLink className="text-[13px] font-semibold text-accent" href="/companies">{ot("viewAllProviders")} ←</NextLink>
       </div>
 
       <Tabs className="w-full max-w-full" selectedKey={type} onSelectionChange={(key) => setType(String(key) as ServiceTab)} variant="secondary">
         <Tabs.ListContainer className="bg-transparent">
-          <Tabs.List aria-label="فیلتر سرویس‌ها" className="w-full max-w-full justify-start gap-[4px] overflow-x-auto">
-            {SERVICE_TABS.map((item) => <Tabs.Tab className="w-full px-[10px] py-[6px] text-[12px]" id={item.id} key={item.id}>{item.label}<Tabs.Indicator /></Tabs.Tab>)}
+          <Tabs.List aria-label={ot("serviceTabsLabel")} className="w-full max-w-full justify-start gap-[4px] overflow-x-auto">
+            {serviceTabs.map((item) => <Tabs.Tab className="w-full px-[10px] py-[6px] text-[12px]" id={item.id} key={item.id}>{item.label}<Tabs.Indicator /></Tabs.Tab>)}
           </Tabs.List>
         </Tabs.ListContainer>
-        {SERVICE_TABS.map((item) => <Tabs.Panel className="hidden" id={item.id} key={item.id}> </Tabs.Panel>)}
+        {serviceTabs.map((item) => <Tabs.Panel className="hidden" id={item.id} key={item.id}> </Tabs.Panel>)}
       </Tabs>
 
       <div className="grid gap-[24px] lg:grid-cols-[225px_minmax(0,1fr)] lg:gap-[32px]">
@@ -176,7 +178,7 @@ export function HomePlanCatalog({ plans }: { plans: PublicPlan[] }) {
 
         <div className="min-w-0">
           <div className="mb-[14px] flex flex-col justify-between gap-[12px] sm:flex-row sm:items-center">
-            <Typography color="muted" type="body-xs">{sortedPlans.length.toLocaleString("fa-IR")} پلن</Typography>
+            <Typography color="muted" type="body-xs">{ot("plansCount", { count: sortedPlans.length.toLocaleString("fa-IR") })}</Typography>
             <SortAndPageSizeControls onPageSizeChange={setPageSize} onSortChange={setSort} pageSize={pageSize} sort={sort} />
           </div>
 
@@ -186,13 +188,13 @@ export function HomePlanCatalog({ plans }: { plans: PublicPlan[] }) {
             </div>
           ) : (
             <div className="py-[36px] text-center text-[13px] text-muted">
-              {plans.length ? "سرویسی با این فیلترها پیدا نشد." : "هنوز طرحی برای نمایش منتشر نشده است."}
+              {plans.length ? ot("noPlansForFilters") : ot("noPlansPublished")}
             </div>
           )}
 
           <div className="mt-[18px] flex flex-col items-center justify-between gap-[14px] sm:flex-row">
-            <Typography color="muted" type="body-xs">اطلاعات طرح‌ها از وب‌سایت ارائه‌دهندگان گردآوری شده است.</Typography>
-            <Button onPress={resetFilters} size="sm" variant="secondary"><RotateCcw aria-hidden="true" className="size-[14px]" />پاک کردن فیلترها</Button>
+            <Typography color="muted" type="body-xs">{ot("plansDataNote")}</Typography>
+            <Button onPress={resetFilters} size="sm" variant="secondary"><RotateCcw aria-hidden="true" className="size-[14px]" />{ot("clearFilters")}</Button>
           </div>
           <div className="mt-[20px]">
             <PlanPagination onPageChange={setPage} page={currentPage} totalPages={totalPages} />
