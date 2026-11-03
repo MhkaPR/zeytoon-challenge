@@ -234,9 +234,11 @@ export function CatalogFilters({
     <aside
       className="flex flex-col gap-[16px] rounded-[var(--radius)] border border-[var(--separator)] p-[16px] lg:sticky lg:top-[88px] lg:max-h-[calc(100dvh-112px)] lg:overflow-y-auto lg:rounded-none lg:border-0 lg:border-e lg:pe-[22px]"
     >
+
       <Typography className="font-semibold" type="body-sm">{ot("filtersLabel")}</Typography>
 
       <Accordion allowsMultipleExpanded className="w-full">
+
         <CompanyFilterSection
           companies={companies}
           onSearchChange={onCompanySearchChange}
