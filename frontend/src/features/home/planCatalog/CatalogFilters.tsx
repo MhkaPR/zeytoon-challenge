@@ -187,9 +187,6 @@ function PriceRangeFilter({
 
 export function CatalogFilters({
   companies,
-  maxPrice,
-  priceMax,
-  onMaxPriceChange,
   providers,
   onProvidersChange,
   activeResources,
@@ -208,9 +205,6 @@ export function CatalogFilters({
   isDirty = false,
 }: {
   companies: string[];
-  maxPrice: number;
-  priceMax: number;
-  onMaxPriceChange: (value: number) => void;
   providers: string[];
   onProvidersChange: (value: string) => void;
   activeResources: ResourceKey[];
@@ -284,9 +278,6 @@ export function CatalogFilters({
           </FilterDisclosure>
         )}
       </Accordion>
-
-      <PriceRangeFilter onChange={onMaxPriceChange} priceMax={priceMax} value={maxPrice} />
-
       <Button className="w-full" variant="primary" isDisabled={!isDirty} onPress={onApply}>
         {ot("applyFilters")}
       </Button>
