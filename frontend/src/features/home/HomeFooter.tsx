@@ -1,23 +1,29 @@
-import { useTranslations } from "next-intl";
+// src/features/home/HomeFooter.tsx
+import { getTranslations } from "next-intl/server";
 import { Link, Separator, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
-import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
+import type { SiteConfig } from "@/src/lib/config/siteConfig";
+
+type FooterLinkGroup = {
+  title: string;
+  links: Array<{ label: string; href: string }>;
+};
 
 /**
  * Site footer: quick links, legal information, contact details, and social links, plus the
  * copyright line. Multi-column on desktop and stacked on mobile (DESIGN.md §9).
  */
-export function HomeFooter() {
-  const ot = useTranslations();
-  const config = useSiteConfig();
-  const footerLinkGroups = ot.raw("footerLinkGroups") as Array<{ title: string; links: Array<{ label: string; href: string }> }>;
+export async function HomeFooter({ config }: { config: SiteConfig }) {
+  const ot = await getTranslations();
+  const footerLinkGroups = ot.raw("footerLinkGroups") as FooterLinkGroup[];
   const socialLinks = [
     { label: ot("footerSocialInstagram"), href: config.social.instagram },
     { label: ot("footerSocialTelegram"), href: config.social.telegram },
     { label: ot("footerSocialLinkedin"), href: config.social.linkedin },
     { label: ot("footerSocialGithub"), href: config.social.github },
   ];
+
   return (
     <footer className="w-full">
       <Separator />

@@ -12,6 +12,8 @@ import { RankingCriteria } from "./RankingCriteria";
 import { RecentlyApproved } from "./RecentlyApproved";
 import { SearchBox } from "./SearchBox";
 import type { PublicPlan, RecentPublicCompany } from "@/src/lib/api/publicCatalog";
+import {useSiteConfig} from "@/src/features/site/SiteConfigProvider";
+import {SiteConfig} from "@/src/lib/config/siteConfig";
 
 /**
  * The main page body: hero, search, catalog, homepage sections, and site footer.
@@ -23,11 +25,13 @@ export function MainBody({
   plans,
   recentCompanies,
   loading = false,
+  siteConfig
 }: {
   brandLogo?: ReactNode;
   plans: PublicPlan[];
   recentCompanies: RecentPublicCompany[];
   loading?: boolean;
+  siteConfig: SiteConfig
 }) {
   const ot = useTranslations();
   return (
@@ -76,7 +80,7 @@ export function MainBody({
         </div>
       </div>
 
-      <HomeFooter />
+      <HomeFooter config={siteConfig}/>
     </>
   );
 }

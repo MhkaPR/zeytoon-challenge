@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-
+import dotenv from 'dotenv';
+import path from 'path';
 // Where the API lives. When deployed, set ``NEXT_PUBLIC_API_BASE_URL`` to the absolute
 // backend origin. When it is unset (the local development default) the frontend talks to the
 // API on its own origin and Next proxies those requests below.
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
@@ -25,6 +26,13 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  logging: {
+    fetches: {
+      fullUrl: false,
+      hmrRefreshes: true,
+    },
+    serverFunctions: true,
   },
 };
 

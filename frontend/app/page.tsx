@@ -1,44 +1,49 @@
-"use client";
 
-import { useEffect, useState } from "react";
-
+import { Suspense } from "react";
 import { MainBody } from "@/src/features/home/MainBody";
 import {
   getPublishedPlans,
   getRecentCompanies,
-  type PublicPlan,
-  type RecentPublicCompany,
 } from "@/src/lib/api/publicCatalog";
+import {Skeleton} from "@heroui/react";
+import {getSiteConfig} from "@/src/lib/config/siteConfig";
 
-/**
- * The ``main`` page. The page is a client-rendered SPA: it fetches the published catalog
- * from the API in the browser instead of on the server.
- */
-export default function MainPage() {
-  const [plans, setPlans] = useState<PublicPlan[]>([]);
-  const [recentCompanies, setRecentCompanies] = useState<RecentPublicCompany[]>([]);
-  const [loading, setLoading] = useState(true);
+type SearchParams = Record<string, string | string[] | undefined>;
 
-  useEffect(() => {
-    let active = true;
-    Promise.all([getPublishedPlans(), getRecentCompanies()])
-      .then(([nextPlans, nextCompanies]) => {
-        if (active) {
-          setPlans(nextPlans);
-          setRecentCompanies(nextCompanies);
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
+export default function MainPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>; // Next.js 15
+}) {
   return (
     <main className="flex flex-1 flex-col">
-      <MainBody loading={loading} plans={plans} recentCompanies={recentCompanies} />
+      <Suspense fallback={<Skeleton />}>
+        <MainContent searchParams={searchParams} />
+      </Suspense>
     </main>
   );
+}
+
+async function MainContent({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+
+  const normalized = Object.fromEntries(
+    Object.entries(params).map(([k, v]) => [
+      k,
+      Array.isArray(v) ? v[0] : v ?? "",
+    ]),
+  ) as Record<string, string>;
+
+  const [plans, recentCompanies, siteConfig] = await Promise.all([
+    getPublishedPlans(normalized),
+    getRecentCompanies(),
+    getSiteConfig()
+  ]);
+
+
+  return <MainBody plans={plans} recentCompanies={recentCompanies} siteConfig={siteConfig}/>;
 }
