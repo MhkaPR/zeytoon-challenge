@@ -175,7 +175,7 @@ def record_verification_decision(company, actor, outcome, note=""):
 
 
 def can_manage_plans(company):
-    """Only verified companies can manage plans; the service is free."""
+    """Only verified companies can manage plans."""
     missing = []
     if not company.is_verified:
         missing.append("verified")
