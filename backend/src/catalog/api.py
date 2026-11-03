@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from django.utils import timezone
 
 from admin_console.interfaces import AdminConsoleInterface
+from catalog.filters import PublishedPlanFilter
 from catalog.models import PublishedRecord
 from core.site_config import public_site_config
 
@@ -24,15 +25,12 @@ class PublishedPlansView(APIView):
     permission_classes = []
 
     def get(self, request):
-        records = PublishedRecord.objects.filter(is_published=True).order_by(
+        queryset = PublishedRecord.objects.filter(is_published=True).order_by(
             "-published_at", "id"
         )
-        domain = request.query_params.get("domain")
-        query = request.query_params.get("q", "").strip()
-        plan_type = request.query_params.get("type")
-        if plan_type:
-            records = records.filter(plan_type=plan_type)
-        records = list(records)
+        queryset = PublishedPlanFilter(request.query_params, queryset=queryset).qs
+
+        records = list(queryset)
         sites = AdminConsoleInterface.public_site_details(
             [record.site for record in records]
         )
@@ -40,12 +38,6 @@ class PublishedPlansView(APIView):
         for record in records:
             site = sites.get(record.site)
             if site is None:
-                continue
-            if domain and site["domain"].casefold() != domain.casefold():
-                continue
-            if query and query.casefold() not in (
-                f"{site['company_name']} {record.values}".casefold()
-            ):
                 continue
             results.append(
                 {
