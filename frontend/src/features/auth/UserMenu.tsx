@@ -8,9 +8,8 @@ import { useRouter } from "next/navigation";
 import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
-import { maskPhone } from "./maskPhone";
 
-// The authenticated header action: the user's masked phone number opens a dropdown listing
+// The authenticated header action: the user's phone number opens a dropdown listing
 // "my companies" and "logout". It replaces the login button once the session is authenticated.
 export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   const ot = useTranslations();
@@ -37,7 +36,7 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <Dropdown>
       <Button className="gap-[6px]" variant="ghost">
-        <span className="font-medium text-foreground">{phone ? maskPhone(phone) : ot("userMenuLabel")}</span>
+        <span className="font-medium text-foreground">{phone || ot("userMenuLabel")}</span>
         <ChevronDown aria-hidden className="size-4 text-muted" />
       </Button>
       <Dropdown.Popover>

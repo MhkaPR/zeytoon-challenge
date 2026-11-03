@@ -16,7 +16,7 @@ const entry: ApprovalQueueEntry = {
   company_name: "Example Hosting",
   representative_name: "Ali Rezaei",
   domain: "example.com",
-  phone_masked: "021***789",
+  phone_number: "02155550000",
   registered_at: "2026-10-01T10:00:00Z",
   duplicate_domain_warning: true,
   duplicate_of: [3],

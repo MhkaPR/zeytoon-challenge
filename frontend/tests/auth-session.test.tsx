@@ -76,7 +76,7 @@ describe("login end-to-end", () => {
     await user.click(screen.getByRole("button", { name: strings.loginButton }));
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "0912***6789" })).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: "+989123456789" })).toBeInTheDocument(),
     );
     expect(screen.queryByRole("button", { name: strings.login })).not.toBeInTheDocument();
   });

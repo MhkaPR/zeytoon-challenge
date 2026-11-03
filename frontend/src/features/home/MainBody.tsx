@@ -16,9 +16,19 @@ import type { PublicPlan, RecentPublicCompany } from "@/src/lib/api/publicCatalo
 /**
  * The main page body: hero, search, catalog, homepage sections, and site footer.
  *
- * Published catalog records are passed in by the server-rendered home route.
+ * Published catalog records are fetched by the client-rendered home route.
  */
-export function MainBody({ brandLogo, plans, recentCompanies }: { brandLogo?: ReactNode; plans: PublicPlan[]; recentCompanies: RecentPublicCompany[] }) {
+export function MainBody({
+  brandLogo,
+  plans,
+  recentCompanies,
+  loading = false,
+}: {
+  brandLogo?: ReactNode;
+  plans: PublicPlan[];
+  recentCompanies: RecentPublicCompany[];
+  loading?: boolean;
+}) {
   const ot = useTranslations();
   return (
     <>
@@ -51,15 +61,14 @@ export function MainBody({ brandLogo, plans, recentCompanies }: { brandLogo?: Re
 
         <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
           <section className="scroll-mt-[80px]" id="pricing">
-            <HomePlanCatalog plans={plans} />
+            <HomePlanCatalog loading={loading} plans={plans} />
           </section>
           <section className="scroll-mt-[80px]" id="providers">
-            <RecentlyApproved companies={recentCompanies} />
+            <RecentlyApproved companies={recentCompanies} loading={loading} />
           </section>
           <section className="scroll-mt-[80px]" id="steps">
             <HowItWorks />
           </section>
-          <RankingCriteria />
           <div className="rounded-[var(--radius)] bg-surface-secondary p-[20px] sm:p-[32px]">
             <AboutTorb />
           </div>

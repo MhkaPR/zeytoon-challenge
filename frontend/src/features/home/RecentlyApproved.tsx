@@ -1,10 +1,16 @@
 import { useTranslations } from "next-intl";
-import { Avatar, Typography } from "@heroui/react";
+import { Avatar, Skeleton, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
 import type { RecentPublicCompany } from "@/src/lib/api/publicCatalog";
 /** The three newest verified companies registered during the current month. */
-export function RecentlyApproved({ companies }: { companies: RecentPublicCompany[] }) {
+export function RecentlyApproved({
+  companies,
+  loading = false,
+}: {
+  companies: RecentPublicCompany[];
+  loading?: boolean;
+}) {
   const ot = useTranslations();
   return (
     <section className="flex flex-col">
@@ -20,7 +26,13 @@ export function RecentlyApproved({ companies }: { companies: RecentPublicCompany
       </div>
 
       <hr className="mx-2" />
-      {companies.length ? companies.map((company) => (
+      {loading ? (
+        <div className="flex flex-col gap-[12px] py-[16px]" aria-hidden>
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton className="h-[64px] rounded-[var(--radius)]" key={index} />
+          ))}
+        </div>
+      ) : companies.length ? companies.map((company) => (
         <div className="flex flex-col" key={company.domain}>
           <NextLink
             className="flex w-full flex-row items-center gap-[12px] rounded-[var(--radius)] p-[12px] transition-colors hover:bg-default-50 focus-visible:outline-none"

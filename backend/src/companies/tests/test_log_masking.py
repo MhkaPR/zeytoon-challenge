@@ -1,4 +1,4 @@
-"""Log-masking regression tests (FR-046, SC-012)."""
+"""Domain-event logging regression tests (FR-046)."""
 
 import json
 import logging
@@ -51,7 +51,7 @@ def _register(owner):
     )
 
 
-def test_no_event_leaks_an_unmasked_phone(owner, operator, captured_logs):
+def test_events_log_the_phone_without_masking(owner, operator, captured_logs):
     company = _register(owner)
     record_verification_decision(company, operator, "approved")
     record_credit_movement(company, "charge", 100, "payment")
@@ -59,7 +59,7 @@ def test_no_event_leaks_an_unmasked_phone(owner, operator, captured_logs):
 
     joined = "\n".join(captured_logs.records)
     assert captured_logs.records, "expected some structured events"
-    assert FULL_PHONE not in joined
+    assert FULL_PHONE in joined
     # Every record is valid JSON.
     for line in captured_logs.records:
         json.loads(line)

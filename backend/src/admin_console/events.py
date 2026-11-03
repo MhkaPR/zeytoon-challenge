@@ -1,8 +1,8 @@
-"""Structured, masked domain events for the admin console (FR-055, SC-021).
+"""Structured domain events for the admin console (FR-055, SC-021).
 
-Reuses :mod:`utils.logging`, whose ``SensitiveDataFilter`` masks phone numbers, so no
-event emitted here can leak an unmasked identifier or trace content. Hot paths use
-aggregation rather than per-item logs (Principle VII anti-noise).
+Secrets are redacted by :mod:`utils.logging`; phone numbers are not emitted by the events
+in this module. Hot paths use aggregation rather than per-item logs (Principle VII
+anti-noise).
 """
 
 import logging

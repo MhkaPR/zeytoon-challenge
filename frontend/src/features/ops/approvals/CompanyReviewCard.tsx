@@ -83,7 +83,7 @@ export function CompanyReviewCard({
             {ot("phone")}
           </span>
           <span className="text-[14px] font-medium" dir="ltr">
-            {entry.phone_masked}
+            {entry.phone_number}
           </span>
           <Info label={ot("registeredAt")} value={entry.registered_at} />
         </div>

@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe("header", () => {
-  it("shows a recognizable national-format phone and the menu button", async () => {
+  it("shows the full phone number and the menu button", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
       json: async () => ({ authenticated: true, user: { phone: "09123456789", role: "regular" } }),
@@ -31,7 +31,7 @@ describe("header", () => {
       </SessionProvider>,
     );
     // The phone number is visible without opening anything.
-    await waitFor(() => expect(screen.getByText("0912***6789")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("09123456789")).toBeInTheDocument());
     // The mobile menu button is present.
     expect(screen.getByRole("button", { name: strings.menuOpen })).toBeInTheDocument();
   });

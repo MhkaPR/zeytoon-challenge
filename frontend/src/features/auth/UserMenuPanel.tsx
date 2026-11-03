@@ -9,11 +9,10 @@ import { useRouter } from "next/navigation";
 import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 import { useSession } from "./SessionProvider";
-import { maskPhone } from "./maskPhone";
 
 /**
- * The account block shown inside the mobile drawer: the user's recognizable masked phone
- * number followed by "my companies" and "logout". Mirrors the desktop user menu.
+ * The account block shown inside the mobile drawer: the user's phone number followed by
+ * "my companies" and "logout". Mirrors the desktop user menu.
  */
 export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
   const ot = useTranslations();
@@ -27,7 +26,7 @@ export function UserMenuPanel({ onNavigate }: { onNavigate?: () => void }) {
           {ot("userMenuLabel")}
         </Typography>
         <Typography className="text-[15px] font-medium">
-          {identity?.user?.phone ? maskPhone(identity.user.phone) : ot("userMenuLabel")}
+          {identity?.user?.phone || ot("userMenuLabel")}
         </Typography>
       </div>
       <Separator />

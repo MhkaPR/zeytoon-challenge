@@ -104,15 +104,13 @@ def company_or_error(company_id):
 
 def pending_approval_payload(company):
     """Serialize one approval-queue row with the duplicate-domain warning (FR-001, FR-004)."""
-    from utils.logging import mask_phone
-
     duplicates = duplicate_domain_ids(company)
     return {
         "company_id": company.pk,
         "company_name": company.company_name,
         "representative_name": company.representative_name,
         "domain": company.domain,
-        "phone_masked": mask_phone(company.phone_number),
+        "phone_number": company.phone_number,
         "registered_at": company.created_at.isoformat(),
         "duplicate_domain_warning": bool(duplicates),
         "duplicate_of": duplicates,

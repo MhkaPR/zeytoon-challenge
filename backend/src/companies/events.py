@@ -1,12 +1,10 @@
-"""Structured, masked domain-event logging for the companies feature (FR-046).
+"""Structured domain-event logging for the companies feature (FR-046).
 
-Reuses :mod:`utils.logging`, whose ``SensitiveDataFilter`` masks phone numbers, so no event
-emitted here can leak an unmasked phone number (SC-012).
+The company phone number is emitted as-is; codes and tokens are still redacted by
+:mod:`utils.logging`.
 """
 
 import logging
-
-from utils.logging import mask_phone
 
 logger = logging.getLogger(__name__)
 

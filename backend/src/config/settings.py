@@ -438,7 +438,7 @@ OTP_HASH_SECRET = env("OTP_HASH_SECRET", SECRET_KEY)
 PHONE_DEFAULT_REGION = env("PHONE_DEFAULT_REGION", "IR")
 
 
-# Structured JSON logging with masking of sensitive identifiers
+# Structured JSON logging with redaction of codes and tokens
 
 LOGGING = {
     "version": 1,

@@ -42,7 +42,7 @@ export interface ApprovalQueueEntry {
   company_name: string;
   representative_name: string;
   domain: string;
-  phone_masked: string;
+  phone_number: string;
   registered_at: string;
   duplicate_domain_warning: boolean;
   duplicate_of: number[];

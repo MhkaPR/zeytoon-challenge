@@ -35,8 +35,8 @@ of what the automation produced.
   capture, or maintenance endpoint (FR-005, SC-004). Setting the token budget requires the
   `admin` role (Principle II).
 - CSRF: state-changing requests MUST include `X-CSRFToken` matching the CSRF cookie.
-- Masking: no response or log includes a full company phone number, and no response or log
-  includes trace content (FR-055, SC-021).
+- Phone numbers: the approval queue returns the company phone number in full. No response
+  or log includes trace content (FR-055, SC-021).
 - Idempotency: `GET` endpoints are side-effect free; discovery, refilter, capture, extraction,
   classification, plan extraction, replay, and notification dispatch are explicitly guarded
   against duplicate execution (documented per endpoint). A retried LLM call is guarded by an
@@ -82,7 +82,7 @@ List companies awaiting verification with the information needed to decide.
       "company_name": "Example Hosting",
       "representative_name": "Ali Rezaei",
       "domain": "example.com",
-      "phone_masked": "021****789",
+      "phone_number": "02123456789",
       "registered_at": "2026-10-20T09:12:00Z",
       "duplicate_domain_warning": true,
       "duplicate_of": [17]

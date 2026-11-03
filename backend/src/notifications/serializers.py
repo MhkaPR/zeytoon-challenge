@@ -53,7 +53,4 @@ class RecipientSerializer(serializers.ModelSerializer):
         fields = ("id", "user_id", "name", "is_active", "user_phone", "created_at")
 
     def get_user_phone(self, obj):
-        phone = getattr(obj.user, "phone_number", "") or ""
-        if len(phone) > 4:
-            return f"{phone[:3]}***{phone[-3:]}"
-        return ""
+        return getattr(obj.user, "phone_number", "") or ""

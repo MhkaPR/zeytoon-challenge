@@ -22,7 +22,7 @@ def _pending_company(owner):
     )
 
 
-def test_queue_lists_pending_companies_with_masked_phone(operator_client, owner):
+def test_queue_lists_pending_companies_with_full_phone(operator_client, owner):
     company = _pending_company(owner)
 
     response = operator_client.get("/api/v1/ops/approvals")
@@ -33,8 +33,8 @@ def test_queue_lists_pending_companies_with_masked_phone(operator_client, owner)
     entry = body["results"][0]
     assert entry["company_id"] == company.pk
     assert entry["domain"] == "queue.example.com"
-    assert entry["phone_masked"] != company.phone_number
-    assert company.phone_number not in str(body)
+    assert entry["phone_number"] == company.phone_number
+    assert company.phone_number in str(body)
 
 
 def test_approval_creates_site_in_onboarding_and_verifies_company(

@@ -23,8 +23,8 @@ for the local search index. All services and data are hosted in Iran.
 - Return-URL handling: users land back on the page they came from, with an allowlist and a
   default fallback.
 - Security: hashed OTPs with TTL in Redis, per-phone and per-source rate limits, failed-attempt
-  limits, temporary lockout, exact CORS allowlist, CSRF double-submit, and phone-number
-  masking in all logs.
+  limits, temporary lockout, exact CORS allowlist, CSRF double-submit, and one-time-code/token
+  redaction in logs.
 
 ### 2. Company Registration & Company Panel (`specs/002-company-registration-panel`)
 
@@ -79,7 +79,7 @@ fully RTL Persian). Product scope and governance live in `.specify/memory/consti
 backend/
   src/
     config/        Django project (settings, urls, wsgi/asgi)
-    accounts/      OTP login, users, roles, JWT, throttling, SMS gateway, log masking
+    accounts/      OTP login, users, roles, JWT, throttling, SMS gateway
     companies/     Registration steps, verification history, panel, credit ledger, crawl
     utils/         Shared TimestampedModel base + structured JSON logging
     catalog/       (scaffolded) plan catalog
@@ -253,7 +253,7 @@ cd frontend && yarn test
 
 Backend tests use pytest-django with DRF's API client, a fake SMS gateway, and time freezing
 for TTL/expiry. Coverage includes OTP contracts, implicit signup, lockout, throttling, return
-URLs, role resolution, log masking, registration, step locking, mid-step abandonment,
+URLs, role resolution, log redaction, registration, step locking, mid-step abandonment,
 verification-history immutability, panel routing/scoping, plan eligibility, the credit ledger,
 crawl gating, and archival. Each feature ships a `quickstart.md` with an end-to-end validation
 script.

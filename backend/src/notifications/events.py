@@ -1,4 +1,4 @@
-"""Structured, masked event logging for the notifications app (FR-044)."""
+"""Structured event logging for the notifications app (FR-044)."""
 
 import logging
 

@@ -322,7 +322,7 @@ def test_v11_owner_scoping_returns_not_found(auth_client, other_owner):
         assert auth_client.get(path).status_code == 404
 
 
-# --- V12: configurability + log masking --------------------------------------
+# --- V12: configurability + event logging ------------------------------------
 
 
 class _Capture(logging.Handler):
@@ -370,7 +370,7 @@ def test_v12_runtime_config_and_log_masking(auth_client, owner, operator):
 
     joined = "\n".join(handler.records)
     assert handler.records
-    assert FULL_PHONE not in joined
+    assert FULL_PHONE in joined
     assert "company_registered" in joined
     assert "company_verification_decided" in joined
     assert "company_credit_movement" in joined

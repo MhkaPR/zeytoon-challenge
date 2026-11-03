@@ -13,7 +13,6 @@ from accounts import state
 from accounts.exceptions import ApiError
 from accounts.sms import get_gateway
 from accounts.validation import normalize_phone
-from utils.logging import mask_phone
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +58,7 @@ def request_otp(raw_phone, source=None):
 
     logger.info(
         "otp.requested",
-        extra={"event": "otp_requested", "phone_masked": mask_phone(phone)},
+        extra={"event": "otp_requested", "phone": phone},
     )
     return {"status": "sent", "expires_in_seconds": ttl}
 
@@ -124,7 +123,7 @@ def verify_otp(raw_phone, code, return_url=None):
         "otp.verified",
         extra={
             "event": "otp_verified",
-            "phone_masked": mask_phone(phone),
+            "phone": phone,
         },
     )
     return {
@@ -142,7 +141,7 @@ def _register_failed_attempt(phone, force=False):
         state.set_lockout(phone)
         logger.warning(
             "otp.lockout",
-            extra={"event": "otp_lockout", "phone_masked": mask_phone(phone)},
+            extra={"event": "otp_lockout", "phone": phone},
         )
 
 

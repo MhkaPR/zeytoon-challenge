@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Tabs, Typography } from "@heroui/react";
+import { Button, Skeleton, Tabs, Typography } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import { RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -42,7 +42,7 @@ function serviceOf(plan: PublicPlan): ServiceTypeKey | undefined {
   return SERVICE_FOR_PLAN[plan.plan_type];
 }
 
-export function HomePlanCatalog({ plans }: { plans: PublicPlan[] }) {
+export function HomePlanCatalog({ plans, loading = false }: { plans: PublicPlan[]; loading?: boolean }) {
   const ot = useTranslations();
   const serviceTabs: { id: ServiceTab; label: string }[] = [
     { id: "all", label: ot("anyOption") },
@@ -182,7 +182,13 @@ export function HomePlanCatalog({ plans }: { plans: PublicPlan[] }) {
             <SortAndPageSizeControls onPageSizeChange={setPageSize} onSortChange={setSort} pageSize={pageSize} sort={sort} />
           </div>
 
-          {pagePlans.length ? (
+          {loading ? (
+            <div className="grid gap-[12px] md:grid-cols-2" aria-hidden>
+              {Array.from({ length: 4 }, (_, index) => (
+                <Skeleton className="h-[180px] rounded-[var(--radius)]" key={index} />
+              ))}
+            </div>
+          ) : pagePlans.length ? (
             <div className="grid gap-[12px] md:grid-cols-2">
               {pagePlans.map((plan) => <PlanCard key={plan.id} plan={plan} />)}
             </div>

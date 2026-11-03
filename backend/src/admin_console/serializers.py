@@ -87,7 +87,7 @@ class ApprovalQueueEntrySerializer(serializers.Serializer):
     company_name = serializers.CharField()
     representative_name = serializers.CharField()
     domain = serializers.CharField()
-    phone_masked = serializers.CharField()
+    phone_number = serializers.CharField()
     registered_at = serializers.CharField()
     duplicate_domain_warning = serializers.BooleanField()
     duplicate_of = serializers.ListField(child=serializers.IntegerField())

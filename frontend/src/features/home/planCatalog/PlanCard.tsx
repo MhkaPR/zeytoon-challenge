@@ -46,7 +46,7 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
   const location = fieldValue(plan, ["location", "datacenter_location"]);
 
   return (
-    <Card className="h-full border border-[var(--separator)] shadow-none" variant="transparent">
+    <Card className="h-full border border-[var(--separator)] shadow-none" variant="default">
       <Card.Content className="flex h-full flex-col gap-[16px] p-[18px]">
         <div className="flex items-start justify-between gap-[16px]">
           <div className="flex min-w-0 flex-col gap-[5px]">
@@ -93,7 +93,7 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
             <dd>{location == null ? "—" : String(location)}</dd>
           </div>
         </dl>
-        <div className="flex gap-2 w-full">
+        <div className="flex justify-center gap-2 w-full">
         <NextLink className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={`/companies/${encodeURIComponent(plan.domain)}`}>
          <Button className="w-full" variant="secondary">{ot("viewPlanDetails")}</Button>
         </NextLink>

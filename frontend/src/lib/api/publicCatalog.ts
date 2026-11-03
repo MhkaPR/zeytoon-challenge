@@ -13,14 +13,14 @@ export interface RecentPublicCompany {
   created_at: string;
 }
 
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Empty base = same origin. In development Next proxies ``/api/*`` to the backend (see
+// next.config.ts), so the browser talks to the API without a cross-origin round trip.
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 export async function getPublishedPlans(params: Record<string, string> = {}) {
   const query = new URLSearchParams(params);
   try {
-    const response = await fetch(`${API_ORIGIN}/api/v1/catalog/plans?${query}`, {
-      next: { revalidate: 60 },
-    });
+    const response = await fetch(`${API_BASE}/api/v1/catalog/plans?${query}`);
     if (!response.ok) return [] as PublicPlan[];
     const data = (await response.json()) as { plans?: PublicPlan[] };
     return data.plans ?? [];
@@ -31,9 +31,7 @@ export async function getPublishedPlans(params: Record<string, string> = {}) {
 
 export async function getRecentCompanies() {
   try {
-    const response = await fetch(`${API_ORIGIN}/api/v1/catalog/companies/recent`, {
-      next: { revalidate: 300 },
-    });
+    const response = await fetch(`${API_BASE}/api/v1/catalog/companies/recent`);
     if (!response.ok) return [] as RecentPublicCompany[];
     const data = (await response.json()) as { companies?: RecentPublicCompany[] };
     return data.companies ?? [];

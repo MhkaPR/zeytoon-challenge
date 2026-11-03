@@ -46,9 +46,7 @@ class User(AbstractUser, TimestampedModel):
         db_table = "accounts_user"
 
     def __str__(self):
-        from utils.logging import mask_phone
-
-        return mask_phone(self.phone_number)
+        return self.phone_number
 
     def save(self, *args, **kwargs):
         """Normalize the phone number and guarantee a non-usable password.
