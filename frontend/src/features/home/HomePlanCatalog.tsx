@@ -283,9 +283,7 @@ export function HomePlanCatalog({
           companySearch={companySearch}
           isDirty={isDirty}
           locations={activeLocations}
-          maxPrice={draft.maxPrice}
           operatingSystems={activeOperatingSystems}
-          priceMax={priceMax}
           providers={draft.providers}
           resourceOptions={resourceOptions}
           resourceValues={draft.resourceValues}
@@ -294,7 +292,6 @@ export function HomePlanCatalog({
           onApply={applyFilters}
           onCompanySearchChange={setCompanySearch}
           onLocationsChange={(value) => toggleDraftArray("locations", value)}
-          onMaxPriceChange={(value) => updateDraft({ maxPrice: value })}
           onOsChange={(value) => toggleDraftArray("os", value)}
           onProvidersChange={(value) => toggleDraftArray("providers", value)}
           onResourceValuesChange={toggleDraftResource}
