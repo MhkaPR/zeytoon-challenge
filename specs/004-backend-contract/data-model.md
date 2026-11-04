@@ -204,7 +204,10 @@ provides soft delete), be registered for audit logging, and use the shared manag
 |---|---|
 | `PublishedRecord` | Public plan record produced by the pipeline. |
 
-### Admin Console / Pipeline
+### Pipeline
+
+The pipeline application owns every model below. The admin console application owns no
+pipeline model and reaches this state through the pipeline interface.
 
 | Model | Purpose |
 |---|---|
@@ -224,6 +227,13 @@ provides soft delete), be registered for audit logging, and use the shared manag
 | `ChangeRecord` | One detected replay change. |
 | `FailureAlert` | Link failure alert. |
 | `LlmCostLedger` | Token budget and spend record. |
+
+### Admin Console
+
+The admin console has no domain models of its own. It exposes the operator approval
+queue and console endpoints and reads or mutates pipeline state through the pipeline
+application's declared interface. The approval queue reads company data through the
+companies interface.
 
 ### Removed
 

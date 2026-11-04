@@ -22,17 +22,22 @@ input schemas in the API layer, a deleted `ActionViewSet` import, non-router URL
 configuration, and a test suite built on pytest rather than the mandated Django
 `unittest` framework.
 
-The implementation approach is a contract-first normalization in four passes:
+The implementation approach is a contract-first normalization in five passes:
 
-1. **Structure and settings** — finish the `backend/src/apps/<app>` layout, the
+1. **Module boundary** — create `apps/pipeline` and move the site, link, capture,
+   extraction, classification, plan, replay, alert, and cost-ledger domain out of
+   `apps/admin_console`. Remove the `apps/notifications` application entirely. The
+   admin console keeps the operator approval and console surface and calls the
+   pipeline through its declared interface.
+2. **Structure and settings** — finish the `backend/src/apps/<app>` layout, the
    `config/settings/{base,dev,prod}.py` split, versioned view/serializer/service
    directories, and environment-driven configuration.
-2. **API boundary** — replace every ad-hoc view with generic DRF viewsets and a
+3. **API boundary** — replace every ad-hoc view with generic DRF viewsets and a
    router, replace every hand-built response with a serializer, and replace every
    Pydantic API input with a DRF serializer.
-3. **Data layer** — enforce the shared soft-delete base and manager, register every
+4. **Data layer** — enforce the shared soft-delete base and manager, register every
    model with django-auditlog, and generate new migrations for schema changes.
-4. **Operations and quality** — verify the configurable task backend, JSON logging,
+5. **Operations and quality** — verify the configurable task backend, JSON logging,
    API schema generation, WSGI production image, and migrate the test suite to Django
    `unittest` with Faker.
 
@@ -51,7 +56,9 @@ object storage or the local filesystem through Django `STORAGES`.
 
 **Testing**: Django `unittest` with Faker, run through `manage.py test`. The current
 repository uses pytest/pytest-django; migrating the existing suite to `unittest` is part
-of this plan. Coverage target is 80%, measured outside this contract.
+of this plan. The migration covers `backend/src/apps/*/tests/` and any
+`backend/src/apps/*/tests.py`; the frontend keeps its Vitest suite. Coverage target is
+80%, measured outside this contract.
 
 **Target Platform**: Linux server, WSGI (ASGI is not used).
 
@@ -66,9 +73,9 @@ Pydantic at the API boundary; every model soft-deleted and audited; migrations a
 immutable; the task backend is selected by settings; logs are structured JSON.
 
 **Scale/Scope**: One backend with the `accounts`, `companies`, `catalog`,
-`admin_console`, and shared utility applications (plus supporting internal modules),
-three delivered product specs, and one Next.js client. The contract applies to every
-current and future application.
+`admin_console`, `pipeline`, and shared utility applications (plus supporting internal
+modules), three delivered product specs, and one Next.js client. The contract applies
+to every current and future application.
 
 ## Constitution Check
 
@@ -146,7 +153,21 @@ backend/
         │   └── apps.py
         ├── companies/             # same shape
         ├── catalog/               # same shape
-        └── admin_console/         # same shape
+        ├── pipeline/              # pipeline domain: models, services/v1, tasks, tests
+        │   ├── models/            # Site, Link, CaptureSession, Trace, tables, plans,
+        │   │                      # classifications, replays, alerts, cost ledger
+        │   ├── services/v1/
+        │   ├── tasks.py
+        │   ├── interfaces.py
+        │   ├── admin.py
+        │   └── apps.py
+        └── admin_console/         # operator approval + console surface only
+            ├── views/v1/
+            ├── serializers/v1/
+            ├── services/v1/
+            ├── tests/
+            ├── urls.py
+            └── apps.py
 
 frontend/                          # Next.js client; update only where the API contract changes
 ├── app/
@@ -158,8 +179,16 @@ normalize each application to the contract shape. `manage.py` stays at
 `backend/src/manage.py`, beside `apps/` and `config/`. The project package is
 `config`; the application package is `apps`. Version directories exist only under
 `views/`, `serializers/`, and `services/`; `models/` and `tests/` are unversioned.
+The pipeline application owns the crawl-to-publish domain and its models, services,
+tasks, clients, helpers, and constants. The admin console owns the operator approval
+queue and operator console endpoints and depends on the pipeline interface.
 The Next.js client stays in `frontend/` and is touched only where the response envelope
 or endpoint paths change.
+
+The operator console surface is limited to the approval queue, verification decisions,
+and the documented operator endpoints. Pipeline constants live in
+`apps/pipeline/constants.py`; environment and deployment values stay in settings or
+django-constance.
 
 ## Complexity Tracking
 
@@ -185,3 +214,19 @@ The Phase 1 artifacts preserve the gate result from the initial check:
 
 **Re-check result**: PASS with the same two tracked items. No unresolved
 `NEEDS CLARIFICATION` markers remain in the plan or research.
+
+## Traceability
+
+| Requirement group | Success criteria |
+|---|---|
+| Project layout and configuration (FR-001–FR-006) | SC-001, SC-008 |
+| API contract (FR-007–FR-018) | SC-002, SC-003, SC-009, SC-013 |
+| Authentication and authorization (FR-019–FR-022) | SC-009 |
+| Data layer (FR-023–FR-029) | SC-004, SC-005, SC-014 |
+| Services and business logic (FR-030–FR-033) | SC-007 |
+| Background tasks (FR-034–FR-036) | SC-006 |
+| Testing (FR-037–FR-039) | SC-007 |
+| Security (FR-040–FR-043) | SC-008 |
+| Infrastructure (FR-044–FR-047) | SC-008 |
+| Module boundaries (FR-048–FR-052) | SC-011, SC-012 |
+| Cross-cutting response rules (FR-053–FR-062) | SC-013, SC-015 |

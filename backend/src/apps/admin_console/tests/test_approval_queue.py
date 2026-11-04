@@ -3,7 +3,7 @@
 import pytest
 from types import SimpleNamespace
 
-from apps.admin_console.models import Site
+from apps.pipeline.models import Site
 from apps.companies import services as company_services
 from apps.companies.models import Company
 
@@ -66,7 +66,7 @@ def test_approval_enqueues_automatic_site_pipeline_after_commit(
         "admin_console.services.transaction.on_commit", callbacks.append
     )
     monkeypatch.setattr(
-        "admin_console.tasks.run_site_pipeline_task",
+        "pipeline.tasks.run_site_pipeline_task",
         SimpleNamespace(enqueue=lambda site_id: enqueued.append(site_id)),
     )
 

@@ -25,6 +25,15 @@ to every future API.
 - Do not override `as_view` to reimplement routing.
 - Mount viewsets with a DRF router.
 
+### Module boundary
+
+- The pipeline application owns the crawl-to-publish domain models, services, tasks,
+  clients, and helpers.
+- The admin console application owns the operator approval queue and console endpoints.
+- The admin console reaches pipeline behavior through the pipeline application's
+  declared interface or services; it does not import pipeline models directly.
+- The notifications application is removed and has no routes.
+
 ## 3. Request Validation
 
 - Every request body is validated by a DRF serializer.
@@ -49,6 +58,9 @@ to every future API.
   }
 }
 ```
+
+The `page` object contains `count`, `next`, and `previous`. The default page size is
+20 unless an environment setting overrides it.
 
 ### Detail or mutation
 
@@ -118,8 +130,16 @@ Rules:
 - The schema is served at `/api/schema/`.
 - The interactive documentation is served at `/api/docs/`.
 - Every request and response serializer is reflected in the schema.
+- An old version remains available for at least one release cycle and is marked
+  deprecated in the generated documentation.
 
-## 9. Verification Checklist
+## 9. Health Check
+
+- The health check is served at `/api/health/`.
+- It returns `{"data": {"status": "ok"}}`.
+- The response is produced by a serializer.
+
+## 10. Verification Checklist
 
 - [ ] Every route is under `/api/v1/`.
 - [ ] Every endpoint is a viewset action.

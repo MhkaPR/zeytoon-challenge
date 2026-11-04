@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from apps.accounts import selectors as account_selectors
 from apps.accounts.exceptions import ApiError
 from apps.admin_console import domtrack_client, events, llm, serializers, services
-from apps.admin_console.models import CaptureSession, FailureAlert, Link, Site
+from apps.pipeline.models import CaptureSession, FailureAlert, Link, Site
 from apps.admin_console.serializers import (
     ApprovalQueueSerializer,
     CaptureStartInput,
@@ -260,7 +260,7 @@ class DiscoverLinksView(OperatorOnlyView):
         except Exception as exc:  # noqa: BLE001 - crawl/network failure
             raise ApiError("crawl_failed", str(exc)[:200], http_status=502) from exc
         if result["links"]:
-            from apps.admin_console.tasks import run_site_pipeline_task
+            from apps.pipeline.tasks import run_site_pipeline_task
 
             transaction.on_commit(
                 lambda: run_site_pipeline_task.enqueue(site.pk, discover=False)
@@ -575,7 +575,7 @@ class LinkRerunView(OperatorOnlyView):
         from django.db import transaction
         from django.tasks.base import TASK_MAX_PRIORITY
 
-        from apps.admin_console.tasks import run_site_pipeline_task
+        from apps.pipeline.tasks import run_site_pipeline_task
 
         actor = self.caller(request)
         with transaction.atomic():

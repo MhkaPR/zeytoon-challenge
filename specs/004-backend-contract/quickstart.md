@@ -137,6 +137,20 @@ docker build -f Dockerfile -t torob-backend .
 **Expected**: The image builds from the project root and starts the service with
 Gunicorn over WSGI.
 
+## 11. Verify the pipeline boundary
+
+Inspect the application packages.
+
+**Expected**:
+
+- `apps/pipeline/` owns the site, link, capture, trace, table, classification, plan,
+  replay, alert, and cost-ledger models, plus the stage services, tasks, clients, and
+  helpers.
+- `apps/admin_console/` contains only the operator approval and console surface and
+  imports pipeline behavior through the pipeline interface.
+- `apps/notifications/` does not exist, and no settings, URL, service, or test
+  references it.
+
 ## Contract Gate Review
 
 Before merging, confirm:
@@ -153,3 +167,6 @@ Before merging, confirm:
 - [ ] JSON logs are structured.
 - [ ] The schema is generated.
 - [ ] The production image builds.
+- [ ] The pipeline application owns all pipeline domain code.
+- [ ] The admin console owns no pipeline model or stage service.
+- [ ] The notifications application is removed.

@@ -243,7 +243,7 @@ class CompanyViewSet(
     def links(self, request, pk=None):
         """Let a company submit additional pages from its own domain for crawling."""
         from apps.admin_console import discovery, services as crawl_services
-        from apps.admin_console.models import Site
+        from apps.pipeline.models import Site
         from apps.admin_console.serializers import ManualLinksInput
 
         user = self.caller(request)
@@ -257,7 +257,7 @@ class CompanyViewSet(
         urls = discovery.apply_link_policy(payload.urls, host=host)
         links = crawl_services.add_links_manually(site, urls, actor=user)
         if links:
-            from apps.admin_console.tasks import run_site_pipeline_task
+            from apps.pipeline.tasks import run_site_pipeline_task
 
             transaction.on_commit(
                 lambda: run_site_pipeline_task.enqueue(site.pk, discover=False)

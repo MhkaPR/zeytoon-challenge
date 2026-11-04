@@ -1,8 +1,8 @@
 import django_filters
 
-from apps.admin_console.interfaces import AdminConsoleInterface
+from apps.pipeline.interfaces import PipelineInterface
 from apps.catalog.models import PublishedRecord
-from apps.admin_console.plan_schema import PLAN_SCHEMA, SchemaField
+from apps.pipeline.plan_schema import PLAN_SCHEMA, SchemaField
 
 
 # Sensible defaults used when a field carries a `unit_family` but the caller
@@ -115,7 +115,7 @@ class PublishedPlanFilter(django_filters.FilterSet):
                 self.filters[key] = flt
 
     def _resolve_sites(self, queryset):
-        return AdminConsoleInterface.public_site_details(
+        return PipelineInterface.public_site_details(
             [record.site for record in queryset]
         )
 

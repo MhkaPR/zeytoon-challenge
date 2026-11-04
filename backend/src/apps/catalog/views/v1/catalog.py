@@ -8,7 +8,7 @@ from rest_framework.mixins import ListModelMixin
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from apps.admin_console.interfaces import AdminConsoleInterface
+from apps.pipeline.interfaces import PipelineInterface
 from apps.catalog.filters import PublishedPlanFilter
 from apps.catalog.models import PublishedRecord
 from apps.core.site_config import public_site_config
@@ -41,7 +41,7 @@ class PublishedPlansViewSet(ListModelMixin, GenericViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         records = list(queryset)
-        sites = AdminConsoleInterface.public_site_details(
+        sites = PipelineInterface.public_site_details(
             [record.site for record in records]
         )
         results = []
@@ -75,7 +75,7 @@ class RecentCompaniesViewSet(GenericViewSet):
     def recent(self, request):
         now = timezone.localtime()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        companies = AdminConsoleInterface.public_recent_companies(month_start)
+        companies = PipelineInterface.public_recent_companies(month_start)
         return Response(
             {
                 "companies": [

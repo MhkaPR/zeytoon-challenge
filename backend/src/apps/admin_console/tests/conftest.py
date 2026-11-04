@@ -103,7 +103,7 @@ def approved_company(company, operator):
 
 @pytest.fixture
 def site(approved_company):
-    from apps.admin_console.models import Site
+    from apps.pipeline.models import Site
 
     return Site.objects.create(
         company=approved_company,
@@ -114,7 +114,7 @@ def site(approved_company):
 
 @pytest.fixture
 def kept_link(site):
-    from apps.admin_console.models import Link
+    from apps.pipeline.models import Link
 
     return Link.objects.create(
         site=site,
@@ -131,7 +131,7 @@ def traced_link(kept_link):
     from django.utils import timezone
 
     from apps.admin_console import artifacts
-    from apps.admin_console.models import Link, Trace
+    from apps.pipeline.models import Link, Trace
     from apps.admin_console.tests import factories
 
     data = factories.make_trace_bytes(url=kept_link.url)

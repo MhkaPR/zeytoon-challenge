@@ -255,6 +255,31 @@ permissive for an operator console.
   forget and violates the authorization principle.
 - Use a custom boolean flag on the user model. Rejected by the constitution.
 
+## Decision 17 — Pipeline application boundary
+
+**Decision**: Create `apps/pipeline` and move the crawl-to-publish domain out of
+`apps/admin_console`. The pipeline application owns the site, link, capture, trace,
+table, classification, plan, replay, alert, and LLM cost-ledger models, plus the stage
+services, tasks, discovery client, domtrack client, artifact helper, event emitters,
+LLM helper, plan schema, replay engine, table classifier, and pipeline constants. The
+admin console keeps the operator approval queue and console endpoints and calls the
+pipeline through a declared interface. The notifications application is removed
+entirely.
+
+**Rationale**: The pipeline is the largest and most change-prone domain. Separating it
+from operator presentation makes both sides independently testable and gives the
+pipeline a stable interface for the console and future consumers. It also removes the
+current mixing of pipeline models and stage logic inside the admin console.
+
+**Alternatives considered**:
+
+- Keep the pipeline inside `admin_console` and only rename the module. Rejected because
+  it preserves the mixed responsibilities the user asked to separate.
+- Split each pipeline stage into its own application. Rejected because the stages share
+  models and transaction boundaries; one pipeline application keeps the domain cohesive.
+- Keep the notifications application and disable its routes. Rejected because the user
+  asked for complete removal.
+
 ## Resolved unknowns
 
 No `NEEDS CLARIFICATION` markers remain. The only governance conflict is the
