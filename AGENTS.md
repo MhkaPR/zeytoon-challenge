@@ -4,6 +4,11 @@
 
 This repository is a Django/DRF backend and Next.js frontend. Backend applications live under `backend/src/` (including `config/`, `accounts/`, `companies/`, and `admin_console/`); backend tests sit beside their apps, commonly in `<app>/tests/`. The frontend uses the App Router in `frontend/app/`, feature modules in `frontend/src/features/`, shared API/i18n utilities in `frontend/src/lib/`, and Vitest tests in `frontend/tests/`. Product specs and API contracts are in `specs/`; UI tokens and component guidance are in `DESIGN.md`.
 
+## Detailed Development Rules
+
+- For frontend changes, read and follow [`frontend-rules.md`](frontend-rules.md).
+- For backend changes, read and follow [`backend-rules.md`](backend-rules.md).
+
 ## Build, Test, and Development Commands
 
 - `uv sync` — install Python dependencies.
