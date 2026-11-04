@@ -22,12 +22,20 @@ import NextLink from "next/link";
 type ServiceTab = "all" | ServiceTypeKey;
 type SortOrder = "default" | "price" | "expensive";
 
+export type CatalogSearchParams = {
+  [K in keyof CatalogFilterValues]?: string | string[] | undefined;
+};
+
 export type CatalogFilterValues = {
   providers: string[];
-  maxPrice: number;
   os: string[];
   locations: string[];
-  resourceValues: Partial<Record<ResourceKey, number[]>>;
+  ramValue: string,
+  ramUnit: string,
+  cpuCount: string,
+  storageValue: string,
+  storageUnit: string
+
 };
 
 const SERVICE_FOR_PLAN: Record<string, ServiceTypeKey | undefined> = {
@@ -52,12 +60,9 @@ function serviceOf(plan: PublicPlan): ServiceTypeKey | undefined {
 export function HomePlanCatalog({
   plans,
   loading = false,
-  onApplyFilters,
 }: {
   plans: PublicPlan[];
   loading?: boolean;
-  /** Called with the applied filter values so the parent can refetch from the API. */
-  onApplyFilters?: (filters: CatalogFilterValues) => void;
 }) {
   const config = useSiteConfig();
   const ot = useTranslations();
@@ -74,25 +79,15 @@ export function HomePlanCatalog({
   const [page, setPage] = useState(1);
   const effectivePageSize = pageSize ?? config.catalog.defaultPageSize;
 
-  // Max slider value derived from real data → position at max == "no price filter".
-  const priceMax = useMemo(() => {
-    const prices = plans
-      .map((plan) => priceOf(plan))
-      .filter((value): value is number => typeof value === "number" && value > 0);
-    const max = prices.length ? Math.max(...prices) : config.catalog.priceMax;
-    return Math.max(
-      config.catalog.priceMin,
-      Math.ceil(max / config.catalog.priceStep) * config.catalog.priceStep +
-        config.catalog.priceStep,
-    );
-  }, [config.catalog.priceMax, config.catalog.priceMin, config.catalog.priceStep, plans]);
-
   const makeDefaults = (): CatalogFilterValues => ({
     providers: [],
-    maxPrice: priceMax,
     os: [],
     locations: [],
-    resourceValues: {},
+    cpuCount: "",
+    ramUnit: "",
+    ramValue: "",
+    storageUnit: "",
+    storageValue: ""
   });
 
   const [draft, setDraft] = useState<CatalogFilterValues>(makeDefaults);

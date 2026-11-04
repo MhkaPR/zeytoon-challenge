@@ -1,18 +1,14 @@
 import { useTranslations } from "next-intl";
 import { Typography } from "@heroui/react";
 import type { ReactNode } from "react";
-
 import { AboutTorb } from "./AboutTorb";
 import { FaqSection } from "./FaqSection";
-import { HomeCtas } from "./HomeCtas";
 import { HomeFooter } from "./HomeFooter";
 import { HomePlanCatalog } from "./HomePlanCatalog";
 import { HowItWorks } from "./HowItWorks";
-import { RankingCriteria } from "./RankingCriteria";
 import { RecentlyApproved } from "./RecentlyApproved";
 import { SearchBox } from "./SearchBox";
 import type { PublicPlan, RecentPublicCompany } from "@/src/lib/api/publicCatalog";
-import {useSiteConfig} from "@/src/features/site/SiteConfigProvider";
 import {SiteConfig} from "@/src/lib/config/siteConfig";
 
 /**

@@ -1,3 +1,7 @@
+import {CatalogFilterValues, CatalogSearchParams} from "@/src/features/home/HomePlanCatalog";
+import {createQueryString} from "@/src/lib/api/utils";
+import {SearchParams} from "next/dist/server/request/search-params";
+
 export interface PublicPlan {
   id: number;
   domain: string;
@@ -17,9 +21,9 @@ export interface RecentPublicCompany {
 // next.config.ts), so the browser talks to the API without a cross-origin round trip.
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
-export async function getPublishedPlans(params: Record<string, string> = {}) {
-  const query = new URLSearchParams(params);
+export async function getPublishedPlans(params: SearchParams) {
   try {
+    const query = await createQueryString(params)
     const response = await fetch(`${API_BASE}/api/v1/catalog/plans?${query}`);
     if (!response.ok) return [] as PublicPlan[];
     const data = (await response.json()) as { plans?: PublicPlan[] };

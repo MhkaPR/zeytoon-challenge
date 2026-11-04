@@ -7,8 +7,7 @@ import {
 } from "@/src/lib/api/publicCatalog";
 import {Skeleton} from "@heroui/react";
 import {getSiteConfig} from "@/src/lib/config/siteConfig";
-
-type SearchParams = Record<string, string | string[] | undefined>;
+import {SearchParams} from "next/dist/server/request/search-params";
 
 export default function MainPage({
   searchParams,
@@ -30,16 +29,9 @@ async function MainContent({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-
-  const normalized = Object.fromEntries(
-    Object.entries(params).map(([k, v]) => [
-      k,
-      Array.isArray(v) ? v[0] : v ?? "",
-    ]),
-  ) as Record<string, string>;
-
+  new URLSearchParams()
   const [plans, recentCompanies, siteConfig] = await Promise.all([
-    getPublishedPlans(normalized),
+    getPublishedPlans(params),
     getRecentCompanies(),
     getSiteConfig()
   ]);
