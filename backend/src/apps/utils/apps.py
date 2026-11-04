@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class UtilsConfig(AppConfig):
-    name = "utils"
+    name = "apps.utils"
 
     def ready(self):
         """Register project models for actor-aware audit history."""

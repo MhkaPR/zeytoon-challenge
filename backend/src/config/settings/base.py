@@ -66,14 +66,14 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "storages",
     "auditlog",
-    "admin_console",
+    "apps.admin_console",
     "django_tasks_db.apps.TasksAppConfig",
     # Local
-    "utils",
-    "accounts",
-    "companies",
-    "catalog",
-    "notifications",
+    "apps.utils",
+    "apps.accounts",
+    "apps.companies",
+    "apps.catalog",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -188,7 +188,7 @@ REST_FRAMEWORK = {
         # the per-phone limits above are what actually stop credential abuse.
         "otp_source": env("THROTTLE_OTP_SOURCE", "120/hour"),
     },
-    "EXCEPTION_HANDLER": "accounts.exceptions.api_exception_handler",
+    "EXCEPTION_HANDLER": "apps.accounts.exceptions.api_exception_handler",
 }
 
 SPECTACULAR_SETTINGS = {
@@ -472,7 +472,7 @@ CONSTANCE_CONFIG = {
 
 # SMS gateway (credentials from environment only)
 
-SMS_GATEWAY_BACKEND = env("SMS_GATEWAY_BACKEND", "accounts.sms.ConsoleSmsGateway")
+SMS_GATEWAY_BACKEND = env("SMS_GATEWAY_BACKEND", "apps.accounts.sms.ConsoleSmsGateway")
 SMS_GATEWAY_API_KEY = env("SMS_GATEWAY_API_KEY")
 SMS_GATEWAY_SENDER = env("SMS_GATEWAY_SENDER")
 SMS_GATEWAY_BASE_URL = env("SMS_GATEWAY_BASE_URL")
@@ -490,10 +490,10 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
-        "mask_sensitive": {"()": "utils.logging.SensitiveDataFilter"},
+        "mask_sensitive": {"()": "apps.utils.logging.SensitiveDataFilter"},
     },
     "formatters": {
-        "json": {"()": "utils.logging.JsonFormatter"},
+        "json": {"()": "apps.utils.logging.JsonFormatter"},
     },
     "handlers": {
         "console": {

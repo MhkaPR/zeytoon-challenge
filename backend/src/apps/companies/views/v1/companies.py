@@ -20,7 +20,6 @@ from apps.companies import constants, selectors, services
 from apps.companies.models import Company
 from apps.companies.serializers import (
     CompanyDetailSerializer,
-    CompanyInformationInput,
     CompanyInformationSerializer,
     CompanyLinksSerializer,
     CompanyListSerializer,
@@ -72,8 +71,8 @@ class CompanyViewSet(
     )
     def create(self, request, *args, **kwargs):
         user = self.caller(request)
-        payload = parse_input(CompanyInformationInput, request.data)
-        company = services.register_company(user, payload.model_dump())
+        payload = parse_input(CompanyInformationSerializer, request.data)
+        company = services.register_company(user, payload)
         body = CompanyRegistrationSerializer(
             {
                 "company": company,

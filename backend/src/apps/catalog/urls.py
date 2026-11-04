@@ -2,7 +2,7 @@
 
 from rest_framework.routers import SimpleRouter
 
-from apps.catalog import api
+from apps.catalog.views.v1 import api
 
 app_name = "catalog"
 

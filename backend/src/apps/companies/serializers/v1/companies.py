@@ -1,47 +1,9 @@
-"""Pydantic boundary schemas and DRF serializers for the companies API."""
+"""DRF input and output serializers for the companies API."""
 
-from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from apps.companies.models import Company, CompanyStepProgress
-
-
-class CompanyInformationInput(BaseModel):
-    """Boundary schema for the company-information step (FR-002, FR-003)."""
-
-    domain: str = Field(min_length=1, max_length=255)
-    company_name: str = Field(min_length=1, max_length=255)
-    representative_name: str = Field(min_length=1, max_length=255)
-    phone_number: str = Field(min_length=3, max_length=32)
-    internal_number: str | None = Field(default=None, max_length=32)
-
-
-def parse_input(schema_cls, data):
-    """Validate ``data`` against a Pydantic schema or a DRF serializer.
-
-    Raises ``invalid_field`` (Pydantic) or ``invalid_request`` (DRF) with the offending
-    fields named in ``fields`` (FR-003).
-    """
-    from apps.accounts.exceptions import ApiError
-
-    if isinstance(schema_cls, type) and issubclass(schema_cls, serializers.Serializer):
-        serializer = schema_cls(data=data)
-        if not serializer.is_valid():
-            raise ApiError(
-                "invalid_field",
-                "Some fields are missing or invalid.",
-                fields={"fields": list(serializer.errors.keys())},
-            )
-        return serializer.validated_data
-
-    try:
-        return schema_cls.model_validate(data)
-    except Exception as exc:  # pydantic ValidationError
-        raise ApiError(
-            "invalid_field",
-            "Some mandatory fields are missing or invalid.",
-            fields={"detail": str(exc)},
-        ) from exc
+from apps.utils.serializers import parse_input
 
 
 # --- DRF serializers (also used to document the OpenAPI schema) -------------

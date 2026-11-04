@@ -1,17 +1,11 @@
 """Version 1 API route aggregation."""
 
 from django.urls import include, path
-from apps.companies.api import CompanyListCreateView
 
 urlpatterns = [
-    path("auth/", include("accounts.urls")),
-    path(
-        "companies",
-        CompanyListCreateView.as_view(),
-        name="company-list-create-no-slash",
-    ),
-    path("companies/", include("companies.urls")),
-    path("ops/", include("admin_console.urls")),
-    path("ops/", include("notifications.urls")),
-    path("catalog/", include("catalog.urls")),
+    path("auth/", include("apps.accounts.urls")),
+    path("companies/", include("apps.companies.urls")),
+    path("ops/", include("apps.admin_console.urls")),
+    path("ops/", include("apps.notifications.urls")),
+    path("catalog/", include("apps.catalog.urls")),
 ]
