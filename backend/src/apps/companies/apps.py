@@ -7,4 +7,4 @@ class CompaniesConfig(AppConfig):
 
     def ready(self):
         # Connect the accounts account-deletion signal to company archival (FR-038).
-        from companies import signals  # noqa: F401
+        from apps.companies import signals  # noqa: F401

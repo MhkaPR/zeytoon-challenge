@@ -2,7 +2,7 @@
 
 from rest_framework.routers import DefaultRouter
 
-from accounts import api
+from apps.accounts import api
 
 app_name = "accounts"
 

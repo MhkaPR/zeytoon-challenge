@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from admin_console import llm, plan_schema, services
-from admin_console.models import (
+from apps.admin_console import llm, plan_schema, services
+from apps.admin_console.models import (
     ExtractedTable,
     ExtractedTableColumn,
     ExtractedTableRow,
@@ -13,7 +13,7 @@ from admin_console.models import (
     PlanRecord,
     TableClassification,
 )
-from admin_console.tests.conftest import HOSTING_PLAN_VALUES
+from apps.admin_console.tests.conftest import HOSTING_PLAN_VALUES
 
 pytestmark = pytest.mark.django_db
 

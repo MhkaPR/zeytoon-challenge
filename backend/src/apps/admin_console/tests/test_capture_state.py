@@ -3,8 +3,8 @@
 import pytest
 from django.db import IntegrityError, transaction
 
-from admin_console import services
-from admin_console.models import CaptureSession, Link
+from apps.admin_console import services
+from apps.admin_console.models import CaptureSession, Link
 
 pytestmark = pytest.mark.django_db
 

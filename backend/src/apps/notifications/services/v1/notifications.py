@@ -9,8 +9,8 @@ does not block others.
 from django.db import transaction
 from django.utils import timezone
 
-from notifications import events
-from notifications.models import (
+from apps.notifications import events
+from apps.notifications.models import (
     Notification,
     NotificationDelivery,
     NotificationRecipient,
@@ -56,7 +56,7 @@ def notify(
 
 def deliver(notification):
     """Create one in-app delivery per active recipient and mark it sent."""
-    from notifications import channels
+    from apps.notifications import channels
 
     deliveries = []
     for recipient in active_recipients():

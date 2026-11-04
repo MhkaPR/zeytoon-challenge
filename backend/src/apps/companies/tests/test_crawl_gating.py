@@ -2,8 +2,8 @@
 
 import pytest
 
-from companies.models import Company, CreditLedgerEntry
-from companies.services import register_company, set_crawl_enabled
+from apps.companies.models import Company, CreditLedgerEntry
+from apps.companies.services import register_company, set_crawl_enabled
 
 pytestmark = pytest.mark.django_db
 
@@ -21,7 +21,7 @@ def _register(owner):
 
 
 def test_enabling_crawl_requires_charged(owner):
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     company = _register(owner)
     with pytest.raises(ApiError) as exc:

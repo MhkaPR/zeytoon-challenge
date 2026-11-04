@@ -8,9 +8,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from accounts import selectors, services
-from accounts.exceptions import ApiError
-from accounts.serializers import (
+from apps.accounts import selectors, services
+from apps.accounts.exceptions import ApiError
+from apps.accounts.serializers import (
     ErrorSerializer,
     OtpRequestResponseSerializer,
     OtpRequestSerializer,
@@ -21,7 +21,7 @@ from accounts.serializers import (
     TokenRefreshResponseSerializer,
     parse_input,
 )
-from accounts.throttles import (
+from apps.accounts.throttles import (
     OtpRequestPhoneThrottle,
     OtpSourceThrottle,
     OtpVerifyPhoneThrottle,

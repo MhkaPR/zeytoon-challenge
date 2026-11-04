@@ -2,8 +2,8 @@
 
 import pytest
 
-from companies.models import Company, CompanyStepProgress
-from companies.services import register_company
+from apps.companies.models import Company, CompanyStepProgress
+from apps.companies.services import register_company
 
 pytestmark = pytest.mark.django_db
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from companies.services import record_verification_decision, register_company
+from apps.companies.services import record_verification_decision, register_company
 
 pytestmark = pytest.mark.django_db
 

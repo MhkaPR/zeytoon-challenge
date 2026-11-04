@@ -3,7 +3,7 @@
 import pytest
 from constance import config
 
-from companies import constants
+from apps.companies import constants
 
 pytestmark = pytest.mark.django_db
 

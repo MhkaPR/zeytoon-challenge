@@ -2,16 +2,16 @@
 
 import pytest
 
-from admin_console import services
-from admin_console.models import CaptureSession, Link
-from admin_console.tests import factories
+from apps.admin_console import services
+from apps.admin_console.models import CaptureSession, Link
+from apps.admin_console.tests import factories
 
 pytestmark = pytest.mark.django_db
 
 
 def _failing_then_ok(monkeypatch, failures):
     """Replace capture with one that fails ``failures`` times, then succeeds."""
-    from admin_console import domtrack_client
+    from apps.admin_console import domtrack_client
 
     calls = {"n": 0}
 
@@ -100,7 +100,7 @@ def test_one_link_failing_does_not_block_another(
         review_state=Link.ReviewState.KEPT,
         pipeline_stage=Link.PipelineStage.DISCOVERED,
     )
-    from admin_console import domtrack_client
+    from apps.admin_console import domtrack_client
 
     def capture_headless(url, duration_ms, nav_timeout_ms=None):
         if url == kept_link.url:

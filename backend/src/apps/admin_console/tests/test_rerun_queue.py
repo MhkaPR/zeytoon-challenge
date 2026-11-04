@@ -4,8 +4,8 @@ import pytest
 from django.db import transaction
 from django.tasks.base import TASK_MAX_PRIORITY
 
-from admin_console import tasks
-from admin_console.models import Link
+from apps.admin_console import tasks
+from apps.admin_console.models import Link
 
 pytestmark = pytest.mark.django_db
 

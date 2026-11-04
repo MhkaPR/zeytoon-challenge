@@ -4,9 +4,9 @@ Other modules MUST import account behavior through this module only; direct acce
 accounts tables is forbidden (Constitution Principle VI).
 """
 
-from accounts import selectors
-from accounts.exceptions import ApiError
-from accounts.services import (
+from apps.accounts import selectors
+from apps.accounts.exceptions import ApiError
+from apps.accounts.services import (
     issue_tokens,
     request_otp,
     resolve_return_url,

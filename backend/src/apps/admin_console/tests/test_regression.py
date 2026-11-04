@@ -10,7 +10,7 @@ import pathlib
 
 import pytest
 
-from admin_console import discovery, domtrack_client, llm, plan_schema, services
+from apps.admin_console import discovery, domtrack_client, llm, plan_schema, services
 
 ADMIN_CONSOLE = pathlib.Path("backend/src/admin_console")
 
@@ -64,7 +64,7 @@ def test_feature_has_no_sitemap_step():
     # The pipeline modules that would host a sitemap step never mention one.
     for name in ("discovery.py", "services.py", "tasks.py", "api.py", "constants.py"):
         assert "sitemap" not in (ADMIN_CONSOLE / name).read_text().lower(), name
-    from admin_console.models import Site
+    from apps.admin_console.models import Site
 
     field_names = {field.name for field in Site._meta.get_fields()}
     assert not any("sitemap" in name for name in field_names)

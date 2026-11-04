@@ -2,8 +2,8 @@
 
 import pytest
 
-from admin_console import domtrack_client
-from admin_console.models import CaptureSession, Link, Trace
+from apps.admin_console import domtrack_client
+from apps.admin_console.models import CaptureSession, Link, Trace
 
 pytestmark = pytest.mark.django_db
 

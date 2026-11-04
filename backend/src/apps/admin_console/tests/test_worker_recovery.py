@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import pytest
 from django.utils import timezone
 
-from admin_console import services, tasks
-from admin_console.models import Link, PlanRecord
+from apps.admin_console import services, tasks
+from apps.admin_console.models import Link, PlanRecord
 
 pytestmark = pytest.mark.django_db
 

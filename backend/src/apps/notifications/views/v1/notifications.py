@@ -12,11 +12,11 @@ from rest_framework.mixins import CreateModelMixin, ListModelMixin
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from accounts import selectors as account_selectors
-from accounts.exceptions import ApiError
-from notifications import services
-from notifications.models import NotificationRecipient
-from notifications.serializers import (
+from apps.accounts import selectors as account_selectors
+from apps.accounts.exceptions import ApiError
+from apps.notifications import services
+from apps.notifications.models import NotificationRecipient
+from apps.notifications.serializers import (
     NotificationInboxSerializer,
     NotificationRecipientInputSerializer,
     RecipientListSerializer,

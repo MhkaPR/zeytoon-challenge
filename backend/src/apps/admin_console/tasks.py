@@ -11,9 +11,9 @@ from django.tasks import task
 @task
 def run_capture_task(link_id, duration_ms=None):
     """Run a headless capture for a link (FR-016..FR-019)."""
-    from admin_console import services
-    from admin_console.models import Link
-    from admin_console.services import start_capture
+    from apps.admin_console import services
+    from apps.admin_console.models import Link
+    from apps.admin_console.services import start_capture
 
     return start_capture(Link.objects.get(pk=link_id), duration_ms=duration_ms)
 
@@ -21,8 +21,8 @@ def run_capture_task(link_id, duration_ms=None):
 @task
 def run_extraction_task(link_id):
     """Extract tables for a link (FR-020..FR-022)."""
-    from admin_console.models import Link
-    from admin_console.services import extract_link_tables
+    from apps.admin_console.models import Link
+    from apps.admin_console.services import extract_link_tables
 
     return extract_link_tables(Link.objects.get(pk=link_id))
 
@@ -30,8 +30,8 @@ def run_extraction_task(link_id):
 @task
 def run_classification_task(link_id):
     """Classify each extracted table using the configured rules."""
-    from admin_console.models import Link
-    from admin_console.services import classify_tables_for_link
+    from apps.admin_console.models import Link
+    from apps.admin_console.services import classify_tables_for_link
 
     return classify_tables_for_link(Link.objects.get(pk=link_id))
 
@@ -39,8 +39,8 @@ def run_classification_task(link_id):
 @task
 def run_labeling_task(link_id):
     """Label tables for a link (FR-032..FR-035)."""
-    from admin_console.models import Link
-    from admin_console.services import label_link_tables
+    from apps.admin_console.models import Link
+    from apps.admin_console.services import label_link_tables
 
     return label_link_tables(Link.objects.get(pk=link_id))
 
@@ -48,8 +48,8 @@ def run_labeling_task(link_id):
 @task
 def run_replay_task(link_id):
     """Run one replay cycle for a link (FR-039..FR-043)."""
-    from admin_console.models import Link
-    from admin_console.replay import execute_replay_run
+    from apps.admin_console.models import Link
+    from apps.admin_console.replay import execute_replay_run
 
     return execute_replay_run(Link.objects.get(pk=link_id))
 
@@ -59,8 +59,8 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
     """Discover once, then advance saved links from their persisted stage."""
     import logging
 
-    from admin_console import services
-    from admin_console.models import Link, Site
+    from apps.admin_console import services
+    from apps.admin_console.models import Link, Site
 
     logger = logging.getLogger(__name__)
     site = Site.objects.filter(pk=site_id).first()
@@ -165,7 +165,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             link.last_error = f"{failed_stage}: {str(exc)[:450]}"
             link.save(update_fields=["last_error", "updated_at"])
             Link.objects.filter(pk=link.pk).update(pipeline_task_state="failed")
-            from notifications.interfaces import NotificationsInterface
+            from apps.notifications.interfaces import NotificationsInterface
 
             NotificationsInterface.notify(
                 event_type="pipeline_stage_failed",
@@ -226,8 +226,8 @@ def recover_site_pipeline_tasks(backend_name="default"):
     from django_tasks_db.compat import TaskResultStatus
     from django_tasks_db.models import DBTaskResult
 
-    from admin_console import services
-    from admin_console.models import CaptureSession, Link
+    from apps.admin_console import services
+    from apps.admin_console.models import CaptureSession, Link
 
     task_path = "admin_console.tasks.run_site_pipeline_task"
     interrupted = DBTaskResult.objects.filter(
@@ -324,7 +324,7 @@ def recover_site_pipeline_tasks(backend_name="default"):
     )
     site_ids = unfinished_site_ids - queued_site_ids
     if site_ids:
-        from admin_console.models import Site
+        from apps.admin_console.models import Site
 
         for site_id in Site.objects.filter(pk__in=site_ids).values_list(
             "pk", flat=True

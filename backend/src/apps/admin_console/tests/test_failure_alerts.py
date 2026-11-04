@@ -2,9 +2,9 @@
 
 import pytest
 
-from admin_console import services
-from admin_console.models import FailureAlert, ReplayRun
-from notifications.models import Notification
+from apps.admin_console import services
+from apps.admin_console.models import FailureAlert, ReplayRun
+from apps.notifications.models import Notification
 
 pytestmark = pytest.mark.django_db
 

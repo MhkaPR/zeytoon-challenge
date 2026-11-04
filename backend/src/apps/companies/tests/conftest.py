@@ -5,9 +5,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from rest_framework.test import APIClient
 
-from accounts.models import ensure_role_groups
-from companies import services
-from companies.models import Company
+from apps.accounts.models import ensure_role_groups
+from apps.companies import services
+from apps.companies.models import Company
 
 User = get_user_model()
 

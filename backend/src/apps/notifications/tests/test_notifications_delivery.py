@@ -2,12 +2,12 @@
 
 import pytest
 
-from notifications.models import (
+from apps.notifications.models import (
     Notification,
     NotificationDelivery,
     NotificationRecipient,
 )
-from notifications.services import add_recipient, notify
+from apps.notifications.services import add_recipient, notify
 
 pytestmark = pytest.mark.django_db
 

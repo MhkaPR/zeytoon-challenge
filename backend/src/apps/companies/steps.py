@@ -1,8 +1,8 @@
 """Registration step locking helpers (FR-008)."""
 
-from accounts.exceptions import ApiError
-from companies import constants
-from companies.models import CompanyStepProgress
+from apps.accounts.exceptions import ApiError
+from apps.companies import constants
+from apps.companies.models import CompanyStepProgress
 
 
 def assert_step_enterable(company, step_key):

@@ -8,7 +8,7 @@ def parse_input(serializer_cls, data, *, code="invalid_field", message=None):
 
     Returns ``serializer.validated_data`` so views work with validated, typed input.
     """
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     serializer = serializer_cls(data=data)
     if not serializer.is_valid():

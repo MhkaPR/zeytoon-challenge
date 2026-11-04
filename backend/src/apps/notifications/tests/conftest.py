@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
-from accounts.models import ensure_role_groups
+from apps.accounts.models import ensure_role_groups
 
 User = get_user_model()
 

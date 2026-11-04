@@ -9,9 +9,9 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
-from accounts.models import ensure_role_groups
-from admin_console import events
-from admin_console.models import Site
+from apps.accounts.models import ensure_role_groups
+from apps.admin_console import events
+from apps.admin_console.models import Site
 
 User = get_user_model()
 
@@ -24,7 +24,7 @@ def test_events_never_log_the_unmasked_phone(caplog):
     ensure_role_groups()
     user = User.objects.create_user(username=PHONE, phone_number=PHONE, password="x")
     user.groups.add(Group.objects.get(name=User.ADMIN_GROUP))
-    from companies import services as company_services
+    from apps.companies import services as company_services
 
     company = company_services.register_company(
         user,

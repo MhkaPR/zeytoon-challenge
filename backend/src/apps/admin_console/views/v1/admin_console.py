@@ -4,15 +4,15 @@ from drf_spectacular.utils import extend_schema
 from django.db.models import Count
 from django.db import transaction
 from rest_framework import status
-from utils.views import ActionViewSet
+from apps.utils.views import ActionViewSet
 from rest_framework.response import Response
 
 
-from accounts import selectors as account_selectors
-from accounts.exceptions import ApiError
-from admin_console import domtrack_client, events, llm, serializers, services
-from admin_console.models import CaptureSession, FailureAlert, Link, Site
-from admin_console.serializers import (
+from apps.accounts import selectors as account_selectors
+from apps.accounts.exceptions import ApiError
+from apps.admin_console import domtrack_client, events, llm, serializers, services
+from apps.admin_console.models import CaptureSession, FailureAlert, Link, Site
+from apps.admin_console.serializers import (
     ApprovalQueueSerializer,
     CaptureStartInput,
     ClassifyInput,
@@ -260,7 +260,7 @@ class DiscoverLinksView(OperatorOnlyView):
         except Exception as exc:  # noqa: BLE001 - crawl/network failure
             raise ApiError("crawl_failed", str(exc)[:200], http_status=502) from exc
         if result["links"]:
-            from admin_console.tasks import run_site_pipeline_task
+            from apps.admin_console.tasks import run_site_pipeline_task
 
             transaction.on_commit(
                 lambda: run_site_pipeline_task.enqueue(site.pk, discover=False)
@@ -419,7 +419,7 @@ class ClassificationView(OperatorOnlyView):
 
 class PlanSchemaView(OperatorOnlyView):
     def get(self, request):
-        from admin_console import plan_schema
+        from apps.admin_console import plan_schema
 
         self.caller(request)
         plan_type = request.query_params.get("plan_type", "hosting")
@@ -542,7 +542,7 @@ class ReplayRunListView(OperatorOnlyView):
 class ReplayRunCreateView(OperatorOnlyView):
     @extend_schema(request=ReplayRunInput, responses={202: dict})
     def post(self, request):
-        from admin_console import tasks
+        from apps.admin_console import tasks
 
         self.caller(request)
         payload = parse_input(ReplayRunInput, request.data)
@@ -575,7 +575,7 @@ class LinkRerunView(OperatorOnlyView):
         from django.db import transaction
         from django.tasks.base import TASK_MAX_PRIORITY
 
-        from admin_console.tasks import run_site_pipeline_task
+        from apps.admin_console.tasks import run_site_pipeline_task
 
         actor = self.caller(request)
         with transaction.atomic():
@@ -626,8 +626,8 @@ class SettingsView(OperatorOnlyView):
 
 
 def _settings_snapshot():
-    from admin_console import constants
-    from core.site_config import settings_snapshot as frontend_settings_snapshot
+    from apps.admin_console import constants
+    from apps.core.site_config import settings_snapshot as frontend_settings_snapshot
 
     values = {
         "REPLAY_PERIOD_HOURS": constants.replay_period_hours(),

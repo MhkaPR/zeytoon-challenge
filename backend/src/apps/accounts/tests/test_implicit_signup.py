@@ -2,8 +2,8 @@
 
 import pytest
 
-from accounts import services
-from accounts.models import User
+from apps.accounts import services
+from apps.accounts.models import User
 
 pytestmark = pytest.mark.django_db
 

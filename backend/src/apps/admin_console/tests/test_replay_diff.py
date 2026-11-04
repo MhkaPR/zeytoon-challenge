@@ -2,9 +2,9 @@
 
 import pytest
 
-from admin_console.models import ChangeRecord, ReplayRun
-from admin_console.replay import execute_replay_run
-from admin_console.tests import factories
+from apps.admin_console.models import ChangeRecord, ReplayRun
+from apps.admin_console.replay import execute_replay_run
+from apps.admin_console.tests import factories
 
 pytestmark = pytest.mark.django_db
 

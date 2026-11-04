@@ -4,7 +4,7 @@ import pytest
 from django.core.cache import cache
 from django.test import override_settings
 
-from accounts import throttles
+from apps.accounts import throttles
 
 pytestmark = pytest.mark.django_db
 
@@ -39,6 +39,6 @@ def test_regression_token_refresh_is_not_source_throttled():
     """Bug: ``/token/refresh`` shared the OTP per-source budget, so ordinary page loads
     (which refresh on every reload) exhausted the 30/hour OTP limit and locked the user out.
     """
-    from accounts.api import TokenRefreshView
+    from apps.accounts.api import TokenRefreshView
 
     assert throttles.OtpSourceThrottle not in TokenRefreshView.throttle_classes

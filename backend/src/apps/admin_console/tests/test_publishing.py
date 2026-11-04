@@ -2,10 +2,10 @@
 
 import pytest
 
-from admin_console import services
-from admin_console.models import Link, PlanRecord
-from admin_console.tests.conftest import HOSTING_PLAN_VALUES
-from catalog.models import PublishedRecord
+from apps.admin_console import services
+from apps.admin_console.models import Link, PlanRecord
+from apps.admin_console.tests.conftest import HOSTING_PLAN_VALUES
+from apps.catalog.models import PublishedRecord
 
 pytestmark = pytest.mark.django_db
 
@@ -43,7 +43,7 @@ def test_publish_upserts_by_source_site_natural_key(planned_link, stub_llm):
 
 
 def _classified_link(link):
-    from admin_console.models import TableClassification
+    from apps.admin_console.models import TableClassification
 
     table = link.extracted_tables.get()
     if not TableClassification.objects.filter(table=table).exists():

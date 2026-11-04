@@ -20,7 +20,7 @@ from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 
-from admin_console import (
+from apps.admin_console import (
     artifacts,
     constants,
     discovery,
@@ -29,7 +29,7 @@ from admin_console import (
     llm,
     plan_schema,
 )
-from admin_console.models import (
+from apps.admin_console.models import (
     CaptureSession,
     ChangeRecord,
     ExtractedTable,
@@ -45,7 +45,7 @@ from admin_console.models import (
     Site,
     Trace,
 )
-from admin_console.table_classifier import TableClassifier
+from apps.admin_console.table_classifier import TableClassifier
 
 _REMOTE_ERRORS = (domtrack_client.DomtrackCaptureError, OSError, TimeoutError)
 
@@ -60,7 +60,7 @@ def _sleep(seconds):
 
 
 def approval_queue():
-    from companies.interfaces import CompaniesInterface
+    from apps.companies.interfaces import CompaniesInterface
 
     return [
         CompaniesInterface.pending_approval_payload(company)
@@ -70,7 +70,7 @@ def approval_queue():
 
 @transaction.atomic
 def record_decision(company_id, actor, outcome, note=""):
-    from companies.interfaces import CompaniesInterface
+    from apps.companies.interfaces import CompaniesInterface
 
     company = CompaniesInterface.company_or_error(company_id)
     decision = CompaniesInterface.record_verification_decision(
@@ -91,7 +91,7 @@ def record_decision(company_id, actor, outcome, note=""):
         site.maintenance_state = Site.MaintenanceState.SUSPENDED
         site.save(update_fields=["maintenance_state", "updated_at"])
     if outcome == "approved":
-        from admin_console.tasks import run_site_pipeline_task
+        from apps.admin_console.tasks import run_site_pipeline_task
 
         transaction.on_commit(lambda: run_site_pipeline_task.enqueue(site.pk))
     return company, decision, site
@@ -107,7 +107,7 @@ def _url_hash(url):
 
 
 def onboard_site(company_id, actor=None):
-    from companies.models import Company
+    from apps.companies.models import Company
 
     company = Company.objects.get(pk=company_id)
     site, _ = Site.objects.get_or_create(
@@ -164,7 +164,7 @@ def discover_and_store_links(site, actor=None, bounds=None):
 
 def _notify_empty_discovery(site):
     """Tell the operator a crawl found nothing so the site stays visible (FR-011)."""
-    from notifications.interfaces import NotificationsInterface
+    from apps.notifications.interfaces import NotificationsInterface
 
     NotificationsInterface.notify(
         event_type="link_discovery_empty",
@@ -704,7 +704,7 @@ def set_plan_excluded(link, plan, ignored):
                 "price_amount": str(plan.values.get("price_amount", ""))[:64],
             },
         )
-        from catalog.interfaces import CatalogInterface
+        from apps.catalog.interfaces import CatalogInterface
 
         CatalogInterface.retire_published_record(
             site=link.site_id, natural_key=plan.natural_key
@@ -845,7 +845,7 @@ def _column_label(entry, column_index):
 
 
 def publish_link_plans(link, actor=None):
-    from catalog.interfaces import CatalogInterface
+    from apps.catalog.interfaces import CatalogInterface
 
     plans = list(link.plan_records.all())
     if not plans:
@@ -881,7 +881,7 @@ def publish_link_plans(link, actor=None):
 
 def retire_missing_plans(link, current_keys):
     """Retire published records whose plan is no longer present (FR-038)."""
-    from catalog.interfaces import CatalogInterface
+    from apps.catalog.interfaces import CatalogInterface
 
     published = CatalogInterface.published_natural_keys(site=link.site_id)
     stale = [key for key in published if key not in set(current_keys)]
@@ -912,7 +912,7 @@ def evaluate_failure_alert(link):
             raised_at=timezone.now(),
             notification_dedup_key=f"alert:{link.pk}:open",
         )
-        from notifications.interfaces import NotificationsInterface
+        from apps.notifications.interfaces import NotificationsInterface
 
         NotificationsInterface.notify(
             event_type="link_failure_alert",
@@ -1068,7 +1068,7 @@ def recompute_failure_rate(link):
 
 
 def metrics_snapshot():
-    from catalog.interfaces import CatalogInterface
+    from apps.catalog.interfaces import CatalogInterface
 
     return {
         "links_total": Link.objects.count(),

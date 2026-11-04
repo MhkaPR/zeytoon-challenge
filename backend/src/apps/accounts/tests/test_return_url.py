@@ -3,7 +3,7 @@
 import pytest
 from constance.test import override_config
 
-from accounts.services import resolve_return_url
+from apps.accounts.services import resolve_return_url
 
 pytestmark = pytest.mark.django_db
 

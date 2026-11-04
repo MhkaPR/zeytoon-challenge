@@ -1,8 +1,8 @@
 import django_filters
 
-from admin_console.interfaces import AdminConsoleInterface
-from catalog.models import PublishedRecord
-from admin_console.plan_schema import PLAN_SCHEMA, SchemaField
+from apps.admin_console.interfaces import AdminConsoleInterface
+from apps.catalog.models import PublishedRecord
+from apps.admin_console.plan_schema import PLAN_SCHEMA, SchemaField
 
 
 # Sensible defaults used when a field carries a `unit_family` but the caller

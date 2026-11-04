@@ -2,7 +2,7 @@
 
 from rest_framework.routers import SimpleRouter
 
-from notifications import api
+from apps.notifications import api
 
 app_name = "notifications"
 

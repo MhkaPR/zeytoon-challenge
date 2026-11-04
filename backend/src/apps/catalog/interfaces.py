@@ -4,7 +4,7 @@
 imports ``admin_console``. Provenance ids are opaque integers.
 """
 
-from catalog import services
+from apps.catalog import services
 
 
 class CatalogInterface:

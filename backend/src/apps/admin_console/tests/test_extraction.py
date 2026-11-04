@@ -2,7 +2,7 @@
 
 import pytest
 
-from admin_console.models import ExtractedTable, ExtractedTableColumn, Link
+from apps.admin_console.models import ExtractedTable, ExtractedTableColumn, Link
 
 pytestmark = pytest.mark.django_db
 

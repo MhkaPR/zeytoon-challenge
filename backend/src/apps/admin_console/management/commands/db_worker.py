@@ -2,7 +2,7 @@ from django_tasks_db.management.commands.db_worker import (
     Command as DatabaseWorkerCommand,
 )
 
-from admin_console.tasks import recover_site_pipeline_tasks
+from apps.admin_console.tasks import recover_site_pipeline_tasks
 
 
 class Command(DatabaseWorkerCommand):

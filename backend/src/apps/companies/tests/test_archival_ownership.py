@@ -3,8 +3,8 @@
 import pytest
 from django.db.models import ProtectedError
 
-from companies.models import Company
-from companies.services import (
+from apps.companies.models import Company
+from apps.companies.services import (
     archive_companies_for_user,
     register_company,
 )

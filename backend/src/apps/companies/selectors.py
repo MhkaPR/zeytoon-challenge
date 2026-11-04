@@ -1,7 +1,7 @@
 """Read-side helpers: owner scoping and registration step resolution."""
 
-from companies import constants
-from companies.models import Company, CompanyStepProgress
+from apps.companies import constants
+from apps.companies.models import Company, CompanyStepProgress
 
 
 def owned_company_or_error(user, company_id):
@@ -10,7 +10,7 @@ def owned_company_or_error(user, company_id):
     Every company-scoped request is limited to the requester's own companies (FR-028); a
     company the caller does not own is reported as not found so no data leaks (SC-006).
     """
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     company = Company.objects.filter(pk=company_id, owner=user).first()
     if company is None:
@@ -31,7 +31,7 @@ def step_progress(company):
 
 def step_progress_payload(company):
     """Serialize step progress for the API (FR-010, FR-026)."""
-    from companies.serializers import StepProgressSerializer
+    from apps.companies.serializers import StepProgressSerializer
 
     return StepProgressSerializer(step_progress(company), many=True).data
 
@@ -70,7 +70,7 @@ def duplicate_domain_ids(company):
     """
     if not company.domain:
         return []
-    from companies.domain import canonical_domain
+    from apps.companies.domain import canonical_domain
 
     target = canonical_domain(company.domain)
     return list(
@@ -84,7 +84,7 @@ def duplicate_domain_ids(company):
 
 def company_or_error(company_id):
     """Return a company by id or raise a ``not_found`` ``ApiError``."""
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     company = Company.objects.filter(pk=company_id).first()
     if company is None:
@@ -94,7 +94,7 @@ def company_or_error(company_id):
 
 def pending_approval_payload(company):
     """Serialize one approval-queue row with the duplicate-domain warning (FR-001, FR-004)."""
-    from companies.serializers import PendingApprovalSerializer
+    from apps.companies.serializers import PendingApprovalSerializer
 
     duplicates = duplicate_domain_ids(company)
     return PendingApprovalSerializer(

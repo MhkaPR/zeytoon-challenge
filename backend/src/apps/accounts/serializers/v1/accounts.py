@@ -2,13 +2,13 @@
 
 from rest_framework import serializers
 
-from accounts.validation import normalize_phone
-from utils.serializers import parse_input
+from apps.accounts.validation import normalize_phone
+from apps.utils.serializers import parse_input
 
 
 def _invalid_phone(code="invalid_phone", message="The phone number is not valid."):
     """Return a DRF validator that raises the shared ``ApiError`` contract."""
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     def validator(value):
         if normalize_phone(value) is None:
@@ -23,7 +23,7 @@ class OtpRequestSerializer(serializers.Serializer):
 
     def validate_phone_number(self, value):
         if normalize_phone(value) is None:
-            from accounts.exceptions import ApiError
+            from apps.accounts.exceptions import ApiError
 
             raise ApiError("invalid_phone", "The phone number is not valid.")
         return value
@@ -41,7 +41,7 @@ class OtpVerifySerializer(serializers.Serializer):
 
     def validate_phone_number(self, value):
         if normalize_phone(value) is None:
-            from accounts.exceptions import ApiError
+            from apps.accounts.exceptions import ApiError
 
             raise ApiError("invalid_phone", "The phone number is not valid.")
         return value

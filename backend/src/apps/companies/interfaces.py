@@ -5,7 +5,7 @@ companies tables is forbidden. The panel surface is internal to ``companies`` an
 need an interface entry.
 """
 
-from companies import selectors, services
+from apps.companies import selectors, services
 
 
 class CompaniesInterface:

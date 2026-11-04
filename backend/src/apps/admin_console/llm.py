@@ -23,8 +23,8 @@ from pydantic import (
     create_model,
 )
 
-from admin_console import plan_schema
-from admin_console.models import Link, LlmCostLedger
+from apps.admin_console import plan_schema
+from apps.admin_console.models import Link, LlmCostLedger
 
 PROMPT_VERSION = "v1"
 logger = logging.getLogger(__name__)
@@ -234,7 +234,7 @@ class LlmBudget:
 
     def exhausted(self, stage, link=None, links=None):
         """Park ``link`` and notify the admin (FR-048, FR-049)."""
-        from notifications.interfaces import NotificationsInterface
+        from apps.notifications.interfaces import NotificationsInterface
 
         affected = list(links or ([] if link is None else [link]))
         if affected:

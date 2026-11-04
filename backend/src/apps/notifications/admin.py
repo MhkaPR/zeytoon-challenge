@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from notifications.models import (
+from apps.notifications.models import (
     Notification,
     NotificationDelivery,
     NotificationRecipient,

@@ -3,8 +3,8 @@
 import pytest
 from constance.test import override_config
 
-from accounts import services, state
-from accounts.exceptions import ApiError
+from apps.accounts import services, state
+from apps.accounts.exceptions import ApiError
 
 pytestmark = pytest.mark.django_db
 

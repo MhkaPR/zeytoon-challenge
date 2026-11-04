@@ -2,8 +2,8 @@
 
 import pytest
 
-from companies.models import Company
-from companies.services import can_manage_plans, register_company
+from apps.companies.models import Company
+from apps.companies.services import can_manage_plans, register_company
 
 pytestmark = pytest.mark.django_db
 

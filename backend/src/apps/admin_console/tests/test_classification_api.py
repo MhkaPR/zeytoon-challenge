@@ -2,8 +2,8 @@
 
 import pytest
 
-from admin_console.models import Link, TableClassification
-from admin_console.tests.conftest import HOSTING_PLAN_VALUES
+from apps.admin_console.models import Link, TableClassification
+from apps.admin_console.tests.conftest import HOSTING_PLAN_VALUES
 
 pytestmark = pytest.mark.django_db
 

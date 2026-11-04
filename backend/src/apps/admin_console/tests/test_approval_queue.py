@@ -3,9 +3,9 @@
 import pytest
 from types import SimpleNamespace
 
-from admin_console.models import Site
-from companies import services as company_services
-from companies.models import Company
+from apps.admin_console.models import Site
+from apps.companies import services as company_services
+from apps.companies.models import Company
 
 pytestmark = pytest.mark.django_db
 
@@ -70,7 +70,7 @@ def test_approval_enqueues_automatic_site_pipeline_after_commit(
         SimpleNamespace(enqueue=lambda site_id: enqueued.append(site_id)),
     )
 
-    from admin_console import services
+    from apps.admin_console import services
 
     services.record_decision(company.pk, operator, "approved")
 

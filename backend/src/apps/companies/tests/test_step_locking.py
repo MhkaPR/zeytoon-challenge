@@ -1,11 +1,11 @@
 """Step-locking tests (US1, FR-008, FR-011)."""
 
 import pytest
-from accounts.exceptions import ApiError
+from apps.accounts.exceptions import ApiError
 
-from companies import steps
-from companies.models import CompanyStepProgress
-from companies.services import register_company
+from apps.companies import steps
+from apps.companies.models import CompanyStepProgress
+from apps.companies.services import register_company
 
 pytestmark = pytest.mark.django_db
 
@@ -44,7 +44,7 @@ def test_unknown_step_is_not_found(owner):
 
 
 def test_verification_step_needs_no_owner_input(owner):
-    from companies import constants
+    from apps.companies import constants
 
     definitions = {step["key"]: step for step in constants.step_definitions()}
     assert definitions["company_information"]["owner_input"] is True
@@ -52,7 +52,7 @@ def test_verification_step_needs_no_owner_input(owner):
 
 
 def test_approval_unlocks_verification_step(owner, operator):
-    from companies.services import record_verification_decision
+    from apps.companies.services import record_verification_decision
 
     company = _register(owner)
     record_verification_decision(company, operator, "approved")

@@ -9,7 +9,7 @@ policy. Subclass it (or inject a fake) to test discovery without the network.
 import asyncio
 import urllib.parse
 
-from admin_console import constants
+from apps.admin_console import constants
 
 
 class LinkDiscoverer:

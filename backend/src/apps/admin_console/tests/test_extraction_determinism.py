@@ -2,8 +2,8 @@
 
 import pytest
 
-from admin_console import services
-from admin_console.models import ExtractedTable, ExtractedTableRow
+from apps.admin_console import services
+from apps.admin_console.models import ExtractedTable, ExtractedTableRow
 
 pytestmark = pytest.mark.django_db
 

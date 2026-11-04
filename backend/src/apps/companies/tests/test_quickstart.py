@@ -10,16 +10,16 @@ import logging
 import pytest
 from django.db.models import ProtectedError
 
-from accounts.exceptions import ApiError
-from companies import events
-from companies.models import Company, CreditLedgerEntry, VerificationDecision
-from companies.selectors import credit_projection
-from companies.services import (
+from apps.accounts.exceptions import ApiError
+from apps.companies import events
+from apps.companies.models import Company, CreditLedgerEntry, VerificationDecision
+from apps.companies.selectors import credit_projection
+from apps.companies.services import (
     archive_companies_for_user,
     record_verification_decision,
     register_company,
 )
-from utils.logging import JsonFormatter, SensitiveDataFilter
+from apps.utils.logging import JsonFormatter, SensitiveDataFilter
 
 pytestmark = pytest.mark.django_db
 
@@ -337,7 +337,7 @@ class _Capture(logging.Handler):
 def test_v12_runtime_config_and_log_masking(auth_client, owner, operator):
     from constance import config
 
-    from companies import constants
+    from apps.companies import constants
 
     original = dict(config.COMPANY_REQUIREMENT_MESSAGES)
     try:

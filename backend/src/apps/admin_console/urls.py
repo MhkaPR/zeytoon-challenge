@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from admin_console import api
+from apps.admin_console import api
 
 app_name = "admin_console"
 

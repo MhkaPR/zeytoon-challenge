@@ -4,7 +4,7 @@ import re
 
 from django.conf import settings
 
-from admin_console.models import ClassificationRegex
+from apps.admin_console.models import ClassificationRegex
 
 
 class TableClassifier:

@@ -2,7 +2,7 @@
 
 from rest_framework.routers import SimpleRouter
 
-from companies import api
+from apps.companies import api
 
 app_name = "companies"
 

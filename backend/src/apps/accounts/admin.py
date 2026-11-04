@@ -7,7 +7,7 @@ object-level permissions. Runtime constants are edited through the constance adm
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from accounts.models import User
+from apps.accounts.models import User
 
 
 @admin.register(User)

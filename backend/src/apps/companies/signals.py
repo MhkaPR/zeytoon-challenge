@@ -15,6 +15,6 @@ def _archive_companies_on_user_delete(sender, instance, **kwargs):
     of the user is blocked while companies exist, so this receiver exists to make the
     archival path explicit and testable rather than to perform the delete.
     """
-    from companies.services import archive_companies_for_user
+    from apps.companies.services import archive_companies_for_user
 
     archive_companies_for_user(instance)

@@ -14,11 +14,11 @@ from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveMode
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from accounts import selectors as account_selectors
-from accounts.exceptions import ApiError
-from companies import constants, selectors, services
-from companies.models import Company
-from companies.serializers import (
+from apps.accounts import selectors as account_selectors
+from apps.accounts.exceptions import ApiError
+from apps.companies import constants, selectors, services
+from apps.companies.models import Company
+from apps.companies.serializers import (
     CompanyDetailSerializer,
     CompanyInformationInput,
     CompanyInformationSerializer,
@@ -243,9 +243,9 @@ class CompanyViewSet(
     @action(detail=True, methods=["post"], url_path="links")
     def links(self, request, pk=None):
         """Let a company submit additional pages from its own domain for crawling."""
-        from admin_console import discovery, services as crawl_services
-        from admin_console.models import Site
-        from admin_console.serializers import ManualLinksInput
+        from apps.admin_console import discovery, services as crawl_services
+        from apps.admin_console.models import Site
+        from apps.admin_console.serializers import ManualLinksInput
 
         user = self.caller(request)
         company = self._company(pk)
@@ -258,7 +258,7 @@ class CompanyViewSet(
         urls = discovery.apply_link_policy(payload.urls, host=host)
         links = crawl_services.add_links_manually(site, urls, actor=user)
         if links:
-            from admin_console.tasks import run_site_pipeline_task
+            from apps.admin_console.tasks import run_site_pipeline_task
 
             transaction.on_commit(
                 lambda: run_site_pipeline_task.enqueue(site.pk, discover=False)

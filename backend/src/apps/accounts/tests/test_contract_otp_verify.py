@@ -2,7 +2,7 @@
 
 import pytest
 
-from accounts import state
+from apps.accounts import state
 
 pytestmark = pytest.mark.django_db
 
@@ -43,7 +43,7 @@ def test_verify_missing_code_is_incorrect(api_client):
 
 
 def test_verify_blocked_user(api_client, role_groups, issued_code):
-    from accounts.models import User
+    from apps.accounts.models import User
 
     User.objects.create_user(
         username=PHONE, phone_number=PHONE, password="x", status=User.Status.BLOCKED

@@ -2,8 +2,8 @@
 
 import pytest
 
-from companies.models import CompanyRegistrationDraft, CompanyStepProgress
-from companies.services import abandon_step, register_company, save_step
+from apps.companies.models import CompanyRegistrationDraft, CompanyStepProgress
+from apps.companies.services import abandon_step, register_company, save_step
 
 pytestmark = pytest.mark.django_db
 
@@ -48,7 +48,7 @@ def test_abandon_resumes_at_same_step(owner):
     company = _register(owner)
     save_step(owner, company, "company_information", {"domain": "example.com"})
     abandon_step(owner, company, "company_information")
-    from companies import selectors
+    from apps.companies import selectors
 
     assert selectors.current_step(company) == "company_information"
 

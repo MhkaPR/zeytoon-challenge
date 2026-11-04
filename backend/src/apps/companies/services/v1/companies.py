@@ -3,10 +3,10 @@
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.exceptions import ApiError
-from companies import constants, events, selectors
-from companies.domain import normalize_domain
-from companies.models import (
+from apps.accounts.exceptions import ApiError
+from apps.companies import constants, events, selectors
+from apps.companies.domain import normalize_domain
+from apps.companies.models import (
     Company,
     CompanyRegistrationDraft,
     CompanyStepProgress,
@@ -93,7 +93,7 @@ def register_company(user, payload):
 @transaction.atomic
 def save_step(user, company, step_key, payload):
     """Save one step's input independently (FR-007)."""
-    from companies import steps as step_helpers
+    from apps.companies import steps as step_helpers
 
     step_helpers.assert_step_enterable(company, step_key)
     row = CompanyStepProgress.objects.select_for_update().get(
@@ -114,7 +114,7 @@ def abandon_step(user, company, step_key):
 
     The user resumes at the same step, never back at step one.
     """
-    from companies import steps as step_helpers
+    from apps.companies import steps as step_helpers
 
     step_helpers.assert_step_enterable(company, step_key)
     CompanyRegistrationDraft.objects.filter(

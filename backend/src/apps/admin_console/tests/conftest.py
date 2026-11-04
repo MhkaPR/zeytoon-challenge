@@ -8,8 +8,8 @@ from django.contrib.auth.models import Group
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
-from accounts.models import ensure_role_groups
-from companies import services as company_services
+from apps.accounts.models import ensure_role_groups
+from apps.companies import services as company_services
 
 User = get_user_model()
 
@@ -103,7 +103,7 @@ def approved_company(company, operator):
 
 @pytest.fixture
 def site(approved_company):
-    from admin_console.models import Site
+    from apps.admin_console.models import Site
 
     return Site.objects.create(
         company=approved_company,
@@ -114,7 +114,7 @@ def site(approved_company):
 
 @pytest.fixture
 def kept_link(site):
-    from admin_console.models import Link
+    from apps.admin_console.models import Link
 
     return Link.objects.create(
         site=site,
@@ -130,9 +130,9 @@ def kept_link(site):
 def traced_link(kept_link):
     from django.utils import timezone
 
-    from admin_console import artifacts
-    from admin_console.models import Link, Trace
-    from admin_console.tests import factories
+    from apps.admin_console import artifacts
+    from apps.admin_console.models import Link, Trace
+    from apps.admin_console.tests import factories
 
     data = factories.make_trace_bytes(url=kept_link.url)
     key, backend, size, digest = artifacts.save_trace(data)
@@ -161,7 +161,7 @@ def traced_link(kept_link):
 @pytest.fixture
 def stub_llm(monkeypatch):
     """A scripted LLM double for the single classify+extract pass and plan extraction."""
-    from admin_console import llm as llm_mod
+    from apps.admin_console import llm as llm_mod
 
     stub = SimpleNamespace(
         classifications=[],
@@ -260,7 +260,7 @@ def stub_llm(monkeypatch):
 @pytest.fixture
 def stub_domtrack(monkeypatch):
     """A domtrack double for capture/extract/label/compare; no browser or disk."""
-    from admin_console import domtrack_client, tests
+    from apps.admin_console import domtrack_client, tests
 
     stub = SimpleNamespace(
         capture_bytes=tests.factories.make_trace_bytes(),
@@ -311,7 +311,7 @@ def stub_domtrack(monkeypatch):
 @pytest.fixture
 def stub_discovery(monkeypatch):
     """A crawl4ai double returning a fixed harvest; returns the stub for assertions."""
-    from admin_console import discovery
+    from apps.admin_console import discovery
 
     stub = SimpleNamespace(urls=[], calls=[])
 
@@ -327,7 +327,7 @@ def stub_discovery(monkeypatch):
 
 @pytest.fixture
 def notification_recipient(db, operator):
-    from notifications import services as notification_services
+    from apps.notifications import services as notification_services
 
     return notification_services.add_recipient(user=operator, name="Ops inbox")
 
@@ -335,7 +335,7 @@ def notification_recipient(db, operator):
 @pytest.fixture
 def no_retry_sleep(monkeypatch):
     """Skip retry backoff so resilience tests stay fast."""
-    from admin_console import services
+    from apps.admin_console import services
 
     monkeypatch.setattr(services, "_sleep", lambda seconds: None)
 
@@ -343,7 +343,7 @@ def no_retry_sleep(monkeypatch):
 @pytest.fixture
 def extracted_link(traced_link, stub_domtrack):
     """A link whose current trace has been extracted (one canned table)."""
-    from admin_console import services
+    from apps.admin_console import services
 
     services.extract_link_tables(traced_link)
     return traced_link
@@ -352,7 +352,7 @@ def extracted_link(traced_link, stub_domtrack):
 @pytest.fixture
 def labeled_link(extracted_link, stub_domtrack):
     """A link whose extracted tables have been labeled (pass 1)."""
-    from admin_console import services
+    from apps.admin_console import services
 
     services.label_link_tables(extracted_link)
     return extracted_link
@@ -373,7 +373,7 @@ HOSTING_PLAN_VALUES = {
 @pytest.fixture
 def planned_link(labeled_link, stub_llm):
     """A link with one normalized hosting plan record after the combined pass."""
-    from admin_console import services
+    from apps.admin_console import services
 
     stub_llm.classifications = [
         {

@@ -3,8 +3,8 @@
 import pytest
 from django.utils import timezone
 
-from companies.models import Company, CompanyStepProgress, VerificationDecision
-from companies.services import record_verification_decision, register_company
+from apps.companies.models import Company, CompanyStepProgress, VerificationDecision
+from apps.companies.services import record_verification_decision, register_company
 
 pytestmark = pytest.mark.django_db
 
@@ -43,7 +43,7 @@ def test_not_approved_reopens_step_one(company, operator):
 
 
 def test_invalid_outcome_is_rejected(company, operator):
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     with pytest.raises(ApiError) as exc:
         record_verification_decision(company, operator, "maybe")

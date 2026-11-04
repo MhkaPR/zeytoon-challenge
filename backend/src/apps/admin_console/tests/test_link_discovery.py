@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from admin_console.discovery import LinkDiscoverer
+from apps.admin_console.discovery import LinkDiscoverer
 
 pytestmark = pytest.mark.django_db
 

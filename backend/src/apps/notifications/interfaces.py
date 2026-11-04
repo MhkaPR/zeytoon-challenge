@@ -4,8 +4,8 @@ Producers raise notifications only through this interface; ``notifications`` nev
 imports its callers.
 """
 
-from notifications import services
-from notifications.models import Notification
+from apps.notifications import services
+from apps.notifications.models import Notification
 
 
 class NotificationsInterface:

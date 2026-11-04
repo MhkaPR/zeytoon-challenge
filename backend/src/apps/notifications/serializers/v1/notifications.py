@@ -2,11 +2,11 @@
 
 from rest_framework import serializers
 
-from notifications.models import (
+from apps.notifications.models import (
     Notification,
     NotificationRecipient,
 )
-from utils.serializers import parse_input
+from apps.utils.serializers import parse_input
 
 
 class NotificationRecipientInputSerializer(serializers.Serializer):

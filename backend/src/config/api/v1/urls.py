@@ -1,7 +1,7 @@
 """Version 1 API route aggregation."""
 
 from django.urls import include, path
-from companies.api import CompanyListCreateView
+from apps.companies.api import CompanyListCreateView
 
 urlpatterns = [
     path("auth/", include("accounts.urls")),

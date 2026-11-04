@@ -5,9 +5,9 @@ from django.core.cache import cache
 from django.test import override_settings
 from rest_framework.test import APIClient
 
-from accounts import state
-from accounts.models import User, ensure_role_groups
-from accounts.sms import CapturingSmsGateway
+from apps.accounts import state
+from apps.accounts.models import User, ensure_role_groups
+from apps.accounts.sms import CapturingSmsGateway
 
 
 @pytest.fixture(autouse=True)

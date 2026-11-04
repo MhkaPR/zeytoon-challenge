@@ -5,13 +5,13 @@ import logging
 
 import pytest
 
-from companies import events
-from companies.services import (
+from apps.companies import events
+from apps.companies.services import (
     record_credit_movement,
     record_verification_decision,
     register_company,
 )
-from utils.logging import JsonFormatter, SensitiveDataFilter
+from apps.utils.logging import JsonFormatter, SensitiveDataFilter
 
 pytestmark = pytest.mark.django_db
 

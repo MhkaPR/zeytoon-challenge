@@ -2,8 +2,8 @@
 
 import pytest
 
-from admin_console import services
-from admin_console.models import Link, Site
+from apps.admin_console import services
+from apps.admin_console.models import Link, Site
 
 pytestmark = pytest.mark.django_db
 
@@ -129,6 +129,6 @@ def test_empty_crawl_keeps_site_in_onboarding_and_notifies(
     assert result["links"] == []
     site.refresh_from_db()
     assert site.maintenance_state == Site.MaintenanceState.ONBOARDING
-    from notifications.models import Notification
+    from apps.notifications.models import Notification
 
     assert Notification.objects.filter(event_type="link_discovery_empty").exists()

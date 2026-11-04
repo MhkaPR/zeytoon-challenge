@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 def parse_input(schema_cls, data):
     """Validate ``data`` against a Pydantic schema or DRF serializer (shared pattern)."""
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     if isinstance(schema_cls, type) and issubclass(schema_cls, serializers.Serializer):
         serializer = schema_cls(data=data)

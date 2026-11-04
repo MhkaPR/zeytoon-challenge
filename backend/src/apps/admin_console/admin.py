@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from admin_console.models import (
+from apps.admin_console.models import (
     CaptureSession,
     ClassificationRegex,
     ChangeRecord,

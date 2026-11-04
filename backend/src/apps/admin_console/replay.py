@@ -12,8 +12,8 @@ import os
 from django.db import transaction
 from django.utils import timezone
 
-from admin_console import artifacts, constants, domtrack_client, events, services
-from admin_console.models import (
+from apps.admin_console import artifacts, constants, domtrack_client, events, services
+from apps.admin_console.models import (
     ChangeRecord,
     Link,
     ReplayRun,
@@ -23,7 +23,7 @@ from admin_console.models import (
 
 
 def execute_replay_run(link, actor=None):
-    from admin_console import llm
+    from apps.admin_console import llm
 
     before_trace = link.current_trace
     run = ReplayRun.objects.create(

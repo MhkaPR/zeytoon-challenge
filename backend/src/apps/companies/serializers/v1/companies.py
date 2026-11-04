@@ -3,7 +3,7 @@
 from pydantic import BaseModel, Field
 from rest_framework import serializers
 
-from companies.models import Company, CompanyStepProgress
+from apps.companies.models import Company, CompanyStepProgress
 
 
 class CompanyInformationInput(BaseModel):
@@ -22,7 +22,7 @@ def parse_input(schema_cls, data):
     Raises ``invalid_field`` (Pydantic) or ``invalid_request`` (DRF) with the offending
     fields named in ``fields`` (FR-003).
     """
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     if isinstance(schema_cls, type) and issubclass(schema_cls, serializers.Serializer):
         serializer = schema_cls(data=data)

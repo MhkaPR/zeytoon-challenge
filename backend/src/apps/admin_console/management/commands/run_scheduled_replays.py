@@ -6,7 +6,7 @@ configured replay period. Suspended sites are skipped (FR-039).
 
 from django.core.management.base import BaseCommand
 
-from admin_console import services, tasks
+from apps.admin_console import services, tasks
 
 
 class Command(BaseCommand):

@@ -7,8 +7,8 @@ import pytest
 from django.core.management import call_command
 from django.utils import timezone
 
-from admin_console import services, tasks
-from admin_console.models import Link, Site
+from apps.admin_console import services, tasks
+from apps.admin_console.models import Link, Site
 
 pytestmark = pytest.mark.django_db
 
@@ -41,7 +41,7 @@ def test_due_links_excludes_suspended_sites_and_non_kept_links(site):
 
 
 def test_due_links_skips_suspended_sites(owner, site):
-    from companies import services as company_services
+    from apps.companies import services as company_services
 
     other = company_services.register_company(
         owner,

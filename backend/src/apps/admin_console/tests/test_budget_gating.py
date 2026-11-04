@@ -2,9 +2,9 @@
 
 import pytest
 
-from admin_console import llm, services
-from admin_console.models import Link, LlmCostLedger
-from notifications.models import Notification
+from apps.admin_console import llm, services
+from apps.admin_console.models import Link, LlmCostLedger
+from apps.notifications.models import Notification
 
 pytestmark = pytest.mark.django_db
 
@@ -42,7 +42,7 @@ def test_no_partial_row_is_written_when_the_budget_is_exhausted(labeled_link):
     with pytest.raises(llm.LlmBudgetExhausted):
         services.classify_and_extract_link_tables(labeled_link)
 
-    from admin_console.models import TableClassification
+    from apps.admin_console.models import TableClassification
 
     assert TableClassification.objects.count() == 0
 

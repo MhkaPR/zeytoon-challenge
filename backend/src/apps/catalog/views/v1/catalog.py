@@ -8,10 +8,10 @@ from rest_framework.mixins import ListModelMixin
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from admin_console.interfaces import AdminConsoleInterface
-from catalog.filters import PublishedPlanFilter
-from catalog.models import PublishedRecord
-from core.site_config import public_site_config
+from apps.admin_console.interfaces import AdminConsoleInterface
+from apps.catalog.filters import PublishedPlanFilter
+from apps.catalog.models import PublishedRecord
+from apps.core.site_config import public_site_config
 
 
 class SiteConfigViewSet(GenericViewSet):

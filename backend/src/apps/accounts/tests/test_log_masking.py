@@ -4,8 +4,8 @@ import logging
 
 import pytest
 
-from accounts import services
-from utils.logging import JsonFormatter, SensitiveDataFilter, mask_text
+from apps.accounts import services
+from apps.utils.logging import JsonFormatter, SensitiveDataFilter, mask_text
 
 pytestmark = pytest.mark.django_db
 

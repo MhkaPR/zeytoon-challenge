@@ -35,7 +35,7 @@ def _source_key(source):
 
 def _normalize(phone_number):
     """Normalize a phone number for use in a cache key (best effort)."""
-    from accounts.validation import normalize_phone
+    from apps.accounts.validation import normalize_phone
 
     return normalize_phone(phone_number) or str(phone_number)
 

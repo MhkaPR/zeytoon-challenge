@@ -7,7 +7,7 @@ already-validated payloads and opaque provenance ids.
 
 from django.utils import timezone
 
-from catalog.models import PublishedRecord
+from apps.catalog.models import PublishedRecord
 
 
 def upsert_published_record(

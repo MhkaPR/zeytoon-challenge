@@ -6,7 +6,7 @@ company-owner UI. Verification decisions are shown read-only because they are ap
 
 from django.contrib import admin
 
-from companies.models import (
+from apps.companies.models import (
     Company,
     CompanyRegistrationDraft,
     CompanyStepProgress,

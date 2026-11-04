@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from catalog.models import PublishedRecord
+from apps.catalog.models import PublishedRecord
 
 
 @admin.register(PublishedRecord)

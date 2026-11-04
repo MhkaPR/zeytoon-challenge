@@ -4,7 +4,7 @@ Other modules (catalog, search, notifications producers) read console-owned stat
 through this interface; it exposes opaque ids and summaries and leaks no internals.
 """
 
-from admin_console.models import FailureAlert, Link, Site
+from apps.admin_console.models import FailureAlert, Link, Site
 
 
 class AdminConsoleInterface:

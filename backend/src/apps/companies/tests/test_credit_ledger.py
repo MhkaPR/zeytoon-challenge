@@ -2,9 +2,9 @@
 
 import pytest
 
-from companies.models import CreditLedgerEntry
-from companies.selectors import credit_projection
-from companies.services import record_credit_movement, register_company
+from apps.companies.models import CreditLedgerEntry
+from apps.companies.selectors import credit_projection
+from apps.companies.services import record_credit_movement, register_company
 
 pytestmark = pytest.mark.django_db
 
@@ -35,7 +35,7 @@ def test_charge_then_decharge_projection(owner):
 
 
 def test_amount_must_be_positive(owner):
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     company = _register(owner)
     with pytest.raises(ApiError) as exc:
@@ -44,7 +44,7 @@ def test_amount_must_be_positive(owner):
 
 
 def test_unknown_reason_is_rejected(owner):
-    from accounts.exceptions import ApiError
+    from apps.accounts.exceptions import ApiError
 
     company = _register(owner)
     with pytest.raises(ApiError):

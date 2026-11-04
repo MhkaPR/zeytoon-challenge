@@ -6,7 +6,7 @@ register here without changing callers, so adding one never touches the producer
 (Principle XII — reuse the platform shape rather than special-casing delivery).
 """
 
-from notifications.models import NotificationDelivery
+from apps.notifications.models import NotificationDelivery
 
 _IN_APP_CHANNEL = NotificationDelivery.Channel.IN_APP
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from accounts.models import User
+from apps.accounts.models import User
 
 pytestmark = pytest.mark.django_db
 

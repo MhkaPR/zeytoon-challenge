@@ -9,10 +9,10 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from accounts import state
-from accounts.exceptions import ApiError
-from accounts.sms import get_gateway
-from accounts.validation import normalize_phone
+from apps.accounts import state
+from apps.accounts.exceptions import ApiError
+from apps.accounts.sms import get_gateway
+from apps.accounts.validation import normalize_phone
 
 logger = logging.getLogger(__name__)
 

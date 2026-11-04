@@ -2,7 +2,7 @@
 
 import pytest
 
-from companies.services import record_verification_decision, register_company
+from apps.companies.services import record_verification_decision, register_company
 
 pytestmark = pytest.mark.django_db
 
@@ -55,13 +55,13 @@ def test_entry_payload_reflects_selected_company_only(auth_client, owner, operat
 
 
 def test_credit_is_scoped_per_company(owner):
-    from companies.services import record_credit_movement
+    from apps.companies.services import record_credit_movement
 
     first = _register(owner, "one.com", "One")
     second = _register(owner, "two.com", "Two")
     record_credit_movement(first, "charge", 500, "payment")
     # The second company's projection stays zero (SC-010).
-    from companies.selectors import credit_projection
+    from apps.companies.selectors import credit_projection
 
     assert credit_projection(first) == 500
     assert credit_projection(second) == 0
