@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir uv \
 
 COPY backend/ ./backend/
 
-WORKDIR /app/backend/src
+WORKDIR /app/backend
 
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "config.wsgi:application", "--chdir", "/app/backend/src", "--bind", "0.0.0.0:8000"]

@@ -49,6 +49,7 @@ project-root/
 - `config` is the Django project package (contains `admin` config, root URLconf).
 - `settings.py` in `config/settings/` selects the environment file: `base.py` is imported by `dev.py`/`prod.py`.
 - Version directories exist in `views/`, `serializers/`, and `services/`. `models/` and `tests/` are not versioned.
+- The `models/` directory holds one model module per model (or cohesive model group); its `__init__.py` only re-exports, it MUST NOT define models.
 
 ## 3. Settings & Configuration
 
@@ -69,7 +70,10 @@ project-root/
 
 - Base URL pattern: `/api/<version>/`. Version routing lives in `config/api/<version>/urls.py`.
 - **ViewSets only** — `APIView` is not used.
+- Use real DRF generic viewsets: `ModelViewSet`, `GenericViewSet` with mixins, and `@action` for extra endpoints. A bare `ViewSet` is only acceptable when no generic viewset or mixin applies. Custom `as_view` overrides that reimplement routing are forbidden.
 - **Serializers are versioned** under `serializers/v1/`, `serializers/v2/`, etc.
+- **Every API response body is produced by a serializer**, never by a hand-built `dict`. Use `ModelSerializer` for model instances and `Serializer`/`BaseSerializer` for class-based, computed, or aggregate payloads; views call `serializer.data` (or `serializer(instance).data`) instead of assembling dictionaries inline.
+- **API input is validated by DRF serializers, never by Pydantic.** At the API boundary the request body is passed to a `Serializer`/`ModelSerializer`; `Pydantic` is not imported in any `api`/`serializers` module. (Pydantic stays internal to non-API tooling such as LLM structured output.)
 - **Response envelope**:
   - List responses: `{"data": [...], "page": {...}}`
   - Detail / POST / PUT / PATCH responses: `{"data": {...}}`
