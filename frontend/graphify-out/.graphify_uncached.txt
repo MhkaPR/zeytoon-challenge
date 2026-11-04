@@ -1,0 +1,7 @@
+/home/mhkapr/Documents/personal/projects/torob-challenge/frontend/AGENTS.md
+/home/mhkapr/Documents/personal/projects/torob-challenge/frontend/README.md
+/home/mhkapr/Documents/personal/projects/torob-challenge/frontend/public/file.svg
+/home/mhkapr/Documents/personal/projects/torob-challenge/frontend/public/globe.svg
+/home/mhkapr/Documents/personal/projects/torob-challenge/frontend/public/next.svg
+/home/mhkapr/Documents/personal/projects/torob-challenge/frontend/public/vercel.svg
+/home/mhkapr/Documents/personal/projects/torob-challenge/frontend/public/window.svg
