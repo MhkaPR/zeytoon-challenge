@@ -12,7 +12,8 @@ import os
 from django.db import transaction
 from django.utils import timezone
 
-from apps.admin_console import artifacts, constants, domtrack_client, events, services
+from apps.pipeline import artifacts, constants, domtrack_client, events
+from apps.pipeline.services.v1 import pipeline as services
 from apps.pipeline.models import (
     ChangeRecord,
     Link,
@@ -23,7 +24,7 @@ from apps.pipeline.models import (
 
 
 def execute_replay_run(link, actor=None):
-    from apps.admin_console import llm
+    from apps.pipeline import llm
 
     before_trace = link.current_trace
     run = ReplayRun.objects.create(

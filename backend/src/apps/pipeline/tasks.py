@@ -11,7 +11,7 @@ from django.tasks import task
 @task
 def run_capture_task(link_id, duration_ms=None):
     """Run a headless capture for a link (FR-016..FR-019)."""
-    from apps.admin_console import services
+    from apps.pipeline.services.v1 import pipeline as services
     from apps.pipeline.models import Link
     from apps.pipeline.services import start_capture
 
@@ -59,7 +59,7 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
     """Discover once, then advance saved links from their persisted stage."""
     import logging
 
-    from apps.admin_console import services
+    from apps.pipeline.services.v1 import pipeline as services
     from apps.pipeline.models import Link, Site
 
     logger = logging.getLogger(__name__)
@@ -165,15 +165,6 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
             link.last_error = f"{failed_stage}: {str(exc)[:450]}"
             link.save(update_fields=["last_error", "updated_at"])
             Link.objects.filter(pk=link.pk).update(pipeline_task_state="failed")
-            from apps.notifications.interfaces import NotificationsInterface
-
-            NotificationsInterface.notify(
-                event_type="pipeline_stage_failed",
-                subject=f"Pipeline paused: {failed_stage}",
-                body=f"{link.url}\nStage: {failed_stage}\nError: {str(exc)[:400]}",
-                related_object=f"admin_console.Link:{link.pk}",
-                dedup_key=f"pipeline-failure:{link.pk}:{link.pipeline_stage}",
-            )
             logger.exception(
                 "site_pipeline_link_failed",
                 extra={"event": "site_pipeline_link_failed", "link_id": link.pk},
@@ -226,7 +217,7 @@ def recover_site_pipeline_tasks(backend_name="default"):
     from django_tasks_db.compat import TaskResultStatus
     from django_tasks_db.models import DBTaskResult
 
-    from apps.admin_console import services
+    from apps.pipeline.services.v1 import pipeline as services
     from apps.pipeline.models import CaptureSession, Link
 
     task_path = "pipeline.tasks.run_site_pipeline_task"

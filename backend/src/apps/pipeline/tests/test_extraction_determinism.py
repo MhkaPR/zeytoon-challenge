@@ -2,7 +2,7 @@
 
 import pytest
 
-from apps.admin_console import services
+from apps.pipeline.services.v1 import pipeline as services
 from apps.pipeline.models import ExtractedTable, ExtractedTableRow
 
 pytestmark = pytest.mark.django_db

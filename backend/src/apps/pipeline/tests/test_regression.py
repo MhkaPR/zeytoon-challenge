@@ -10,7 +10,8 @@ import pathlib
 
 import pytest
 
-from apps.admin_console import discovery, domtrack_client, llm, plan_schema, services
+from apps.pipeline import discovery, domtrack_client, llm, plan_schema
+from apps.pipeline.services.v1 import pipeline as services
 
 ADMIN_CONSOLE = pathlib.Path("backend/src/admin_console")
 

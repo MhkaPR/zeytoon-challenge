@@ -19,9 +19,6 @@ class FailureAlert(TimestampedModel):
     failure_rate = models.FloatField(default=0.0)
     raised_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
-    notification_dedup_key = models.CharField(
-        max_length=255, blank=True, default="", db_index=True
-    )
 
     class Meta:
         db_table = "admin_console_failure_alert"

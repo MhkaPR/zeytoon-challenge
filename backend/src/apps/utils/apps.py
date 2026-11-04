@@ -9,7 +9,7 @@ class UtilsConfig(AppConfig):
         from django.apps import apps
         from auditlog.registry import auditlog
 
-        project_apps = {"accounts", "companies", "admin_console", "catalog", "notifications"}
+        project_apps = {"accounts", "companies", "admin_console", "catalog", "pipeline"}
         for model in apps.get_models():
             if model._meta.app_label in project_apps and not model._meta.proxy:
                 auditlog.register(model)

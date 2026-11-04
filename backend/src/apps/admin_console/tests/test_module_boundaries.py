@@ -24,7 +24,7 @@ def _imports(path):
     return names
 
 
-@pytest.mark.parametrize("app", ["catalog", "notifications"])
+@pytest.mark.parametrize("app", ["catalog"])
 def test_independent_modules_never_import_admin_console(app):
     root = _backend_root()
     for path in (root / app).rglob("*.py"):

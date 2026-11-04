@@ -2,7 +2,7 @@
 
 import pytest
 
-from apps.admin_console import services
+from apps.pipeline.services.v1 import pipeline as services
 from apps.pipeline.models import Link, Site
 
 pytestmark = pytest.mark.django_db
@@ -117,9 +117,7 @@ def test_manual_links_are_stored(operator_client, site):
     assert link.source == Link.Source.MANUAL
 
 
-def test_empty_crawl_keeps_site_in_onboarding_and_notifies(
-    site, stub_discovery, notification_recipient
-):
+def test_empty_crawl_keeps_site_in_onboarding(site, stub_discovery):
     site.maintenance_state = Site.MaintenanceState.ONBOARDING
     site.save(update_fields=["maintenance_state", "updated_at"])
     stub_discovery.urls = []
@@ -129,6 +127,3 @@ def test_empty_crawl_keeps_site_in_onboarding_and_notifies(
     assert result["links"] == []
     site.refresh_from_db()
     assert site.maintenance_state == Site.MaintenanceState.ONBOARDING
-    from apps.notifications.models import Notification
-
-    assert Notification.objects.filter(event_type="link_discovery_empty").exists()

@@ -7,7 +7,8 @@ import pytest
 from django.core.management import call_command
 from django.utils import timezone
 
-from apps.admin_console import services, tasks
+from apps.pipeline import tasks
+from apps.pipeline.services.v1 import pipeline as services
 from apps.pipeline.models import Link, Site
 
 pytestmark = pytest.mark.django_db

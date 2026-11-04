@@ -2,7 +2,7 @@
 
 import pytest
 
-from apps.admin_console import domtrack_client
+from apps.pipeline import domtrack_client
 from apps.pipeline.models import CaptureSession, Link, Trace
 
 pytestmark = pytest.mark.django_db

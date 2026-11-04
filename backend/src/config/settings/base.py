@@ -66,14 +66,14 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "storages",
     "auditlog",
-    "apps.admin_console",
     "django_tasks_db.apps.TasksAppConfig",
     # Local
     "apps.utils",
     "apps.accounts",
     "apps.companies",
     "apps.catalog",
-    "apps.notifications",
+    "apps.pipeline",
+    "apps.admin_console",
 ]
 
 MIDDLEWARE = [

@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from apps.accounts import selectors as account_selectors
 from apps.accounts.exceptions import ApiError
-from apps.admin_console import domtrack_client, events, llm, serializers, services
+from apps.pipeline import domtrack_client, events, llm, serializers, services
 from apps.pipeline.models import CaptureSession, FailureAlert, Link, Site
 from apps.admin_console.serializers import (
     ApprovalQueueSerializer,
@@ -419,7 +419,7 @@ class ClassificationView(OperatorOnlyView):
 
 class PlanSchemaView(OperatorOnlyView):
     def get(self, request):
-        from apps.admin_console import plan_schema
+        from apps.pipeline import plan_schema
 
         self.caller(request)
         plan_type = request.query_params.get("plan_type", "hosting")
@@ -542,7 +542,7 @@ class ReplayRunListView(OperatorOnlyView):
 class ReplayRunCreateView(OperatorOnlyView):
     @extend_schema(request=ReplayRunInput, responses={202: dict})
     def post(self, request):
-        from apps.admin_console import tasks
+        from apps.pipeline import tasks
 
         self.caller(request)
         payload = parse_input(ReplayRunInput, request.data)
@@ -626,7 +626,7 @@ class SettingsView(OperatorOnlyView):
 
 
 def _settings_snapshot():
-    from apps.admin_console import constants
+    from apps.pipeline import constants
     from apps.core.site_config import settings_snapshot as frontend_settings_snapshot
 
     values = {

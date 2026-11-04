@@ -4,7 +4,7 @@ import dataclasses
 
 import pytest
 
-from apps.admin_console import plan_schema
+from apps.pipeline import plan_schema
 
 
 def test_schema_carries_the_plan_type_dimension():

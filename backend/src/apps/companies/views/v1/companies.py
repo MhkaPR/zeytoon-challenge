@@ -242,7 +242,8 @@ class CompanyViewSet(
     @action(detail=True, methods=["post"], url_path="links")
     def links(self, request, pk=None):
         """Let a company submit additional pages from its own domain for crawling."""
-        from apps.admin_console import discovery, services as crawl_services
+        from apps.pipeline import discovery
+        from apps.pipeline.services.v1 import pipeline as crawl_services
         from apps.pipeline.models import Site
         from apps.admin_console.serializers import ManualLinksInput
 

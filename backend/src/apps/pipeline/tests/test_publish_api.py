@@ -2,7 +2,7 @@
 
 import pytest
 
-from apps.admin_console.tests.conftest import HOSTING_PLAN_VALUES
+from apps.pipeline.tests.conftest import HOSTING_PLAN_VALUES
 from apps.catalog.models import PublishedRecord
 
 pytestmark = pytest.mark.django_db

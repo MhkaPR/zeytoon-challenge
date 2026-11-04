@@ -3,7 +3,8 @@ from types import SimpleNamespace
 import pytest
 from django.utils import timezone
 
-from apps.admin_console import services, tasks
+from apps.pipeline import tasks
+from apps.pipeline.services.v1 import pipeline as services
 from apps.pipeline.models import Link, PlanRecord
 
 pytestmark = pytest.mark.django_db

@@ -4,9 +4,9 @@ import uuid
 
 import pytest
 
-from apps.admin_console import artifacts
+from apps.pipeline import artifacts
 from apps.pipeline.models import Trace
-from apps.admin_console.tests import factories
+from apps.pipeline.tests import factories
 
 pytestmark = pytest.mark.django_db
 

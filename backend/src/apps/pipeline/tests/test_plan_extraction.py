@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from apps.admin_console import llm, plan_schema, services
+from apps.pipeline import llm, plan_schema
+from apps.pipeline.services.v1 import pipeline as services
 from apps.pipeline.models import (
     ExtractedTable,
     ExtractedTableColumn,
@@ -13,7 +14,7 @@ from apps.pipeline.models import (
     PlanRecord,
     TableClassification,
 )
-from apps.admin_console.tests.conftest import HOSTING_PLAN_VALUES
+from apps.pipeline.tests.conftest import HOSTING_PLAN_VALUES
 
 pytestmark = pytest.mark.django_db
 

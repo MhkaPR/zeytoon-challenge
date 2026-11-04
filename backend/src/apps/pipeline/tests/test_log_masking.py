@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
 from apps.accounts.models import ensure_role_groups
-from apps.admin_console import events
+from apps.pipeline import events
 from apps.pipeline.models import Site
 
 User = get_user_model()

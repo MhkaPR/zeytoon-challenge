@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from apps.utils.models import TimestampedModel
 
+User = get_user_model()
+
 
 class Company(TimestampedModel):
     """A registrable business entity owned by exactly one user.

@@ -70,7 +70,7 @@ def test_approval_enqueues_automatic_site_pipeline_after_commit(
         SimpleNamespace(enqueue=lambda site_id: enqueued.append(site_id)),
     )
 
-    from apps.admin_console import services
+    from apps.pipeline.services.v1 import pipeline as services
 
     services.record_decision(company.pk, operator, "approved")
 

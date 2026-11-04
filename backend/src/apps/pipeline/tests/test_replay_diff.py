@@ -4,7 +4,7 @@ import pytest
 
 from apps.pipeline.models import ChangeRecord, ReplayRun
 from apps.pipeline.replay import execute_replay_run
-from apps.admin_console.tests import factories
+from apps.pipeline.tests import factories
 
 pytestmark = pytest.mark.django_db
 

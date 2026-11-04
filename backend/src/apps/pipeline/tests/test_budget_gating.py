@@ -2,9 +2,9 @@
 
 import pytest
 
-from apps.admin_console import llm, services
+from apps.pipeline import llm
+from apps.pipeline.services.v1 import pipeline as services
 from apps.pipeline.models import Link, LlmCostLedger
-from apps.notifications.models import Notification
 
 pytestmark = pytest.mark.django_db
 
@@ -33,7 +33,6 @@ def test_every_llm_stage_is_gated_and_parks_the_link(extracted_link, stub_domtra
     extracted_link.refresh_from_db()
     assert extracted_link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET
     assert extracted_link.last_error == "awaiting_llm_budget:labeling"
-    assert Notification.objects.filter(event_type="llm_budget_exhausted").exists()
 
 
 def test_no_partial_row_is_written_when_the_budget_is_exhausted(labeled_link):

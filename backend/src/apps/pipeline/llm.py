@@ -23,7 +23,7 @@ from pydantic import (
     create_model,
 )
 
-from apps.admin_console import plan_schema
+from apps.pipeline import plan_schema
 from apps.pipeline.models import Link, LlmCostLedger
 
 PROMPT_VERSION = "v1"
@@ -233,25 +233,20 @@ class LlmBudget:
         return row, created
 
     def exhausted(self, stage, link=None, links=None):
-        """Park ``link`` and notify the admin (FR-048, FR-049)."""
-        from apps.notifications.interfaces import NotificationsInterface
-
+        """Park ``link`` and record the budget event (FR-048, FR-049)."""
         affected = list(links or ([] if link is None else [link]))
         if affected:
             Link.objects.filter(pk__in=[item.pk for item in affected]).update(
                 pipeline_stage=Link.PipelineStage.AWAITING_LLM_BUDGET,
                 last_error=f"awaiting_llm_budget:{stage}",
             )
-        NotificationsInterface.notify(
-            event_type="llm_budget_exhausted",
-            subject="LLM token budget exhausted",
-            body=f"Stage '{stage}' is waiting for the token budget to be restored.",
-            related_object=(
-                f"admin_console.LinkBatch:{','.join(str(item.pk) for item in affected)}"
-                if len(affected) > 1
-                else f"admin_console.Link:{affected[0].pk}" if affected else ""
-            ),
-            dedup_key=f"budget:{stage}:{timezone.now().date()}",
+        logger.warning(
+            "llm_budget_exhausted",
+            extra={
+                "event": "llm_budget_exhausted",
+                "stage": stage,
+                "link_ids": [item.pk for item in affected],
+            },
         )
 
     def guard(self, stage, link=None, links=None, scope=None, period=None):
