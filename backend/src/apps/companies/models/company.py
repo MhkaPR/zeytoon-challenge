@@ -17,6 +17,10 @@ class Company(TimestampedModel):
         VERIFIED = "verified", "Verified"
         REJECTED = "rejected", "Rejected"
 
+    class ChargeStatus(models.TextChoices):
+        CHARGED = "charged", "Charged"
+        NOT_CHARGED = "not_charged", "Not charged"
+
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -35,6 +39,12 @@ class Company(TimestampedModel):
         choices=VerificationStatus.choices,
         default=VerificationStatus.PENDING,
     )
+    charge_status = models.CharField(
+        max_length=16,
+        choices=ChargeStatus.choices,
+        default=ChargeStatus.NOT_CHARGED,
+    )
+    crawl_enabled = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False, db_index=True)
     archived_at = models.DateTimeField(null=True, blank=True)
 

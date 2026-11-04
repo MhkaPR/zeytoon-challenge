@@ -1,7 +1,7 @@
 """Read-side helpers: owner scoping and registration step resolution."""
 
 from apps.companies import constants
-from apps.companies.models import Company, CompanyStepProgress
+from apps.companies.models import Company, CompanyStepProgress, CreditLedgerEntry
 
 
 def owned_company_or_error(user, company_id):
@@ -109,3 +109,11 @@ def pending_approval_payload(company):
             "duplicate_of": duplicates,
         }
     ).data
+
+
+def credit_projection(company):
+    """Return the company's current credit as charge minus decharge."""
+    total = 0
+    for entry in CreditLedgerEntry.objects.filter(company=company):
+        total += entry.amount if entry.direction == "charge" else -entry.amount
+    return total

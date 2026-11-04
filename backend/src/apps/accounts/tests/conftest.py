@@ -12,7 +12,7 @@ from apps.accounts.sms import CapturingSmsGateway
 
 @pytest.fixture(autouse=True)
 def _use_test_sms_gateway(settings):
-    settings.SMS_GATEWAY_BACKEND = "accounts.sms.CapturingSmsGateway"
+    settings.SMS_GATEWAY_BACKEND = "apps.accounts.sms.CapturingSmsGateway"
     CapturingSmsGateway.sent = {}
     yield
 

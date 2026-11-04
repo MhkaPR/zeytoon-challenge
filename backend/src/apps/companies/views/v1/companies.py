@@ -21,7 +21,11 @@ from apps.companies.models import Company
 from apps.companies.serializers import (
     CompanyDetailSerializer,
     CompanyInformationSerializer,
+    CompanyCreditSerializer,
     CompanyLinksSerializer,
+    CreditMovementInputSerializer,
+    CrawlToggleInputSerializer,
+    CrawlToggleResponseSerializer,
     CompanyListSerializer,
     CompanyRegistrationSerializer,
     CompanySerializer,
@@ -179,6 +183,7 @@ class CompanyViewSet(
                     "company": company,
                     "step_progress": selectors.step_progress(company),
                     "current_step": selectors.current_step(company),
+                    "plan_eligibility": services.can_manage_plans(company),
                 }
             ).data
         )
@@ -237,6 +242,79 @@ class CompanyViewSet(
     def plan_eligibility(self, request, pk=None):
         company = self._company(pk)
         return Response(PlanEligibilitySerializer(services.can_manage_plans(company)).data)
+
+    @extend_schema(
+        request=CreditMovementInputSerializer,
+        responses={201: CompanyCreditSerializer},
+    )
+    @action(detail=True, methods=["post"], url_path="credit/movements")
+    def credit_movements(self, request, pk=None):
+        company = self._company(pk)
+        payload = parse_input(CreditMovementInputSerializer, request.data)
+        services.record_credit_movement(
+            company,
+            payload["direction"],
+            payload["amount"],
+            payload["reason"],
+            reference=payload.get("reference", ""),
+            actor=self.caller(request),
+        )
+        return Response(
+            CompanyCreditSerializer(
+                {
+                    "current_credit": selectors.credit_projection(company),
+                    "entries": [
+                        {
+                            "id": entry.pk,
+                            "direction": entry.direction,
+                            "amount": entry.amount,
+                            "reason": entry.reason,
+                            "reference": entry.reference,
+                        }
+                        for entry in company.credit_entries.all()
+                    ],
+                }
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        request=CrawlToggleInputSerializer,
+        responses={200: CrawlToggleResponseSerializer},
+    )
+    @action(detail=True, methods=["post"], url_path="crawl")
+    def crawl(self, request, pk=None):
+        company = self._company(pk)
+        payload = parse_input(CrawlToggleInputSerializer, request.data)
+        services.set_crawl_enabled(company, payload["enabled"])
+        return Response(
+            CrawlToggleResponseSerializer(
+                {"crawl_enabled": company.crawl_enabled, "credit_unchanged": True}
+            ).data
+        )
+
+    @extend_schema(responses={200: CompanyCreditSerializer})
+    @action(detail=True, methods=["get"], url_path="credit")
+    def credit(self, request, pk=None):
+        company = self._company(pk)
+        entries = company.credit_entries.all()
+        return Response(
+            CompanyCreditSerializer(
+                {
+                    "current_credit": selectors.credit_projection(company),
+                    "entries": [
+                        {
+                            "id": entry.pk,
+                            "direction": entry.direction,
+                            "amount": entry.amount,
+                            "reason": entry.reason,
+                            "reference": entry.reference,
+                        }
+                        for entry in entries
+                    ],
+                }
+            ).data
+        )
 
     @extend_schema(responses={201: CompanyLinksSerializer})
     @action(detail=True, methods=["post"], url_path="links")

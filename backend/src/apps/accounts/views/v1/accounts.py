@@ -30,6 +30,13 @@ from apps.accounts.throttles import (
 REFRESH_COOKIE_NAME = "refresh_token"
 
 
+def _mask_phone(phone):
+    """Hide the middle digits in API responses."""
+    if not phone or len(phone) < 7:
+        return "***"
+    return f"{phone[:6]}***{phone[-4:]}"
+
+
 def _set_refresh_cookie(response, refresh_token):
     max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
     response.set_cookie(
@@ -86,7 +93,7 @@ class OtpVerifyViewSet(GenericViewSet):
                 "token_type": "Bearer",
                 "expires_in": result["tokens"]["expires_in"],
                 "redirect_to": result["redirect_to"],
-                "user": {"phone": user.phone_number, "role": user.role()},
+                "user": {"phone": _mask_phone(user.phone_number), "role": user.role()},
             }
         ).data
         response = Response(body, status=status.HTTP_200_OK)

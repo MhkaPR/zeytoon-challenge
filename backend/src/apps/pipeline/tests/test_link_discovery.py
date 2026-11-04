@@ -56,7 +56,7 @@ def test_adaptive_crawl_uses_statistical_strategy_no_llm(monkeypatch):
 
 
 def test_discovery_never_consults_a_sitemap():
-    source = pathlib.Path("backend/src/apps/pipeline/discovery.py").read_text().lower()
+    source = (pathlib.Path(__file__).resolve().parents[5] / "backend/src/apps/pipeline/discovery.py").read_text().lower()
     assert "sitemap" not in source
 
 

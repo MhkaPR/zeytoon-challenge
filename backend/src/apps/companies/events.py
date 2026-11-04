@@ -55,3 +55,13 @@ def companies_archived(user, count):
             "count": count,
         },
     )
+
+
+def credit_movement(company, direction, amount, actor=None):
+    _emit(
+        "company_credit_movement",
+        company=company,
+        actor=actor,
+        direction=direction,
+        amount=amount,
+    )

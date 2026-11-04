@@ -1,11 +1,16 @@
 """Soft-delete query set and managers shared by every model."""
 
 from django.db import models
+from django.db.models import ProtectedError
 from django.utils import timezone
 
 
-class SoftDeleteConflict(Exception):
+class SoftDeleteConflict(ProtectedError):
     """Raised when a required relationship still references the record."""
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message, [])
 
 
 class SoftDeleteQuerySet(models.QuerySet):

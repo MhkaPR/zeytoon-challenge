@@ -220,7 +220,7 @@ can change thresholds without a redeploy.
 | `CORS_ALLOWED_ORIGINS` | Exact frontend origin allowlist | `http://localhost:3000` |
 | `CSRF_TRUSTED_ORIGINS` | CSRF trusted origins | follows CORS |
 | `JWT_ACCESS_MINUTES` / `JWT_REFRESH_DAYS` | Token lifetimes | `15` / `7` |
-| `SMS_GATEWAY_BACKEND` | SMS adapter class | `accounts.sms.ConsoleSmsGateway` |
+| `SMS_GATEWAY_BACKEND` | SMS adapter class | `apps.accounts.sms.ConsoleSmsGateway` |
 | `SMS_GATEWAY_API_KEY` / `_SENDER` / `_BASE_URL` | SMS gateway credentials | — |
 | `OTP_HASH_SECRET` | HMAC key for stored OTP hashes | falls back to `SECRET_KEY` |
 | `PHONE_DEFAULT_REGION` | Default region for phone parsing | `IR` |

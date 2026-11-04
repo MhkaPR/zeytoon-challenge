@@ -13,7 +13,8 @@ import pytest
 from apps.pipeline import discovery, domtrack_client, llm, plan_schema
 from apps.pipeline.services.v1 import pipeline as services
 
-ADMIN_CONSOLE = pathlib.Path("backend/src/apps/pipeline")
+ROOT = pathlib.Path(__file__).resolve().parents[5]
+ADMIN_CONSOLE = ROOT / "backend/src/apps/pipeline"
 
 
 def test_capture_never_scrolls_the_page():

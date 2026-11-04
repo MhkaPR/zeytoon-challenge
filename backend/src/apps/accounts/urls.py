@@ -6,7 +6,7 @@ from apps.accounts.views.v1 import api
 
 app_name = "accounts"
 
-router = DefaultRouter()
+router = DefaultRouter(trailing_slash=False)
 router.register("", api.OtpRequestViewSet, basename="otp-request")
 router.register("", api.OtpVerifyViewSet, basename="otp-verify")
 router.register("", api.TokenRefreshViewSet, basename="token-refresh")

@@ -30,6 +30,8 @@ class CompanySerializer(serializers.ModelSerializer):
             "phone_number",
             "internal_number",
             "verification_status",
+            "charge_status",
+            "crawl_enabled",
             "is_archived",
             "unverified",
         )
@@ -71,6 +73,7 @@ class CompanyDetailSerializer(serializers.Serializer):
     company = CompanySerializer()
     step_progress = StepProgressSerializer(many=True)
     current_step = serializers.CharField(allow_null=True)
+    plan_eligibility = serializers.DictField(required=False)
 
 
 class CompanyRegistrationSerializer(serializers.Serializer):
@@ -143,3 +146,34 @@ class PendingApprovalSerializer(serializers.Serializer):
     registered_at = serializers.CharField()
     duplicate_domain_warning = serializers.BooleanField()
     duplicate_of = serializers.ListField(child=serializers.IntegerField())
+
+
+class CreditEntrySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    direction = serializers.CharField()
+    amount = serializers.IntegerField()
+    reason = serializers.CharField()
+    reference = serializers.CharField()
+
+
+class CompanyCreditSerializer(serializers.Serializer):
+    current_credit = serializers.IntegerField()
+    entries = CreditEntrySerializer(many=True)
+
+
+class CrawlToggleInputSerializer(serializers.Serializer):
+    enabled = serializers.BooleanField()
+
+
+class CrawlToggleResponseSerializer(serializers.Serializer):
+    crawl_enabled = serializers.BooleanField()
+    credit_unchanged = serializers.BooleanField(default=True)
+
+
+class CreditMovementInputSerializer(serializers.Serializer):
+    direction = serializers.ChoiceField(choices=["charge", "decharge"])
+    amount = serializers.IntegerField(min_value=1)
+    reason = serializers.ChoiceField(
+        choices=["payment", "platform_view", "adjustment"]
+    )
+    reference = serializers.CharField(required=False, allow_blank=True, default="")

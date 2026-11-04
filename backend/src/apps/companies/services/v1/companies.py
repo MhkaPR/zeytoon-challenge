@@ -179,11 +179,31 @@ def can_manage_plans(company):
     missing = []
     if not company.is_verified:
         missing.append("verified")
+    if company.charge_status != company.ChargeStatus.CHARGED:
+        missing.append("charged")
     return {
         "allowed": not missing,
         "missing": missing,
-        "message": "Company must be verified before managing plans." if missing else "",
+        "message": (
+            "Company must be verified and charged before managing plans."
+            if missing
+            else ""
+        ),
     }
+
+
+def set_crawl_enabled(company, enabled):
+    """Toggle crawling; enabling requires the company to be charged."""
+    if enabled and company.charge_status != company.ChargeStatus.CHARGED:
+        raise ApiError(
+            "company_requirement_missing",
+            "The company must be charged before crawling is enabled.",
+            http_status=409,
+            fields={"missing": ["charged"]},
+        )
+    company.crawl_enabled = bool(enabled)
+    company.save(update_fields=["crawl_enabled", "updated_at"])
+    return company
 
 
 # ---------------------------------------------------------------------------
@@ -209,3 +229,28 @@ def archive_companies_for_user(user):
     )
     events.companies_archived(user, count)
     return count
+
+
+def record_credit_movement(
+    company, direction, amount, reason, reference="", actor=None
+):
+    """Append one validated credit-ledger entry."""
+    from apps.accounts.exceptions import ApiError
+    from apps.companies.models import CreditLedgerEntry
+
+    if direction not in CreditLedgerEntry.Direction.values:
+        raise ApiError("invalid_movement", "Unknown credit direction.")
+    if reason not in CreditLedgerEntry.Reason.values:
+        raise ApiError("invalid_movement", "Unknown credit reason.")
+    if amount <= 0:
+        raise ApiError("invalid_movement", "Credit amount must be positive.")
+    entry = CreditLedgerEntry.objects.create(
+        company=company,
+        direction=direction,
+        amount=amount,
+        reason=reason,
+        reference=reference,
+        actor=actor,
+    )
+    events.credit_movement(company, direction, amount, actor=actor)
+    return entry

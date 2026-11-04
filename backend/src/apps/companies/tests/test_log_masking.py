@@ -32,7 +32,7 @@ def captured_logs():
     handler = _Capture()
     handler.addFilter(SensitiveDataFilter())
     handler.setFormatter(JsonFormatter())
-    logger = logging.getLogger("companies")
+    logger = logging.getLogger("apps.companies.events")
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     yield handler

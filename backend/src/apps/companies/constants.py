@@ -32,3 +32,16 @@ def step_locked_message():
 
 def empty_state_message():
     return str(config.COMPANY_EMPTY_STATE_MESSAGE)
+
+
+def requirement_message(missing):
+    """Return the operator-facing message for a set of missing requirements."""
+    messages = config.COMPANY_REQUIREMENT_MESSAGES
+    missing = set(missing)
+    if {"verified", "charged"} <= missing:
+        return str(messages.get("both", "Company requirements are missing."))
+    if "verified" in missing:
+        return str(messages.get("verified", "Company must be verified."))
+    if "charged" in missing:
+        return str(messages.get("charged", "Company must be charged."))
+    return ""

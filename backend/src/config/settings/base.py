@@ -269,6 +269,14 @@ CONSTANCE_CONFIG = {
         "This step is locked until the previous step is approved.",
         "Message shown when a locked registration step is addressed.",
     ),
+    "COMPANY_REQUIREMENT_MESSAGES": (
+        {
+            "verified": "Company must be verified.",
+            "charged": "Company must be charged.",
+            "both": "Company must be verified and charged.",
+        },
+        "Operator-facing messages for missing company requirements.",
+    ),
     "COMPANY_EMPTY_STATE_MESSAGE": (
         "You have no companies yet. Register a new company to get started.",
         "Copy for the company panel empty state.",
