@@ -1,6 +1,6 @@
 """Short-lived registration step drafts."""
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 from apps.utils.models import TimestampedModel
 from apps.companies.models.company import Company
@@ -13,7 +13,7 @@ class CompanyRegistrationDraft(TimestampedModel):
     """
 
     owner = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="company_registration_drafts"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="company_registration_drafts"
     )
     step_key = models.CharField(max_length=64)
     company = models.ForeignKey(

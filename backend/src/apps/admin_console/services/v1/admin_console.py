@@ -2,7 +2,7 @@
 
 from django.db import transaction
 
-from apps.pipeline.interfaces import PipelineInterface
+from apps.pipeline.interfaces import PipelineInterface, TaskBackendUnavailable
 
 
 def approval_queue():
@@ -27,11 +27,11 @@ def record_decision(company_id, actor, outcome, note=""):
         if site is None:
             site = PipelineInterface.onboard_site(company.pk, actor=actor)
         elif site.maintenance_state == site.MaintenanceState.SUSPENDED:
-            PipelineInterface.resume_site(site)
-        PipelineInterface.enqueue_site_pipeline(site.pk)
+            PipelineInterface.resume_site(site, actor=actor)
+        PipelineInterface.enqueue_site_pipeline(site.pk, actor=actor)
     elif site is not None:
-        PipelineInterface.suspend_site(site)
+        PipelineInterface.suspend_site(site, actor=actor)
     return company, decision, site
 
 
-__all__ = ["approval_queue", "record_decision"]
+__all__ = ["approval_queue", "record_decision", "TaskBackendUnavailable"]

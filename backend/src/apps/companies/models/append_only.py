@@ -1,6 +1,5 @@
 """Insert-only mixin for append-only audit records."""
 
-from django.contrib.auth import get_user_model
 from django.db import models
 from apps.utils.models import TimestampedModel
 

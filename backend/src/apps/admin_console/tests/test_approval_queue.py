@@ -56,27 +56,45 @@ def test_approval_creates_site_in_onboarding_and_verifies_company(
     assert site.maintenance_state == Site.MaintenanceState.ONBOARDING
 
 
-def test_approval_enqueues_automatic_site_pipeline_after_commit(
-    owner, operator, monkeypatch
-):
+def test_approval_enqueues_automatic_site_pipeline(owner, operator, monkeypatch):
     company = _pending_company(owner)
-    callbacks = []
     enqueued = []
     monkeypatch.setattr(
-        "admin_console.services.transaction.on_commit", callbacks.append
-    )
-    monkeypatch.setattr(
-        "pipeline.tasks.run_site_pipeline_task",
-        SimpleNamespace(enqueue=lambda site_id: enqueued.append(site_id)),
+        "apps.pipeline.tasks.run_site_pipeline_task",
+        SimpleNamespace(enqueue=lambda site_id, **kwargs: enqueued.append(site_id)),
     )
 
-    from apps.pipeline.services.v1 import pipeline as services
+    from apps.admin_console.services.v1 import admin_console as services
 
     services.record_decision(company.pk, operator, "approved")
 
-    assert enqueued == []
-    callbacks[0]()
     assert enqueued == [Site.objects.get(company=company).pk]
+
+
+def test_approval_returns_503_when_task_backend_is_unavailable(
+    operator_client, owner, monkeypatch
+):
+    company = _pending_company(owner)
+
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("broker down")
+
+    monkeypatch.setattr(
+        "apps.pipeline.tasks.run_site_pipeline_task",
+        SimpleNamespace(enqueue=unavailable),
+    )
+
+    response = operator_client.post(
+        f"/api/v1/ops/companies/{company.pk}/verification-decisions",
+        {"outcome": "approved"},
+        format="json",
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "task_backend_unavailable"
+    company.refresh_from_db()
+    assert company.verification_status == Company.VerificationStatus.PENDING
+    assert not Site.objects.filter(company=company).exists()
 
 
 def test_rejection_suspends_an_existing_site(operator_client, owner):

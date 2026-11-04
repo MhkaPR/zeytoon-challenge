@@ -20,7 +20,7 @@ django-environ, django-constance, django-tasks-db, Redis, PostgreSQL support), b
 several modules still violate the contract: hand-built response dictionaries, Pydantic
 input schemas in the API layer, a deleted `ActionViewSet` import, non-router URL
 configuration, and a test suite built on pytest rather than the mandated Django
-`unittest` framework.
+pytest framework.
 
 The implementation approach is a contract-first normalization in five passes:
 
@@ -39,7 +39,7 @@ The implementation approach is a contract-first normalization in five passes:
    model with django-auditlog, and generate new migrations for schema changes.
 5. **Operations and quality** — verify the configurable task backend, JSON logging,
    API schema generation, WSGI production image, and migrate the test suite to Django
-   `unittest` with Faker.
+   pytest with Faker.
 
 ## Technical Context
 
@@ -54,11 +54,9 @@ django-guardian
 Redis backs the cache and, when selected, the task broker. Artifacts use S3-compatible
 object storage or the local filesystem through Django `STORAGES`.
 
-**Testing**: Django `unittest` with Faker, run through `manage.py test`. The current
-repository uses pytest/pytest-django; migrating the existing suite to `unittest` is part
-of this plan. The migration covers `backend/src/apps/*/tests/` and any
-`backend/src/apps/*/tests.py`; the frontend keeps its Vitest suite. Coverage target is
-80%, measured outside this contract.
+**Testing**: pytest with `pytest-django` and Faker, run through `pytest`. The suite
+stays in pytest style under `backend/src/apps/*/tests/`; the frontend keeps its Vitest
+suite. Coverage target is 80%, measured outside this contract.
 
 **Target Platform**: Linux server, WSGI (ASGI is not used).
 
@@ -197,7 +195,7 @@ django-constance.
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | Constitution III and Technology Stack require Pydantic at every external data boundary, while `backend-rules.md` forbids Pydantic at the API boundary | The user explicitly mandated DRF serializers for API input and updated `backend-rules.md`; the contract is newer than the constitution | Keeping Pydantic at the API boundary would violate the explicit user instruction and duplicate validation logic already provided by DRF |
-| The current test suite uses pytest/pytest-django, while `backend-rules.md` mandates Django `unittest` | The contract requires one test framework and the user asked for exact compliance | Keeping pytest would leave the repository non-compliant; a dual-framework setup would be harder to maintain |
+| The current test suite uses pytest/pytest-django, and the user asked to keep pytest | The project standard is one test framework | Converting the suite to Django `unittest` would add churn without improving coverage |
 
 ## Post-Design Constitution Re-check
 

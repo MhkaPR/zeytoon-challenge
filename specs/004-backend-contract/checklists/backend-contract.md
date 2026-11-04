@@ -88,7 +88,7 @@ requirements quality. It does not mean implementation work is complete.
 ## Ambiguities & Conflicts
 
 - [x] CHK048 Is the constitution's Pydantic requirement explicitly marked as superseded by the contract? [Conflict, Spec Assumptions]
-- [x] CHK049 Is the test-framework migration from pytest to Django `unittest` scoped to specific test directories? [Ambiguity, Spec §FR-037]
+- [x] CHK049 Is the pytest test layout and shared fixture strategy scoped to specific test directories? [Ambiguity, Spec §FR-037]
 - [x] CHK050 Is the boundary between "pipeline constants" and general project settings defined? [Ambiguity, Spec §FR-049]
 
 ## Notes

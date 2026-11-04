@@ -7,9 +7,35 @@ django-guardian.
 """
 
 from django.contrib.auth.models import AbstractUser, Group
+from django.contrib.auth.models import UserManager as DjangoUserManager
 from django.db import models
 
 from apps.utils.models import DeletedObjectsManager, SoftDeleteManager, TimestampedModel
+
+
+class UserManager(SoftDeleteManager, DjangoUserManager):
+    """Soft-delete aware manager that keeps Django's user creation helpers."""
+
+    def create_user(self, username, email=None, password=None, **extra_fields):
+        extra_fields.pop("email", None)
+        if not username:
+            raise ValueError("The username must be set.")
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        user = self.model(username=username, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.pop("email", None)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+        return self.create_user(username, password=password, **extra_fields)
 
 
 class User(AbstractUser, TimestampedModel):
@@ -28,7 +54,7 @@ class User(AbstractUser, TimestampedModel):
     ADMIN_GROUP = "admin"
 
     phone_number = models.CharField(max_length=32)
-    objects = SoftDeleteManager()
+    objects = UserManager()
     deleted_objects = DeletedObjectsManager()
     email = None
     status = models.CharField(

@@ -26,9 +26,9 @@ def make_trace(rows=None, url="https://example.com/p"):
         rows
         if rows is not None
         else [
-            ["Plan 0", "100", "200"],
-            ["Plan 1", "101", "201"],
-            ["Plan 2", "102", "202"],
+            ["Plan 0", "100 تومان", "200"],
+            ["Plan 1", "101 تومان", "201"],
+            ["Plan 2", "102 تومان", "202"],
         ]
     )
     body_children = []
@@ -62,9 +62,9 @@ def domtrack_table_result(columns=3, rows=None, score=1.0):
         rows
         if rows is not None
         else [
-            ["Plan 0", "100", "200"],
-            ["Plan 1", "101", "201"],
-            ["Plan 2", "102", "202"],
+            ["Plan 0", "100 تومان", "200"],
+            ["Plan 1", "101 تومان", "201"],
+            ["Plan 2", "102 تومان", "202"],
         ]
     )
     cols = [

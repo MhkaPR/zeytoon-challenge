@@ -3,7 +3,11 @@
 from django.db import models
 from django.utils import timezone
 
-from apps.utils.models.soft_delete import DeletedObjectsManager, SoftDeleteManager
+from apps.utils.models.soft_delete import (
+    DeletedObjectsManager,
+    SoftDeleteConflict,
+    SoftDeleteManager,
+)
 
 
 class TimestampedModel(models.Model):
@@ -22,6 +26,23 @@ class TimestampedModel(models.Model):
     def delete(self, using=None, keep_parents=False):
         if self.deleted_at is not None:
             return 0, {}
+        for relation in self._meta.related_objects:
+            field = relation.field
+            if field.null:
+                continue
+            if field.remote_field.on_delete in (
+                models.SET_NULL,
+                models.SET_DEFAULT,
+                models.DO_NOTHING,
+            ):
+                continue
+            if relation.related_model.objects.filter(
+                **{field.name: self}
+            ).exists():
+                raise SoftDeleteConflict(
+                    f"{self._meta.label} is still referenced by "
+                    f"{relation.related_model._meta.label}.{field.name}"
+                )
         self.deleted_at = timezone.now()
         self.save(using=using, update_fields=("deleted_at", "updated_at"))
         return 1, {self._meta.label: 1}

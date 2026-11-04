@@ -1,37 +1,68 @@
-"""DRF views for the operator console API, mounted at /api/v1/ops/."""
+"""DRF viewsets for the operator console API, mounted at /api/v1/ops/."""
 
-from drf_spectacular.utils import extend_schema
-from django.db.models import Count
 from django.db import transaction
+from django.db.models import Count
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from apps.utils.views import ActionViewSet
+from rest_framework.decorators import action
 from rest_framework.response import Response
-
+from rest_framework.viewsets import GenericViewSet
 
 from apps.accounts import selectors as account_selectors
 from apps.accounts.exceptions import ApiError
-from apps.pipeline import domtrack_client, events, llm, serializers, services
-from apps.pipeline.models import CaptureSession, FailureAlert, Link, Site
+from apps.admin_console import services
 from apps.admin_console.serializers import (
+    AlertListSerializer,
     ApprovalQueueSerializer,
-    CaptureStartInput,
-    ClassifyInput,
+    CaptureFailInputSerializer,
+    CaptureFailSerializer,
+    CaptureListSerializer,
+    CaptureSessionSerializer,
+    CaptureStartInputSerializer,
+    CaptureStartSerializer,
+    ClassificationSerializer,
+    ClassifyInputSerializer,
     ConsoleErrorSerializer,
-    DiscoverLinksInput,
-    ManualLinksInput,
-    PlanIgnoreInput,
-    PlansInput,
-    ReplayRunInput,
-    SiteCreateInput,
-    TokenBudgetInput,
-    VerificationDecisionInput,
+    DiscoverLinksInputSerializer,
+    DiscoverLinksSerializer,
+    ExtractionSerializer,
+    LabelingSerializer,
+    LinkFailureSerializer,
+    LinkListSerializer,
+    LinkSerializer,
+    ManualLinksInputSerializer,
+    MetricsSerializer,
+    PlanIgnoreInputSerializer,
+    PlanIgnoreSerializer,
+    PlanSchemaSerializer,
+    PlansInputSerializer,
+    PlansSerializer,
+    PublishSerializer,
+    RerunSerializer,
+    ReplayEnqueueSerializer,
+    ReplayRunInputSerializer,
+    ReplayRunListSerializer,
+    SettingsSerializer,
+    SettingsUpdateInputSerializer,
+    SiteCreateInputSerializer,
+    SiteDetailSerializer,
+    SiteLinksSerializer,
+    SiteListSerializer,
+    SiteSerializer,
+    TablesSerializer,
+    TokenBudgetInputSerializer,
+    TokenBudgetSerializer,
     VerificationDecisionInputSerializer,
-    parse_input,
+    VerificationDecisionResultSerializer,
 )
+from apps.pipeline import domtrack_client, events, llm
+from apps.pipeline.interfaces import PipelineInterface, TaskBackendUnavailable
+from apps.pipeline.services.v1 import pipeline as pipeline_services
+from apps.utils.serializers import parse_input
 
 
-class AuthenticatedView(ActionViewSet):
-    """Base view resolving the JWT caller and refusing guests."""
+class OperatorViewSet(GenericViewSet):
+    """Base viewset resolving the JWT caller and requiring the operator role."""
 
     def caller(self, request):
         user = account_selectors.user_from_request(request)
@@ -39,14 +70,6 @@ class AuthenticatedView(ActionViewSet):
             raise ApiError(
                 "not_authenticated", "Authentication is required.", http_status=401
             )
-        return user
-
-
-class OperatorOnlyView(AuthenticatedView):
-    """Base view requiring an operator role (``ops`` group or admin, FR-001, FR-005)."""
-
-    def caller(self, request):
-        user = super().caller(request)
         if not user.is_operator():
             raise ApiError(
                 "admin_required",
@@ -54,6 +77,26 @@ class OperatorOnlyView(AuthenticatedView):
                 http_status=403,
             )
         return user
+
+    def _site(self, site_id):
+        try:
+            return PipelineInterface.site_or_error(site_id)
+        except LookupError as exc:
+            raise ApiError("not_found", "Site not found.", http_status=404) from exc
+
+    def _link(self, link_id):
+        try:
+            return PipelineInterface.link_or_error(link_id)
+        except LookupError as exc:
+            raise ApiError("not_found", "Link not found.", http_status=404) from exc
+
+    def _session(self, session_id):
+        try:
+            return PipelineInterface.capture_session_or_error(session_id)
+        except LookupError as exc:
+            raise ApiError(
+                "not_found", "Capture session not found.", http_status=404
+            ) from exc
 
 
 def _site_payload(site):
@@ -81,39 +124,19 @@ def _link_payload(link):
     }
 
 
-def _site_link_payloads(queryset):
-    return list(
-        queryset.order_by("-created_at").values(
-            "id",
-            "site_id",
-            "url",
-            "source",
-            "review_state",
-            "pipeline_stage",
-            "failure_rate",
-            "current_trace_id",
-            "last_error",
-            "pipeline_task_state",
-        )
-    )
-
-
-def get_site_or_error(site_id):
-    site = Site.objects.filter(pk=site_id).first()
-    if site is None:
-        raise ApiError("not_found", "Site not found.", http_status=404)
-    return site
-
-
-def get_link_or_error(link_id):
-    link = Link.objects.filter(pk=link_id).first()
-    if link is None:
-        raise ApiError("not_found", "Link not found.", http_status=404)
-    return link
+def _capture_payload(session):
+    return {
+        "id": session.pk,
+        "link_id": session.link_id,
+        "state": session.state,
+        "mode": session.mode,
+        "duration_ms": session.duration_ms,
+        "error": session.error,
+        "trace_id": session.trace_id,
+    }
 
 
 def _stage_error(exc):
-    """Map a stage exception onto the console error contract."""
     if isinstance(exc, llm.LlmBudgetExhausted):
         return ApiError(
             "awaiting_llm_budget",
@@ -133,10 +156,14 @@ def _stage_error(exc):
             "capture_in_progress", "A capture is already in flight.", http_status=409
         )
     message = str(exc)
-    if message in ("trace_required", "no_tables_found", "plans_required"):
+    if isinstance(exc, llm.NoPlanRecordsError):
         return ApiError(
-            message, "The link is not ready for this stage.", http_status=409
+            "plans_required",
+            "No plan records met the extraction rules.",
+            http_status=409,
         )
+    if message in ("trace_required", "no_tables_found", "plans_required"):
+        return ApiError(message, "The link is not ready for this stage.", http_status=409)
     if message == "link_not_ready":
         return ApiError(
             "link_not_ready", "The link is not ready for this stage.", http_status=400
@@ -144,66 +171,95 @@ def _stage_error(exc):
     return ApiError("invalid_field", message[:200], http_status=400)
 
 
-# ---------------------------------------------------------------------------
-# US1 — approval queue (FR-001..FR-006)
-# ---------------------------------------------------------------------------
+def _task_error(exc):
+    if isinstance(exc, TaskBackendUnavailable):
+        return ApiError(
+            "task_backend_unavailable",
+            "The task backend is unavailable. Nothing was queued.",
+            http_status=503,
+        )
+    return _stage_error(exc)
 
 
-class ApprovalQueueView(OperatorOnlyView):
+class OpsViewSet(OperatorViewSet):
+    """All operator console endpoints as generic-viewset actions."""
+
+    # US1 — approval queue
     @extend_schema(responses={200: ApprovalQueueSerializer})
-    def get(self, request):
+    @action(detail=False, methods=["get"], url_path="approvals")
+    def approvals(self, request):
         self.caller(request)
         results = services.approval_queue()
-        return Response({"results": results, "count": len(results)})
+        return Response(
+            ApprovalQueueSerializer({"results": results, "count": len(results)}).data
+        )
 
-
-class VerificationDecisionView(OperatorOnlyView):
     @extend_schema(
         request=VerificationDecisionInputSerializer,
-        responses={201: dict, 400: ConsoleErrorSerializer, 403: ConsoleErrorSerializer},
+        responses={201: VerificationDecisionResultSerializer},
     )
-    def post(self, request, company_id):
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"companies/(?P<company_id>\d+)/verification-decisions",
+    )
+    def verification_decisions(self, request, company_id):
         actor = self.caller(request)
-        payload = parse_input(VerificationDecisionInput, request.data)
-        company, decision, site = services.record_decision(
-            company_id, actor, payload.outcome, note=payload.note or ""
-        )
-        return Response(
-            {
-                "company": {
-                    "id": company.pk,
-                    "verification_status": company.verification_status,
-                },
-                "decision": {
-                    "outcome": decision.outcome,
-                    "actor_id": getattr(decision, "actor_id", actor.pk),
-                    "decided_at": getattr(decision, "decided_at", None)
-                    and decision.decided_at.isoformat(),
-                    "note": getattr(decision, "note", ""),
-                },
-                "site": _site_payload(site) if site else None,
+        payload = parse_input(VerificationDecisionInputSerializer, request.data)
+        try:
+            company, decision, site = services.record_decision(
+                company_id, actor, payload["outcome"], note=payload.get("note", "")
+            )
+        except TaskBackendUnavailable as exc:
+            raise _task_error(exc) from exc
+        body = {
+            "company": {
+                "id": company.pk,
+                "verification_status": company.verification_status,
             },
+            "decision": {
+                "outcome": decision.outcome,
+                "actor_id": getattr(decision, "actor_id", actor.pk),
+                "decided_at": getattr(decision, "decided_at", None)
+                and decision.decided_at.isoformat(),
+                "note": getattr(decision, "note", ""),
+            },
+            "site": _site_payload(site) if site else None,
+        }
+        return Response(
+            VerificationDecisionResultSerializer(body).data,
             status=status.HTTP_201_CREATED,
         )
 
-
-# ---------------------------------------------------------------------------
-# US2 — automated link discovery (FR-007..FR-011)
-# ---------------------------------------------------------------------------
-
-
-class SiteCreateView(OperatorOnlyView):
-    def get(self, request):
-        self.caller(request)
-        sites = Site.objects.select_related("company")
-        results = []
-        for site in sites:
-            stage_rows = (
-                Link.objects.filter(site=site)
-                .values("pipeline_stage")
-                .annotate(count=Count("pk"))
+    # US2 — sites and links
+    @extend_schema(responses={200: SiteListSerializer})
+    @action(detail=False, methods=["get", "post"], url_path="sites")
+    def sites(self, request):
+        actor = self.caller(request)
+        if request.method == "POST":
+            payload = parse_input(SiteCreateInputSerializer, request.data)
+            if PipelineInterface.site_for_company(payload["company_id"]) is not None:
+                raise ApiError(
+                    "invalid_field",
+                    "The company already has a site.",
+                    http_status=409,
+                    fields={"company_id": "already onboarded"},
+                )
+            try:
+                site = PipelineInterface.onboard_site(
+                    payload["company_id"], actor=actor
+                )
+            except TaskBackendUnavailable as exc:
+                raise _task_error(exc) from exc
+            return Response(
+                {"site": _site_payload(site)}, status=status.HTTP_201_CREATED
             )
-            stage_counts = {stage: 0 for stage, _ in Link.PipelineStage.choices}
+        results = []
+        for site in PipelineInterface.all_sites():
+            stage_rows = (
+                site.links.values("pipeline_stage").annotate(count=Count("pk"))
+            )
+            stage_counts = {stage: 0 for stage, _ in site.links.model.PipelineStage.choices}
             stage_counts.update(
                 {row["pipeline_stage"]: row["count"] for row in stage_rows}
             )
@@ -215,210 +271,216 @@ class SiteCreateView(OperatorOnlyView):
                     "stage_counts": stage_counts,
                 }
             )
-        return Response({"results": results, "count": len(results)})
-
-    @extend_schema(
-        request=SiteCreateInput, responses={201: dict, 409: ConsoleErrorSerializer}
-    )
-    def post(self, request):
-        actor = self.caller(request)
-        payload = parse_input(SiteCreateInput, request.data)
-        if Site.objects.filter(company_id=payload.company_id).exists():
-            raise ApiError(
-                "invalid_field",
-                "The company already has a site.",
-                http_status=409,
-                fields={"company_id": "already onboarded"},
-            )
-        site = services.onboard_site(payload.company_id, actor=actor)
-        return Response({"site": _site_payload(site)}, status=status.HTTP_201_CREATED)
-
-
-class SiteDetailView(OperatorOnlyView):
-    def get(self, request, site_id):
-        self.caller(request)
-        site = get_site_or_error(site_id)
-        links = _site_link_payloads(Link.objects.filter(site=site))
-        return Response({"site": _site_payload(site), "links": links})
-
-
-class DiscoverLinksView(OperatorOnlyView):
-    @extend_schema(
-        request=DiscoverLinksInput, responses={200: dict, 502: ConsoleErrorSerializer}
-    )
-    def post(self, request, site_id):
-        self.caller(request)
-        site = get_site_or_error(site_id)
-        payload = (
-            parse_input(DiscoverLinksInput, request.data) if request.data else None
+        return Response(
+            SiteListSerializer({"results": results, "count": len(results)}).data
         )
-        bounds = {}
-        if payload is not None:
-            bounds = {"max_pages": payload.max_pages, "max_depth": payload.max_depth}
+
+    @extend_schema(responses={200: SiteDetailSerializer})
+    @action(detail=False, methods=["get"], url_path=r"sites/(?P<site_id>\d+)")
+    def site_detail(self, request, site_id):
+        self.caller(request)
+        site = self._site(site_id)
+        links = [_link_payload(link) for link in PipelineInterface.site_links(site)]
+        return Response(SiteDetailSerializer({"site": _site_payload(site), "links": links}).data)
+
+    @extend_schema(
+        request=DiscoverLinksInputSerializer, responses={200: DiscoverLinksSerializer}
+    )
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"sites/(?P<site_id>\d+)/discover-links",
+    )
+    def discover_links(self, request, site_id):
+        actor = self.caller(request)
+        site = self._site(site_id)
+        payload = (
+            parse_input(DiscoverLinksInputSerializer, request.data)
+            if request.data
+            else {}
+        )
+        bounds = {
+            "max_pages": payload.get("max_pages"),
+            "max_depth": payload.get("max_depth"),
+        }
         try:
-            result = services.discover_and_store_links(site, bounds=bounds)
+            result = pipeline_services.discover_and_store_links(
+                site, actor=actor, bounds=bounds
+            )
         except Exception as exc:  # noqa: BLE001 - crawl/network failure
             raise ApiError("crawl_failed", str(exc)[:200], http_status=502) from exc
         if result["links"]:
-            from apps.pipeline.tasks import run_site_pipeline_task
+            try:
+                PipelineInterface.enqueue_site_pipeline(
+                    site.pk, actor=actor, discover=False
+                )
+            except TaskBackendUnavailable as exc:
+                raise _task_error(exc) from exc
+        body = {
+            "site": _site_payload(site),
+            "discovered": result["discovered"],
+            "after_policy": result["after_policy"],
+            "candidates": [_link_payload(link) for link in result["links"]],
+        }
+        return Response(DiscoverLinksSerializer(body).data)
 
-            transaction.on_commit(
-                lambda: run_site_pipeline_task.enqueue(site.pk, discover=False)
-            )
-        return Response(
-            {
-                "site": _site_payload(site),
-                "discovered": result["discovered"],
-                "after_policy": result["after_policy"],
-                "candidates": [_link_payload(link) for link in result["links"]],
-            }
-        )
-
-
-class SiteLinksView(OperatorOnlyView):
-    def get(self, request, site_id):
-        self.caller(request)
-        site = get_site_or_error(site_id)
-        qs = site.links.all()
-        review_state = request.query_params.get("review_state")
-        if review_state:
-            qs = qs.filter(review_state=review_state)
-        links = _site_link_payloads(qs)
-        return Response({"site_id": site.pk, "links": links, "count": len(links)})
-
-    def post(self, request, site_id):
+    @extend_schema(responses={200: SiteLinksSerializer})
+    @action(
+        detail=False, methods=["get", "post"], url_path=r"sites/(?P<site_id>\d+)/links"
+    )
+    def site_links(self, request, site_id):
         actor = self.caller(request)
-        site = get_site_or_error(site_id)
-        payload = parse_input(ManualLinksInput, request.data)
-        links = services.add_links_manually(site, payload.urls, actor=actor)
+        site = self._site(site_id)
+        if request.method == "POST":
+            payload = parse_input(ManualLinksInputSerializer, request.data)
+            links = pipeline_services.add_links_manually(
+                site, payload["urls"], actor=actor
+            )
+            return Response(
+                LinkListSerializer(
+                    {"results": [_link_payload(link) for link in links]}
+                ).data,
+                status=status.HTTP_201_CREATED,
+            )
+        links = [
+            _link_payload(link)
+            for link in PipelineInterface.site_links(
+                site, review_state=request.query_params.get("review_state")
+            )
+        ]
         return Response(
-            {"results": [_link_payload(link) for link in links]},
-            status=status.HTTP_201_CREATED,
+            SiteLinksSerializer(
+                {"site_id": site.pk, "links": links, "count": len(links)}
+            ).data
         )
 
-
-# ---------------------------------------------------------------------------
-# US4 — server-side headless capture (FR-016..FR-019)
-# ---------------------------------------------------------------------------
-
-
-def _capture_payload(session):
-    return {
-        "id": session.pk,
-        "link_id": session.link_id,
-        "state": session.state,
-        "mode": session.mode,
-        "duration_ms": session.duration_ms,
-        "error": session.error,
-        "trace_id": session.trace_id,
-    }
-
-
-class CaptureStartView(OperatorOnlyView):
-    @extend_schema(request=CaptureStartInput, responses={201: dict})
-    def post(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
-        payload = parse_input(CaptureStartInput, request.data) if request.data else None
+    # US4 — capture
+    @extend_schema(
+        request=CaptureStartInputSerializer, responses={201: CaptureStartSerializer}
+    )
+    @action(
+        detail=False, methods=["post"], url_path=r"links/(?P<link_id>\d+)/captures"
+    )
+    def capture_start(self, request, link_id):
+        actor = self.caller(request)
+        link = self._link(link_id)
+        payload = (
+            parse_input(CaptureStartInputSerializer, request.data)
+            if request.data
+            else {}
+        )
         try:
-            session = services.start_capture(
-                link, duration_ms=payload.duration_ms if payload else None
+            session = pipeline_services.start_capture(
+                link, actor=actor, duration_ms=payload.get("duration_ms")
             )
         except Exception as exc:  # noqa: BLE001
             raise _stage_error(exc) from exc
         return Response(
-            {"capture_session": _capture_payload(session), "link": _link_payload(link)},
+            CaptureStartSerializer(
+                {
+                    "capture_session": _capture_payload(session),
+                    "link": _link_payload(link),
+                }
+            ).data,
             status=status.HTTP_201_CREATED,
         )
 
-
-class LinkCaptureListView(OperatorOnlyView):
-    def get(self, request, link_id):
+    @extend_schema(responses={200: CaptureListSerializer})
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"links/(?P<link_id>\d+)/captures/list",
+    )
+    def capture_list(self, request, link_id):
         self.caller(request)
-        link = get_link_or_error(link_id)
-        sessions = link.capture_sessions.all()
-        return Response({"results": [_capture_payload(s) for s in sessions]})
+        link = self._link(link_id)
+        sessions = [
+            _capture_payload(session)
+            for session in PipelineInterface.link_capture_sessions(link)
+        ]
+        return Response(CaptureListSerializer({"results": sessions}).data)
 
-
-class CaptureFailView(OperatorOnlyView):
-    def post(self, request, capture_session_id):
+    @extend_schema(
+        request=CaptureFailInputSerializer, responses={200: CaptureFailSerializer}
+    )
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"captures/(?P<capture_session_id>\d+)/fail",
+    )
+    def capture_fail(self, request, capture_session_id):
         self.caller(request)
-        session = CaptureSession.objects.filter(pk=capture_session_id).first()
-        if session is None:
-            raise ApiError("not_found", "Capture session not found.", http_status=404)
-        services.fail_capture(session, request.data.get("error", "failed"))
-        return Response({"capture_session": _capture_payload(session)})
+        session = self._session(capture_session_id)
+        payload = parse_input(CaptureFailInputSerializer, request.data)
+        pipeline_services.fail_capture(session, payload["error"])
+        return Response(
+            CaptureFailSerializer({"capture_session": _capture_payload(session)}).data
+        )
 
-
-# ---------------------------------------------------------------------------
-# US5 — table extraction (FR-020..FR-022)
-# ---------------------------------------------------------------------------
-
-
-class ExtractionView(OperatorOnlyView):
-    @extend_schema(responses={201: dict, 409: ConsoleErrorSerializer})
-    def post(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
+    # US5 — extraction
+    @extend_schema(responses={201: ExtractionSerializer})
+    @action(
+        detail=False, methods=["post"], url_path=r"links/(?P<link_id>\d+)/extractions"
+    )
+    def extraction(self, request, link_id):
+        actor = self.caller(request)
+        link = self._link(link_id)
         try:
-            tables = services.extract_link_tables(link)
+            tables = pipeline_services.extract_link_tables(link, actor=actor)
         except Exception as exc:  # noqa: BLE001
             raise _stage_error(exc) from exc
-        return Response(
-            {
-                "extraction": {
-                    "trace_id": link.current_trace_id,
-                    "table_count": len(tables),
-                },
-                "link": _link_payload(link),
+        body = {
+            "extraction": {
+                "trace_id": link.current_trace_id,
+                "table_count": len(tables),
             },
+            "link": _link_payload(link),
+        }
+        return Response(
+            ExtractionSerializer(body).data,
             status=status.HTTP_201_CREATED if tables else status.HTTP_200_OK,
         )
 
-
-class LinkTablesView(OperatorOnlyView):
-    def get(self, request, link_id):
+    @extend_schema(responses={200: TablesSerializer})
+    @action(detail=False, methods=["get"], url_path=r"links/(?P<link_id>\d+)/tables")
+    def tables(self, request, link_id):
         self.caller(request)
-        link = get_link_or_error(link_id)
-        return Response({"tables": services.tables_payload(link)})
-
-
-# ---------------------------------------------------------------------------
-# US6 — table classification (FR-023..FR-025)
-# ---------------------------------------------------------------------------
-
-
-class ClassificationView(OperatorOnlyView):
-    @extend_schema(
-        request=ClassifyInput, responses={200: dict, 202: ConsoleErrorSerializer}
-    )
-    def post(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
-        try:
-            services.classify_tables_for_link(link)
-        except Exception as exc:  # noqa: BLE001
-            raise _stage_error(exc) from exc
+        link = self._link(link_id)
         return Response(
-            {
-                "classifications": services.table_classifications_payload(link),
-                "link": _link_payload(link),
-            }
+            TablesSerializer({"tables": pipeline_services.tables_payload(link)}).data
         )
 
-    def get(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
-        return Response({"classifications": services.table_classifications_payload(link)})
+    # US6 — classification
+    @extend_schema(request=ClassifyInputSerializer, responses={200: ClassificationSerializer})
+    @action(
+        detail=False,
+        methods=["get", "post"],
+        url_path=r"links/(?P<link_id>\d+)/classifications",
+    )
+    def classifications(self, request, link_id):
+        actor = self.caller(request)
+        link = self._link(link_id)
+        if request.method == "POST":
+            parse_input(ClassifyInputSerializer, request.data)
+            try:
+                pipeline_services.classify_tables_for_link(link, actor=actor)
+            except Exception as exc:  # noqa: BLE001
+                raise _stage_error(exc) from exc
+            body = {
+                "classifications": pipeline_services.table_classifications_payload(link),
+                "link": _link_payload(link),
+            }
+            return Response(ClassificationSerializer(body).data)
+        return Response(
+            ClassificationSerializer(
+                {"classifications": pipeline_services.table_classifications_payload(link)}
+            ).data
+        )
 
-
-# ---------------------------------------------------------------------------
-# US7 — plan schema extraction (FR-026..FR-031)
-# ---------------------------------------------------------------------------
-
-
-class PlanSchemaView(OperatorOnlyView):
-    def get(self, request):
+    # US7 — plans
+    @extend_schema(responses={200: PlanSchemaSerializer})
+    @action(detail=False, methods=["get"], url_path="plan-schema")
+    def plan_schema(self, request):
         from apps.pipeline import plan_schema
 
         self.caller(request)
@@ -426,208 +488,262 @@ class PlanSchemaView(OperatorOnlyView):
         plan = plan_schema.schema_for(plan_type)
         if plan is None:
             raise ApiError("not_found", "Unknown plan type.", http_status=404)
-        return Response(
-            {
-                "plan_type": plan.key,
-                "label": plan.label,
-                "fields": [
-                    {
-                        "key": field.key,
-                        "label": field.label,
-                        "kind": field.kind,
-                        "required": field.required,
-                        "values": list(field.values),
-                    }
-                    for field in plan.fields
-                ],
-            }
-        )
+        body = {
+            "plan_type": plan.key,
+            "label": plan.label,
+            "fields": [
+                {
+                    "key": field.key,
+                    "label": field.label,
+                    "kind": field.kind,
+                    "required": field.required,
+                    "values": list(field.values),
+                }
+                for field in plan.fields
+            ],
+        }
+        return Response(PlanSchemaSerializer(body).data)
 
-
-class PlansView(OperatorOnlyView):
-    @extend_schema(
-        request=PlansInput, responses={201: dict, 202: ConsoleErrorSerializer}
+    @extend_schema(request=PlansInputSerializer, responses={201: PlansSerializer})
+    @action(
+        detail=False, methods=["get", "post"], url_path=r"links/(?P<link_id>\d+)/plans"
     )
-    def post(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
-        try:
-            if not link.plan_records.exists() and link.pipeline_stage in (
-                Link.PipelineStage.EXTRACTED,
-                Link.PipelineStage.NO_PRICE_TABLES,
-            ):
-                services.process_link_tables(link)
-                if not link.plan_records.exists():
-                    raise ValueError("plans_required")
-        except Exception as exc:  # noqa: BLE001
-            raise _stage_error(exc) from exc
-        return Response(
-            {"plans": services.plans_payload(link), "link": _link_payload(link)},
-            status=status.HTTP_201_CREATED,
-        )
-
-    def get(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
-        return Response({"plans": services.plans_payload(link)})
-
-
-class PlanIgnoreView(OperatorOnlyView):
-    @extend_schema(request=PlanIgnoreInput, responses={200: dict})
-    def put(self, request, link_id, plan_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
-        plan = link.plan_records.filter(pk=plan_id).first()
-        if plan is None:
+    def plans(self, request, link_id):
+        actor = self.caller(request)
+        link = self._link(link_id)
+        if request.method == "POST":
+            parse_input(PlansInputSerializer, request.data)
+            try:
+                if not PipelineInterface.link_plans(link).exists() and link.pipeline_stage in (
+                    link.PipelineStage.EXTRACTED,
+                    link.PipelineStage.NO_PRICE_TABLES,
+                ):
+                    pipeline_services.process_link_tables(link, actor=actor)
+                    if not PipelineInterface.link_plans(link).exists():
+                        raise ValueError("plans_required")
+            except Exception as exc:  # noqa: BLE001
+                raise _stage_error(exc) from exc
             return Response(
-                {"error": {"code": "plan_not_found"}},
-                status=status.HTTP_404_NOT_FOUND,
+                PlansSerializer(
+                    {
+                        "plans": pipeline_services.plans_payload(link),
+                        "link": _link_payload(link),
+                    }
+                ).data,
+                status=status.HTTP_201_CREATED,
             )
-        values = parse_input(PlanIgnoreInput, request.data)
-        ignored = services.set_plan_excluded(link, plan, values.ignored)
-        return Response({"plan_id": plan.pk, "ignored": ignored})
+        return Response(
+            PlansSerializer({"plans": pipeline_services.plans_payload(link)}).data
+        )
 
-
-# ---------------------------------------------------------------------------
-# US8 — optional labeling (FR-032..FR-035)
-# ---------------------------------------------------------------------------
-
-
-class LabelingView(OperatorOnlyView):
-    @extend_schema(
-        responses={200: dict, 403: ConsoleErrorSerializer, 202: ConsoleErrorSerializer}
+    @extend_schema(request=PlanIgnoreInputSerializer, responses={200: PlanIgnoreSerializer})
+    @action(
+        detail=False,
+        methods=["put"],
+        url_path=r"links/(?P<link_id>\d+)/plans/(?P<plan_id>\d+)/ignore",
     )
-    def post(self, request, link_id):
+    def plan_ignore(self, request, link_id, plan_id):
         self.caller(request)
-        link = get_link_or_error(link_id)
+        link = self._link(link_id)
+        plan = PipelineInterface.link_plans(link).filter(pk=plan_id).first()
+        if plan is None:
+            raise ApiError("plan_not_found", "Plan not found.", http_status=404)
+        payload = parse_input(PlanIgnoreInputSerializer, request.data)
+        ignored = pipeline_services.set_plan_excluded(link, plan, payload["ignored"])
+        return Response(
+            PlanIgnoreSerializer({"plan_id": plan.pk, "ignored": ignored}).data
+        )
+
+    # US8 — labeling
+    @extend_schema(responses={200: LabelingSerializer})
+    @action(
+        detail=False, methods=["post"], url_path=r"links/(?P<link_id>\d+)/labeling"
+    )
+    def labeling(self, request, link_id):
+        actor = self.caller(request)
+        link = self._link(link_id)
         try:
-            labels = services.label_link_tables(link)
+            labels = pipeline_services.label_link_tables(link, actor=actor)
         except Exception as exc:  # noqa: BLE001
             raise _stage_error(exc) from exc
-        return Response({"labels": labels, "labeled_tables": len(labels)})
+        return Response(
+            LabelingSerializer(
+                {"labels": labels, "labeled_tables": len(labels)}
+            ).data
+        )
 
-
-# ---------------------------------------------------------------------------
-# US9 — publishing (FR-036..FR-038)
-# ---------------------------------------------------------------------------
-
-
-class PublishView(OperatorOnlyView):
-    @extend_schema(responses={200: dict, 409: ConsoleErrorSerializer})
-    def post(self, request, link_id):
-        self.caller(request)
-        link = get_link_or_error(link_id)
+    # US9 — publishing
+    @extend_schema(responses={200: PublishSerializer})
+    @action(
+        detail=False, methods=["post"], url_path=r"links/(?P<link_id>\d+)/publish"
+    )
+    def publish(self, request, link_id):
+        actor = self.caller(request)
+        link = self._link(link_id)
         try:
-            published = services.publish_link_plans(link)
+            published = pipeline_services.publish_link_plans(link, actor=actor)
         except Exception as exc:  # noqa: BLE001
             raise _stage_error(exc) from exc
-        return Response({"published": published, "link": _link_payload(link)})
+        return Response(
+            PublishSerializer(
+                {"published": published, "link": _link_payload(link)}
+            ).data
+        )
 
-
-# ---------------------------------------------------------------------------
-# US10 — replay, failure, alerts, re-run (FR-039..FR-046)
-# ---------------------------------------------------------------------------
-
-
-class ReplayRunListView(OperatorOnlyView):
-    def get(self, request):
+    # US10 — replay, failure, alerts, rerun
+    @extend_schema(responses={200: ReplayRunListSerializer})
+    @action(detail=False, methods=["get"], url_path="replay-runs")
+    def replay_runs(self, request):
         self.caller(request)
-        runs = services.replay_runs(
+        runs = pipeline_services.replay_runs(
             link_id=request.query_params.get("link_id"),
             state=request.query_params.get("state"),
         )
-        return Response({"results": [services.replay_run_payload(r) for r in runs]})
-
-
-class ReplayRunCreateView(OperatorOnlyView):
-    @extend_schema(request=ReplayRunInput, responses={202: dict})
-    def post(self, request):
-        from apps.pipeline import tasks
-
-        self.caller(request)
-        payload = parse_input(ReplayRunInput, request.data)
-        if payload.link_ids:
-            links = list(Link.objects.filter(pk__in=payload.link_ids))
-        elif payload.site_id:
-            links = services.due_links_for_site(payload.site_id)
-        else:
-            links = services.due_links()
-        for link in links:
-            tasks.run_replay_task.enqueue(link.pk)
-        return Response({"enqueued": len(links)}, status=status.HTTP_202_ACCEPTED)
-
-
-class LinkFailureView(OperatorOnlyView):
-    def get(self, request, link_id):
-        self.caller(request)
-        return Response(services.link_failure_payload(get_link_or_error(link_id)))
-
-
-class AlertListView(OperatorOnlyView):
-    def get(self, request):
-        self.caller(request)
-        alerts = services.alerts(state=request.query_params.get("state"))
-        return Response({"results": [services.alert_payload(a) for a in alerts]})
-
-
-class LinkRerunView(OperatorOnlyView):
-    def post(self, request, link_id):
-        from django.db import transaction
-        from django.tasks.base import TASK_MAX_PRIORITY
-
-        from apps.pipeline.tasks import run_site_pipeline_task
-
-        actor = self.caller(request)
-        with transaction.atomic():
-            get_link_or_error(link_id)
-            link = Link.objects.select_for_update().get(pk=link_id)
-            if link.pipeline_task_state in ("queued", "running"):
-                return Response(
-                    {"link": _link_payload(link), "queued": True},
-                    status=status.HTTP_202_ACCEPTED,
-                )
-            link = services.rerun_link_stages(link, actor=actor)
-            link.pipeline_task_state = "queued"
-            link.save(update_fields=["pipeline_task_state", "updated_at"])
-            transaction.on_commit(
-                lambda site_id=link.site_id, retry_link_id=link.pk: run_site_pipeline_task.using(
-                    priority=TASK_MAX_PRIORITY
-                ).enqueue(
-                    site_id, discover=False, link_id=retry_link_id
-                )
-            )
         return Response(
-            {"link": _link_payload(link), "queued": True},
+            ReplayRunListSerializer(
+                {"results": [pipeline_services.replay_run_payload(r) for r in runs]}
+            ).data
+        )
+
+    @extend_schema(
+        request=ReplayRunInputSerializer, responses={202: ReplayEnqueueSerializer}
+    )
+    @action(detail=False, methods=["post"], url_path="replay-runs/create")
+    def replay_create(self, request):
+        actor = self.caller(request)
+        payload = parse_input(ReplayRunInputSerializer, request.data)
+        if payload.get("link_ids"):
+            links = list(
+                PipelineInterface.link_queryset().filter(pk__in=payload["link_ids"])
+            )
+        elif payload.get("site_id"):
+            links = pipeline_services.due_links_for_site(payload["site_id"])
+        else:
+            links = pipeline_services.due_links()
+        try:
+            for link in links:
+                PipelineInterface.enqueue_replay(link.pk, actor=actor)
+        except TaskBackendUnavailable as exc:
+            raise _task_error(exc) from exc
+        return Response(
+            ReplayEnqueueSerializer({"enqueued": len(links)}).data,
             status=status.HTTP_202_ACCEPTED,
         )
 
-
-# ---------------------------------------------------------------------------
-# Settings and observability (FR-047, FR-054..FR-057)
-# ---------------------------------------------------------------------------
-
-
-class SettingsView(OperatorOnlyView):
-    def get(self, request):
+    @extend_schema(responses={200: LinkFailureSerializer})
+    @action(
+        detail=False, methods=["get"], url_path=r"links/(?P<link_id>\d+)/failure"
+    )
+    def link_failure(self, request, link_id):
         self.caller(request)
-        return Response({"values": _settings_snapshot()})
+        link = self._link(link_id)
+        return Response(
+            LinkFailureSerializer(
+                pipeline_services.link_failure_payload(link)
+            ).data
+        )
 
-    def put(self, request):
-        from constance import config
-
+    @extend_schema(responses={200: AlertListSerializer})
+    @action(detail=False, methods=["get"], url_path="alerts")
+    def alerts(self, request):
         self.caller(request)
-        values = request.data.get("values") or {}
-        updated = {}
-        for key, value in values.items():
-            if hasattr(config, key):
-                setattr(config, key, value)
-                updated[key] = value
-        return Response({"values": updated})
+        alerts = pipeline_services.alerts(state=request.query_params.get("state"))
+        return Response(
+            AlertListSerializer(
+                {"results": [pipeline_services.alert_payload(a) for a in alerts]}
+            ).data
+        )
+
+    @extend_schema(responses={202: RerunSerializer})
+    @action(
+        detail=False, methods=["post"], url_path=r"links/(?P<link_id>\d+)/rerun"
+    )
+    def rerun(self, request, link_id):
+        actor = self.caller(request)
+        with transaction.atomic():
+            link = self._link(link_id)
+            link = type(link).objects.select_for_update().get(pk=link.pk)
+            if link.pipeline_task_state in ("queued", "running"):
+                return Response(
+                    RerunSerializer(
+                        {"link": _link_payload(link), "queued": True}
+                    ).data,
+                    status=status.HTTP_202_ACCEPTED,
+                )
+            link = pipeline_services.rerun_link_stages(link, actor=actor)
+            link.pipeline_task_state = "queued"
+            link.save(update_fields=["pipeline_task_state", "updated_at"])
+            try:
+                from django.tasks.base import TASK_MAX_PRIORITY
+
+                PipelineInterface.enqueue_site_pipeline(
+                    link.site_id,
+                    actor=actor,
+                    discover=False,
+                    link_id=link.pk,
+                    priority=TASK_MAX_PRIORITY,
+                )
+            except TaskBackendUnavailable as exc:
+                transaction.set_rollback(True)
+                raise _task_error(exc) from exc
+        return Response(
+            RerunSerializer({"link": _link_payload(link), "queued": True}).data,
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    # Settings and observability
+    @extend_schema(
+        request=SettingsUpdateInputSerializer, responses={200: SettingsSerializer}
+    )
+    @action(detail=False, methods=["get", "put"], url_path="settings")
+    def runtime_settings(self, request):
+        self.caller(request)
+        if request.method == "PUT":
+            payload = parse_input(SettingsUpdateInputSerializer, request.data)
+            from constance import config
+
+            updated = {}
+            for key, value in payload["values"].items():
+                if hasattr(config, key):
+                    setattr(config, key, value)
+                    updated[key] = value
+            return Response(SettingsSerializer({"values": updated}).data)
+        return Response(SettingsSerializer({"values": _settings_snapshot()}).data)
+
+    @extend_schema(
+        request=TokenBudgetInputSerializer, responses={200: TokenBudgetSerializer}
+    )
+    @action(detail=False, methods=["get", "put"], url_path="llm-token-budget")
+    def token_budget(self, request):
+        actor = self.caller(request)
+        period = "monthly"
+        if request.method == "PUT":
+            payload = parse_input(TokenBudgetInputSerializer, request.data)
+            period = payload.get("period", "monthly")
+            if payload.get("token_budget") is not None:
+                pipeline_services.set_token_budget(
+                    payload["token_budget"], period=period, actor=actor
+                )
+        else:
+            period = request.query_params.get("period", "monthly")
+        return Response(
+            TokenBudgetSerializer(
+                pipeline_services.token_budget_status(period=period)
+            ).data
+        )
+
+    @extend_schema(responses={200: MetricsSerializer})
+    @action(detail=False, methods=["get"], url_path="metrics")
+    def metrics(self, request):
+        self.caller(request)
+        return Response(
+            MetricsSerializer(pipeline_services.metrics_snapshot()).data
+        )
 
 
 def _settings_snapshot():
-    from apps.pipeline import constants
     from apps.core.site_config import settings_snapshot as frontend_settings_snapshot
+    from apps.pipeline import constants
 
     values = {
         "REPLAY_PERIOD_HOURS": constants.replay_period_hours(),
@@ -641,25 +757,3 @@ def _settings_snapshot():
     }
     values.update(frontend_settings_snapshot())
     return values
-
-
-class TokenBudgetView(OperatorOnlyView):
-    def get(self, request):
-        self.caller(request)
-        return Response(services.token_budget_status())
-
-    @extend_schema(request=TokenBudgetInput, responses={200: dict})
-    def put(self, request):
-        actor = self.caller(request)
-        payload = parse_input(TokenBudgetInput, request.data)
-        if payload.token_budget is not None:
-            services.set_token_budget(
-                payload.token_budget, period=payload.period, actor=actor
-            )
-        return Response(services.token_budget_status(period=payload.period))
-
-
-class MetricsView(OperatorOnlyView):
-    def get(self, request):
-        self.caller(request)
-        return Response(services.metrics_snapshot())

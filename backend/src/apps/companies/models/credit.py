@@ -1,6 +1,6 @@
 """Append-only credit ledger records."""
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 from apps.utils.models import TimestampedModel
 from apps.companies.models.company import Company
@@ -27,7 +27,7 @@ class CreditLedgerEntry(_AppendOnlyMixin, TimestampedModel):
     reason = models.CharField(max_length=32, choices=Reason.choices)
     reference = models.CharField(max_length=255, blank=True, default="")
     actor = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

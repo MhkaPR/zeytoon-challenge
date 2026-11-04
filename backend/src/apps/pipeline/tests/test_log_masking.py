@@ -37,7 +37,7 @@ def test_events_never_log_the_unmasked_phone(caplog):
     )
     site = Site.objects.create(company=company, domain=company.domain)
 
-    with caplog.at_level(logging.INFO, logger="admin_console.events"):
+    with caplog.at_level(logging.INFO, logger="apps.pipeline.events"):
         events.site_onboarded(site, actor=user)
 
     for record in caplog.records:
@@ -48,7 +48,7 @@ def test_events_never_log_the_unmasked_phone(caplog):
 
 @pytest.mark.django_db
 def test_trace_content_is_never_logged(caplog, traced_link, operator_client):
-    with caplog.at_level(logging.INFO, logger="admin_console.events"):
+    with caplog.at_level(logging.INFO, logger="apps.pipeline.events"):
         operator_client.post(f"/api/v1/ops/links/{traced_link.pk}/extractions")
     blob = "Plan 0"  # text that lives only inside the trace body
     for record in caplog.records:

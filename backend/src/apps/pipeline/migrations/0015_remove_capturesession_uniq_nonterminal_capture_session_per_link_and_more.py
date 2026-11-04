@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('admin_console', '0014_capturesession_deleted_at_changerecord_deleted_at_and_more'),
+        ('pipeline', '0014_capturesession_deleted_at_changerecord_deleted_at_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

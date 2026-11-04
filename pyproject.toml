@@ -49,6 +49,6 @@ default = true
 payment = { url = "https://github.com/fakharamirali/django-payment/releases/download/v0.0.9/payment-0.0.9-py3-none-any.whl" }
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings"
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 pythonpath = ["backend/src"]
 testpaths = ["backend/src"]

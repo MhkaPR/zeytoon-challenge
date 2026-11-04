@@ -141,7 +141,6 @@ def traced_link(kept_link):
         captured_at=timezone.now(),
         storage_key=key,
         storage_backend=backend,
-        byte_size=size,
         content_sha256=digest,
         is_valid_trace=True,
     )
@@ -246,13 +245,36 @@ def stub_llm(monkeypatch):
             for item in response
         ]
 
-    def classify_tables(table_contexts, *, idempotency_key=None, link=None):
-        results = classify_extract_tables(
-            table_contexts, idempotency_key=idempotency_key, link=link
+    def infer_and_extract_plans(
+        table_context, *, idempotency_key=None, link=None, table=None
+    ):
+        stub.plan_calls.append(
+            {
+                "table": table_context,
+                "plan_type": None,
+                "field_keys": set(),
+                "link_id": getattr(link, "pk", None),
+                "table_id": getattr(table, "pk", None),
+            }
         )
-        return results
+        _raise_if_exhausted("schema_extraction", link)
+        configured = stub.classifications[0] if stub.classifications else {}
+        plan_type = configured.get("plan_type", "hosting")
+        response = stub.plans
+        if callable(response):
+            response = response(table_context, plan_type)
+        return plan_type, [
+            (
+                item
+                if isinstance(item, llm_mod.PlanRecordOut)
+                else llm_mod.PlanRecordOut(**item)
+            )
+            for item in response
+        ]
 
-    monkeypatch.setattr(llm_mod.default_client, "classify_tables", classify_tables)
+    monkeypatch.setattr(
+        llm_mod.default_client, "infer_and_extract_plans", infer_and_extract_plans
+    )
     monkeypatch.setattr(llm_mod.default_client, "extract_plans", extract_plans)
     return stub
 

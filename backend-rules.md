@@ -132,7 +132,7 @@ project-root/
 
 ## 9. Testing
 
-- Framework: **Django `unittest`**.
+- Framework: **pytest** with `pytest-django`. Tests are plain pytest functions or classes.
 - **Faker** is used for test data.
 - **Coverage ≥ 80%** is the target. Measurement and enforcement are the responsibility of the DevOps team and are **not** part of this document.
 - **Regression tests are mandatory for every change** that alters behavior.

@@ -375,6 +375,9 @@ def process_link_tables(link, actor=None):
             table=table,
             idempotency_key=f"schema-extraction:{link.pk}:{table.pk}",
         )
+        classification.plan_type = plan_type
+        classification.confidence = 1.0
+        classification.save(update_fields=["plan_type", "confidence", "updated_at"])
         plans_count += 1
         for plan in plans:
             current_index = record_index
@@ -549,11 +552,6 @@ def extract_link_plans(link, actor=None):
         for plan in valid:
             current_index = record_index
             record_index += 1
-            identity = _plan_values_identity(plan_type, plan.values)
-            if identity in seen_plans:
-                skipped += 1
-                continue
-            seen_plans.add(identity)
             pending_records.append(
                 PlanRecord(
                     link=link,
@@ -1073,3 +1071,8 @@ def _run_with_retries(stage, link, fn, *args, **kwargs):
     )
     link.pipeline_stage = Link.PipelineStage.DEAD_LETTERED
     raise last_error
+
+
+def classify_and_extract_link_tables(link, actor=None):
+    """Backward-compatible name for the combined classify-and-extract pass."""
+    return process_link_tables(link, actor=actor)

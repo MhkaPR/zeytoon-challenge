@@ -5,6 +5,7 @@ from apps.utils.models.soft_delete import (
     DeletedObjectsManager,
     SoftDeleteManager,
     SoftDeleteQuerySet,
+    SoftDeleteConflict,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "SoftDeleteManager",
     "DeletedObjectsManager",
     "SoftDeleteQuerySet",
+    "SoftDeleteConflict",
 ]

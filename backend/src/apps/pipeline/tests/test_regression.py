@@ -13,7 +13,7 @@ import pytest
 from apps.pipeline import discovery, domtrack_client, llm, plan_schema
 from apps.pipeline.services.v1 import pipeline as services
 
-ADMIN_CONSOLE = pathlib.Path("backend/src/admin_console")
+ADMIN_CONSOLE = pathlib.Path("backend/src/apps/pipeline")
 
 
 def test_capture_never_scrolls_the_page():
@@ -63,7 +63,12 @@ def test_no_formula_or_selector_module_exists():
 
 def test_feature_has_no_sitemap_step():
     # The pipeline modules that would host a sitemap step never mention one.
-    for name in ("discovery.py", "services.py", "tasks.py", "api.py", "constants.py"):
+    for name in (
+        "discovery.py",
+        "services/v1/pipeline.py",
+        "tasks.py",
+        "constants.py",
+    ):
         assert "sitemap" not in (ADMIN_CONSOLE / name).read_text().lower(), name
     from apps.pipeline.models import Site
 

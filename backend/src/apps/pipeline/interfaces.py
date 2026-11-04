@@ -2,12 +2,25 @@
 
 Other modules read pipeline state only through this interface; it exposes opaque ids
 and summaries and leaks no internals. The interface is internal to the backend and is
-not an HTTP surface.
+not an HTTP surface (FR-066).
 """
 
 from django.db import transaction
 
-from apps.pipeline.models import FailureAlert, Link, Site
+from apps.pipeline.models import CaptureSession, FailureAlert, Link, Site
+
+
+class TaskBackendUnavailable(RuntimeError):
+    """Raised when the configured task backend refuses an enqueue."""
+
+
+def _require_operator(actor):
+    """The pipeline interface is operator-only (FR-066)."""
+    if actor is None or not getattr(actor, "is_authenticated", False):
+        raise PermissionError("An authenticated operator is required.")
+    if not actor.is_operator():
+        raise PermissionError("This action is restricted to operators.")
+    return actor
 
 
 class PipelineInterface:
@@ -83,38 +96,96 @@ class PipelineInterface:
         return Site.objects.filter(company_id=company_id).first()
 
     @staticmethod
+    def all_sites():
+        return Site.objects.select_related("company").all()
+
+    @staticmethod
+    def site_or_error(site_id):
+        site = Site.objects.filter(pk=site_id).first()
+        if site is None:
+            raise LookupError("site_not_found")
+        return site
+
+    @staticmethod
+    def link_queryset():
+        return Link.objects.all()
+
+    @staticmethod
+    def link_or_error(link_id):
+        link = Link.objects.filter(pk=link_id).first()
+        if link is None:
+            raise LookupError("link_not_found")
+        return link
+
+    @staticmethod
+    def capture_session_or_error(session_id):
+        session = CaptureSession.objects.filter(pk=session_id).first()
+        if session is None:
+            raise LookupError("capture_session_not_found")
+        return session
+
+    @staticmethod
+    def site_links(site, review_state=None):
+        qs = site.links.all()
+        if review_state:
+            qs = qs.filter(review_state=review_state)
+        return qs.order_by("-created_at")
+
+    @staticmethod
+    def link_capture_sessions(link):
+        return link.capture_sessions.all()
+
+    @staticmethod
+    def link_plans(link):
+        return link.plan_records.all()
+
+    @staticmethod
     def onboard_site(company_id, actor=None):
+        _require_operator(actor)
         from apps.pipeline.services.v1.pipeline import onboard_site
 
         return onboard_site(company_id, actor=actor)
 
     @staticmethod
-    def suspend_site(site):
+    def suspend_site(site, actor=None):
+        _require_operator(actor)
         site.maintenance_state = Site.MaintenanceState.SUSPENDED
         site.save(update_fields=["maintenance_state", "updated_at"])
         return site
 
     @staticmethod
-    def resume_site(site):
+    def resume_site(site, actor=None):
+        _require_operator(actor)
         site.maintenance_state = Site.MaintenanceState.ONBOARDING
         site.save(update_fields=["maintenance_state", "updated_at"])
         return site
 
     @staticmethod
-    def enqueue_site_pipeline(site_id, *, discover=True, link_id=None):
+    def enqueue_site_pipeline(
+        site_id, actor=None, *, discover=True, link_id=None, priority=None
+    ):
+        _require_operator(actor)
         from apps.pipeline.tasks import run_site_pipeline_task
 
-        transaction.on_commit(
-            lambda: run_site_pipeline_task.enqueue(
-                site_id, discover=discover, link_id=link_id
+        try:
+            task = (
+                run_site_pipeline_task.using(priority=priority)
+                if priority is not None
+                else run_site_pipeline_task
             )
-        )
+            task.enqueue(site_id, discover=discover, link_id=link_id)
+        except Exception as exc:  # noqa: BLE001 - backend-specific failure surface
+            raise TaskBackendUnavailable("task_backend_unavailable") from exc
 
     @staticmethod
-    def enqueue_replay(link_id):
+    def enqueue_replay(link_id, actor=None):
+        _require_operator(actor)
         from apps.pipeline.tasks import run_replay_task
 
-        transaction.on_commit(lambda: run_replay_task.enqueue(link_id))
+        try:
+            run_replay_task.enqueue(link_id)
+        except Exception as exc:  # noqa: BLE001
+            raise TaskBackendUnavailable("task_backend_unavailable") from exc
 
 
-__all__ = ["PipelineInterface"]
+__all__ = ["PipelineInterface", "TaskBackendUnavailable"]

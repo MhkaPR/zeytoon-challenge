@@ -41,7 +41,6 @@ def empty_discovery(site):
         "ops_empty_discovery",
         site_id=site.pk,
         domain=site.domain,
-        message="The adaptive crawl found no candidate links.",
     )
 
 

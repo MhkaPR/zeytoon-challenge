@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('admin_console', '0010_classificationregex_and_more'),
+        ('pipeline', '0010_classificationregex_and_more'),
     ]
 
     operations = [

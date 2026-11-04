@@ -76,5 +76,10 @@ class ChangeRecord(TimestampedModel):
         db_table = "admin_console_change_record"
         ordering = ("id",)
 
+    @property
+    def touches_plans_table(self):
+        """Backward-compatible alias for the price-table change flag."""
+        return self.touches_price_table
+
     def __str__(self):
         return f"{self.change_kind} (price_table={self.touches_price_table})"

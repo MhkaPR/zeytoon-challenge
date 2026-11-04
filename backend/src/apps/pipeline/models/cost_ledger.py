@@ -46,7 +46,7 @@ class LlmCostLedger(TimestampedModel):
         related_name="llm_spend_rows",
     )
     links = models.ManyToManyField(
-        Link,
+        "pipeline.Link",
         blank=True,
         related_name="batch_llm_spend_rows",
     )

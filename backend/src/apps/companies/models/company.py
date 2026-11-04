@@ -1,10 +1,9 @@
 """Company domain model."""
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 from apps.utils.models import TimestampedModel
 
-User = get_user_model()
 
 
 class Company(TimestampedModel):
@@ -20,7 +19,7 @@ class Company(TimestampedModel):
 
 
     owner = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="companies",
         db_index=True,

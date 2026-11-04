@@ -31,10 +31,11 @@ def test_plan_endpoint_extracts_and_lists(operator_client, labeled_link, stub_ll
     assert listed.json()["plans"][0]["plan_type"] == "hosting"
 
 
-def test_plan_endpoint_requires_a_plans_table(operator_client, labeled_link, stub_llm):
-    stub_llm.classifications = [
-        {"table_index": 0, "is_correct": False, "plan_type": "", "confidence": 0.9}
-    ]
+def test_plan_endpoint_requires_a_plans_table(operator_client, labeled_link):
+    table = labeled_link.extracted_tables.get()
+    table.rows.all().delete()
+    table.rows.create(row_index=0, cells={"col-0": "About", "col-1": "us"})
+    table.rows.create(row_index=1, cells={"col-0": "Contact", "col-1": "team"})
     services.classify_and_extract_link_tables(labeled_link)
 
     response = operator_client.post(f"/api/v1/ops/links/{labeled_link.pk}/plans")

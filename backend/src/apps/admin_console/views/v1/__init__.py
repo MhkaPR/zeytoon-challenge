@@ -1,3 +1,4 @@
-from apps.admin_console.views.v1 import admin_console as api
+from apps.admin_console.views.v1.admin_console import OpsViewSet
 
-__all__ = ["api"]
+api = OpsViewSet
+__all__ = ["OpsViewSet", "api"]

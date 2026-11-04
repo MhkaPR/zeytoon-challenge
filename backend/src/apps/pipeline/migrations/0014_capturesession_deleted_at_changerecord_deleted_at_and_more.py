@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('admin_console', '0013_remove_site_crawl_query_remove_trace_byte_size'),
+        ('pipeline', '0013_remove_site_crawl_query_remove_trace_byte_size'),
     ]
 
     operations = [

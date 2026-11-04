@@ -56,7 +56,7 @@ description: "Task list for Backend Development Contract Compliance"
 - [ ] T012 [P] Verify the JSON logging formatter and sensitive-data filter in `backend/src/apps/utils/logging.py` and the `LOGGING` setting in `backend/src/config/settings/base.py`
 - [ ] T013 [P] Verify the `TASKS` setting in `backend/src/config/settings/base.py` selects the backend from configuration and does not hard-code it in application code
 - [ ] T014 [P] Verify the `drf-spectacular` schema and Swagger routes in `backend/src/config/urls.py`
-- [ ] T015 Create a shared Django `unittest` base test case using Faker in `backend/src/apps/utils/testing.py`
+- [ ] T015 Create shared pytest fixtures using Faker in `backend/src/apps/utils/testing.py`
 - [ ] T016 Run `python manage.py check` from `backend/src/` and resolve import or configuration errors
 
 **Checkpoint**: Shared infrastructure is ready; user stories can begin.
@@ -194,9 +194,9 @@ description: "Task list for Backend Development Contract Compliance"
 - [ ] T070 [US4] Create an operator permission class backed by Django groups or django-guardian in `backend/src/apps/admin_console/permissions.py` and use it on operator viewsets
 - [ ] T071 [US4] Verify every task in `backend/src/apps/pipeline/tasks.py` uses `@task` and every caller uses `.enqueue()`
 - [ ] T072 [US4] Verify the JSON formatter and `LOG_LEVEL` default in `backend/src/config/settings/base.py`
-- [ ] T073 [US4] Migrate the backend test suite from pytest-style functions to Django `unittest` classes under each application's `tests/` directory
+- [ ] T073 [US4] Keep the backend test suite in pytest style under each application's `tests/` directory
 - [ ] T074 [US4] Replace ad-hoc test data with Faker through the shared base in `backend/src/apps/utils/testing.py`
-- [ ] T075 [US4] Run `python manage.py test` from `backend/src/` and resolve failures
+- [ ] T075 [US4] Run `pytest` from the repository root and resolve failures
 - [ ] T076 [US4] Build the root `Dockerfile` and verify the image starts Gunicorn over WSGI
 - [ ] T077 [US4] Verify no secrets, OTPs, tokens, or production data are committed in `backend/src/` and the repository root
 

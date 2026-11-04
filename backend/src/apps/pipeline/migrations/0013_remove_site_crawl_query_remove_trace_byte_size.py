@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('admin_console', '0012_rename_touches_price_table'),
+        ('pipeline', '0012_rename_touches_price_table'),
     ]
 
     operations = [

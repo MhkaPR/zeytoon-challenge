@@ -1,6 +1,5 @@
 """Per-company registration step state."""
 
-from django.contrib.auth import get_user_model
 from django.db import models
 from apps.utils.models import TimestampedModel
 from apps.companies.models.company import Company

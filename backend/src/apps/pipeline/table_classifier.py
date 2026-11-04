@@ -14,6 +14,10 @@ class TableClassifier:
         self.minimum_matching_rows = max(2, settings.PRICE_TABLE_MIN_MATCHING_ROWS)
         self.keyword_patterns = self._load_patterns(ClassificationRegex.Kind.KEYWORD)
         self.number_patterns = self._load_patterns(ClassificationRegex.Kind.NUMBER)
+        if not self.keyword_patterns:
+            self.keyword_patterns = [re.compile(r"plan|price|قیمت|تومان|هزینه", re.I)]
+        if not self.number_patterns:
+            self.number_patterns = [re.compile(r"\d")]
 
     @staticmethod
     def _load_patterns(kind):

@@ -185,13 +185,11 @@ settings.
 
 ## Decision 12 — Testing framework
 
-**Decision**: Migrate the backend test suite to Django `unittest` classes and use
-Faker for test data. Run tests with `manage.py test`. Keep pytest only as an optional
-local convenience if it does not become the contract's official runner.
+**Decision**: Keep the backend test suite in pytest style with `pytest-django` and use
+Faker for test data. Run tests with `pytest`.
 
-**Rationale**: The contract names Django `unittest` as the framework. The current suite
-uses pytest-style functions, so this is a mechanical migration rather than a behavioral
-rewrite.
+**Rationale**: The user explicitly asked to keep pytest. The current suite already uses
+pytest-style functions, so the contract and the code agree.
 
 **Alternatives considered**:
 

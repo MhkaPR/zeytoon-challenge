@@ -126,10 +126,10 @@ def test_no_acceptable_plans_is_handled_as_completed_quality_outcome(
     kept_link.save(
         update_fields=["pipeline_stage", "pipeline_task_state", "updated_at"]
     )
-    monkeypatch.setattr(services, "label_link_tables", lambda link: [])
+    monkeypatch.setattr(services, "label_link_tables", lambda link, **kwargs: [])
     monkeypatch.setattr(
         services,
-        "classify_and_extract_link_tables",
+        "process_link_tables",
         lambda link: (_ for _ in ()).throw(
             services.llm.NoPlanRecordsError("no plan met the quality gate")
         ),
@@ -152,11 +152,10 @@ def test_no_accepted_table_completes_instead_of_failing(
     link.pipeline_stage = Link.PipelineStage.EXTRACTED
     link.pipeline_task_state = "queued"
     link.save(update_fields=["pipeline_stage", "pipeline_task_state", "updated_at"])
-    monkeypatch.setattr(services, "label_link_tables", lambda link: [])
-    stub_llm.classifications = [
-        {"table_index": 0, "is_correct": False, "plan_type": "", "confidence": 0.9}
-    ]
-    stub_llm.plans = []
+    table = link.extracted_tables.get()
+    table.rows.all().delete()
+    table.rows.create(row_index=0, cells={"col-0": "About", "col-1": "us"})
+    table.rows.create(row_index=1, cells={"col-0": "Contact", "col-1": "team"})
 
     result = tasks.run_site_pipeline_task.call(
         link.site_id, discover=False, link_id=link.pk
@@ -165,5 +164,5 @@ def test_no_accepted_table_completes_instead_of_failing(
     link.refresh_from_db()
     assert result["links"] == [link.pk]
     assert link.pipeline_task_state == "completed"
-    assert link.pipeline_stage == Link.PipelineStage.NO_PLANS
+    assert link.pipeline_stage == Link.PipelineStage.NO_PRICE_TABLES
     assert link.last_error == ""

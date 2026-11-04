@@ -122,10 +122,10 @@ sensitive values are masked.
 
 ```bash
 cd backend/src
-python manage.py test
+pytest
 ```
 
-**Expected**: The suite passes using Django `unittest` and Faker test data. Every
+**Expected**: The suite passes using pytest and Faker test data. Every
 behavior change in the release has a regression test.
 
 ## 10. Build the production image

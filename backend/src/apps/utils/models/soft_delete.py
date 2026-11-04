@@ -4,6 +4,10 @@ from django.db import models
 from django.utils import timezone
 
 
+class SoftDeleteConflict(Exception):
+    """Raised when a required relationship still references the record."""
+
+
 class SoftDeleteQuerySet(models.QuerySet):
     """Query set whose ordinary delete operation retains rows for auditability."""
 

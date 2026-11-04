@@ -70,7 +70,7 @@ def seed_classification_regexes(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('admin_console', '0009_alter_link_pipeline_stage_alter_link_review_state'),
+        ('pipeline', '0009_alter_link_pipeline_stage_alter_link_review_state'),
     ]
 
     operations = [

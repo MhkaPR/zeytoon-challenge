@@ -1,6 +1,6 @@
 """Append-only verification outcomes."""
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 from apps.utils.models import TimestampedModel
 from apps.companies.models.company import Company
@@ -19,7 +19,7 @@ class VerificationDecision(_AppendOnlyMixin, TimestampedModel):
     )
     outcome = models.CharField(max_length=16, choices=Outcome.choices)
     actor = models.ForeignKey(
-        User, on_delete=models.PROTECT, related_name="verification_decisions"
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="verification_decisions"
     )
     decided_at = models.DateTimeField()
     note = models.TextField(blank=True, default="")

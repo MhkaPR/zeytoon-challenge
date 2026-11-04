@@ -13,6 +13,17 @@ class TableClassification(TimestampedModel):
     )
     is_price_table = models.BooleanField(default=False)
     matching_rows = models.PositiveIntegerField(default=0)
+    plan_type = models.CharField(max_length=32, blank=True, default="")
+    confidence = models.FloatField(null=True, blank=True)
+
+    @property
+    def is_plans_table(self):
+        """Backward-compatible alias for the rule-based price-table verdict."""
+        return self.is_price_table
+
+    @is_plans_table.setter
+    def is_plans_table(self, value):
+        self.is_price_table = value
 
     class Meta:
         db_table = "admin_console_table_classification"

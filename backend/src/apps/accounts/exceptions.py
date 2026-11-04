@@ -8,6 +8,8 @@ from rest_framework import status
 from rest_framework.exceptions import APIException, Throttled
 from rest_framework.views import exception_handler as drf_exception_handler
 
+from apps.utils.models.soft_delete import SoftDeleteConflict
+
 
 class ApiError(APIException):
     """Domain error carrying an explicit machine-readable ``code``."""
@@ -33,6 +35,14 @@ def api_exception_handler(exc, context):
     if isinstance(exc, ApiError):
         response.data = error_body(exc.code, exc.message, exc.fields)
         return response
+
+    if isinstance(exc, SoftDeleteConflict):
+        from rest_framework.response import Response
+
+        return Response(
+            error_body("conflict", str(exc)),
+            status=status.HTTP_409_CONFLICT,
+        )
 
     if response is None:
         return None

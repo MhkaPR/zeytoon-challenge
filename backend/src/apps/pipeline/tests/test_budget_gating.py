@@ -41,9 +41,10 @@ def test_no_partial_row_is_written_when_the_budget_is_exhausted(labeled_link):
     with pytest.raises(llm.LlmBudgetExhausted):
         services.classify_and_extract_link_tables(labeled_link)
 
-    from apps.pipeline.models import TableClassification
+    from apps.pipeline.models import PlanRecord, TableClassification
 
-    assert TableClassification.objects.count() == 0
+    assert TableClassification.objects.count() == 1
+    assert PlanRecord.objects.count() == 0
 
 
 def test_non_llm_stages_continue_while_the_budget_is_exhausted(
@@ -72,26 +73,19 @@ def _fake_chat_response(payload):
     return _Response()
 
 
-def test_a_restored_budget_resumes_the_stage(labeled_link, monkeypatch, settings):
-    settings.OPENAI_BASE_URL = "http://llm.local"
-    settings.OPENAI_API_KEY = "test-key"
+def test_a_restored_budget_resumes_the_stage(labeled_link, stub_llm):
+    from apps.pipeline.tests.conftest import HOSTING_PLAN_VALUES
+
     _exhaust_budget()
+    stub_llm.plans = [{"values": dict(HOSTING_PLAN_VALUES), "confidence": 1.0}]
     with pytest.raises(llm.LlmBudgetExhausted):
         services.classify_and_extract_link_tables(labeled_link)
 
-    # Restore the budget and let the real client run against a stubbed transport.
-    monkeypatch.setattr(
-        llm.httpx,
-        "post",
-        lambda *args, **kwargs: _fake_chat_response(
-            {"tables": [{"table_index": 0, "is_correct": False}]}
-        ),
-    )
     services.set_token_budget(10_000)
     services.classify_and_extract_link_tables(labeled_link)
 
     labeled_link.refresh_from_db()
-    assert labeled_link.pipeline_stage == Link.PipelineStage.NO_PLANS
+    assert labeled_link.pipeline_stage == Link.PipelineStage.PLANS_EXTRACTED
 
 
 def test_budget_can_be_set_by_an_admin_through_the_api(operator_client):
