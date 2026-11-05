@@ -170,6 +170,8 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+    "DEFAULT_PAGINATION_CLASS": "apps.utils.pagination.EnvelopePageNumberPagination",
+    "PAGE_SIZE": 12,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": (
         "rest_framework.throttling.AnonRateThrottle",
@@ -431,7 +433,7 @@ CONSTANCE_CONFIG = {
         "Step size for the public catalog price filter (IRR).",
     ),
     "CATALOG_PAGE_SIZES": (
-        [8, 12, 20],
+        [8, 12],
         "Page-size options offered by the public plan catalog.",
     ),
     "CATALOG_PAGE_SIZE_DEFAULT": (

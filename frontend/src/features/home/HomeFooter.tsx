@@ -1,4 +1,3 @@
-// src/features/home/HomeFooter.tsx
 import { getTranslations } from "next-intl/server";
 import { Link, Separator, Typography } from "@heroui/react";
 import NextLink from "next/link";

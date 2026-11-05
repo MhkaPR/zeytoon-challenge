@@ -65,6 +65,14 @@ class PipelineInterface:
         }
 
     @staticmethod
+    def public_link_urls(link_ids):
+        """Return the source URL for each published plan link."""
+        return {
+            link.pk: link.url
+            for link in Link.objects.filter(pk__in=link_ids).only("id", "url")
+        }
+
+    @staticmethod
     def public_recent_companies(since):
         """Return verified public companies created since the supplied timestamp."""
         return [

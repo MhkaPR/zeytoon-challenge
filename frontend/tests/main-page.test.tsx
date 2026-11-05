@@ -4,11 +4,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyCard } from "@/src/features/company/CompanyCard";
 import { SearchBox } from "@/src/features/home/SearchBox";
 import { MainBody } from "@/src/features/home/MainBody";
+import { DEFAULT_SITE_CONFIG } from "@/src/lib/config/siteConfig";
 import { strings } from "./messages";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => "/",
+}));
+
+vi.mock("@/src/features/home/HomeFooter", () => ({
+  HomeFooter: () => null,
 }));
 
 afterEach(() => {
@@ -17,7 +22,26 @@ afterEach(() => {
 
 describe("MainBody", () => {
   it("renders the hero, service categories, and reference sections", () => {
-    render(<MainBody plans={[]} recentCompanies={[]} />);
+    render(
+      <MainBody
+        plansPage={{
+          plans: [],
+          count: 0,
+          page: 1,
+          pageSize: 8,
+          totalPages: 1,
+          facets: {
+            companies: [],
+            operating_systems: [],
+            locations: [],
+            resources: { ram: [], cpu: [], disk: [], traffic: [] },
+          },
+        }}
+        recentCompanies={[]}
+        searchParams={{}}
+        siteConfig={DEFAULT_SITE_CONFIG}
+      />,
+    );
     expect(screen.getByRole("search")).toBeInTheDocument();
     // The two primary calls to action sit under the search box.
     expect(screen.getAllByRole("link", { name: strings.ctaViewCompanies }).length).toBeGreaterThan(0);
@@ -36,10 +60,10 @@ describe("SearchBox", () => {
 });
 
 describe("CompanyCard", () => {
-  it("links to the company page and shows the fallback description", () => {
-    render(<CompanyCard name="Example Hosting" domain="example.com" />);
+  it("links to the company page and shows the plan count", () => {
+    render(<CompanyCard name="Example Hosting" domain="example.com" planCount={2} />);
     expect(screen.getByText("Example Hosting")).toBeInTheDocument();
     expect(screen.getByText("example.com")).toBeInTheDocument();
-    expect(screen.getByText(strings.companyCardFallback)).toBeInTheDocument();
+    expect(screen.getByText(strings.viewCompany)).toBeInTheDocument();
   });
 });

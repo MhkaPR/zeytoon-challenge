@@ -1,4 +1,5 @@
 import django_filters
+from django.db.models import Q
 
 from apps.pipeline.interfaces import PipelineInterface
 from apps.catalog.models import PublishedRecord
@@ -13,6 +14,40 @@ UNIT_DEFAULTS: dict[str, str] = {
     "rate": "per_second",
     "currency": "USD",
 }
+
+RESOURCE_ALIASES: dict[str, tuple[str, ...]] = {
+    "ram": ("ram_amount", "ram"),
+    "cpu": ("vcpu_cores", "cpu_cores", "cpu"),
+    "disk": ("storage_amount", "disk_amount", "disk"),
+    "traffic": ("traffic_amount", "bandwidth_amount", "traffic", "bandwidth"),
+}
+
+PLAN_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
+    "host": ("hosting", "wordpress"),
+    "virtual_server": ("virtual_server", "vps"),
+    "dedicated_server": ("dedicated_server", "dedicated"),
+    "cdn": ("cdn",),
+}
+
+
+def _csv(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _json_values(values: list[str]) -> list:
+    parsed: list = []
+    for value in values:
+        if value not in parsed:
+            parsed.append(value)
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            continue
+        if number not in parsed:
+            parsed.append(number)
+    return parsed
 
 
 def _filter_for_field(schema_field: SchemaField):
@@ -97,7 +132,18 @@ class PublishedPlanFilter(django_filters.FilterSet):
 
     domain = django_filters.CharFilter(method="filter_domain")
     q = django_filters.CharFilter(method="filter_search")
-    type = django_filters.CharFilter(field_name="plan_type")
+    type = django_filters.CharFilter(method="filter_type")
+    sort = django_filters.ChoiceFilter(
+        choices=(("price", "price"), ("expensive", "expensive")),
+        method="filter_sort",
+    )
+    providers = django_filters.CharFilter(method="filter_providers")
+    os = django_filters.CharFilter(method="filter_os")
+    location = django_filters.CharFilter(method="filter_location")
+    ram = django_filters.CharFilter(method="filter_resource")
+    cpu = django_filters.CharFilter(method="filter_resource")
+    disk = django_filters.CharFilter(method="filter_resource")
+    traffic = django_filters.CharFilter(method="filter_resource")
 
     class Meta:
         model = PublishedRecord
@@ -110,6 +156,8 @@ class PublishedPlanFilter(django_filters.FilterSet):
         or ``data["type"]``); callers can also pass it explicitly.
         """
         super().__init__(*args, **kwargs)
+        if plan_type is None:
+            plan_type = self.data.get("type")
         if plan_type:
             for key, flt in _build_dynamic_filter_fields(plan_type).items():
                 self.filters[key] = flt
@@ -130,6 +178,11 @@ class PublishedPlanFilter(django_filters.FilterSet):
         ]
         return queryset.filter(pk__in=matching_ids)
 
+    def filter_type(self, queryset, name, value):
+        return queryset.filter(
+            plan_type__in=PLAN_TYPE_ALIASES.get(value, (value,))
+        )
+
     def filter_search(self, queryset, name, value):
         needle = value.casefold()
         sites = self._resolve_sites(queryset)
@@ -140,3 +193,51 @@ class PublishedPlanFilter(django_filters.FilterSet):
             and needle in f"{site['company_name']} {record.values}".casefold()
         ]
         return queryset.filter(pk__in=matching_ids)
+
+    def filter_providers(self, queryset, name, value):
+        wanted = {item.casefold() for item in _csv(value)}
+        if not wanted:
+            return queryset
+        site_ids = [
+            site.pk
+            for site in PipelineInterface.all_sites()
+            if site.domain.casefold() in wanted
+            or site.company.company_name.casefold() in wanted
+        ]
+        return queryset.filter(site__in=site_ids)
+
+    def filter_os(self, queryset, name, value):
+        wanted = _csv(value)
+        if not wanted:
+            return queryset
+        query = Q()
+        for key in ("os", "operating_system"):
+            for item in wanted:
+                query |= Q(**{f"values__{key}__iexact": item})
+        return queryset.filter(query)
+
+    def filter_location(self, queryset, name, value):
+        wanted = _csv(value)
+        if not wanted:
+            return queryset
+        query = Q()
+        for key in ("location", "datacenter_location"):
+            for item in wanted:
+                query |= Q(**{f"values__{key}__iexact": item})
+        return queryset.filter(query)
+
+    def filter_resource(self, queryset, name, value):
+        values = _json_values(_csv(value))
+        if not values:
+            return queryset
+        query = Q()
+        for key in RESOURCE_ALIASES[name]:
+            query |= Q(**{f"values__{key}__in": values})
+        return queryset.filter(query)
+
+    def filter_sort(self, queryset, name, value):
+        if value == "price":
+            return queryset.order_by("values__price_amount", "id")
+        if value == "expensive":
+            return queryset.order_by("-values__price_amount", "id")
+        return queryset

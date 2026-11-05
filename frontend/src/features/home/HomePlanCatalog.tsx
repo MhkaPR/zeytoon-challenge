@@ -3,9 +3,10 @@
 import { Button, Skeleton, Tabs, Typography } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import { RotateCcw } from "lucide-react";
-import {useEffect, useMemo, useState} from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 
-import type { PublicPlan } from "@/src/lib/api/publicCatalog";
+import type { PlansPage } from "@/src/lib/api/publicCatalog";
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 import {
   SERVICE_TYPES,
@@ -16,189 +17,157 @@ import {
 import { CatalogFilters } from "./planCatalog/CatalogFilters";
 import { PlanCard } from "./planCatalog/PlanCard";
 import { PlanPagination, SortAndPageSizeControls } from "./planCatalog/CatalogControls";
-import { fieldValue, numberValue, priceOf } from "./planCatalogUtils";
 import NextLink from "next/link";
 
 type ServiceTab = "all" | ServiceTypeKey;
 type SortOrder = "default" | "price" | "expensive";
 
-export type CatalogSearchParams = {
-  [K in keyof CatalogFilterValues]?: string | string[] | undefined;
-};
-
 export type CatalogFilterValues = {
   providers: string[];
   os: string[];
   locations: string[];
-  ramValue: string,
-  ramUnit: string,
-  cpuCount: string,
-  storageValue: string,
-  storageUnit: string
-
+  resourceValues: Partial<Record<ResourceKey, number[]>>;
 };
 
-const SERVICE_FOR_PLAN: Record<string, ServiceTypeKey | undefined> = {
-  hosting: "host",
-  wordpress: "host",
-  virtual_server: "virtual_server",
-  vps: "virtual_server",
-  dedicated_server: "dedicated_server",
-  dedicated: "dedicated_server",
-  cdn: "cdn",
-};
-const RESOURCE_FIELDS: Record<ResourceKey, string[]> = {
-  ram: ["ram_amount", "ram"],
-  cpu: ["vcpu_cores", "cpu_cores", "cpu"],
-  disk: ["storage_amount", "disk_amount", "disk"],
-  traffic: ["traffic_amount", "bandwidth_amount", "traffic", "bandwidth"],
-};
-function serviceOf(plan: PublicPlan): ServiceTypeKey | undefined {
-  return SERVICE_FOR_PLAN[plan.plan_type];
+const RESOURCE_KEYS: ResourceKey[] = ["ram", "cpu", "disk", "traffic"];
+
+function resourcesForServices(services: ServiceTypeKey[]): ResourceKey[] {
+  const sets = services.map((service) => new Set(resourcesForType(service)));
+  if (!sets.length) return [];
+  return [...sets[0]].filter((resource) =>
+    sets.every((set) => set.has(resource)),
+  ) as ResourceKey[];
+}
+
+function first(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
+function parseList(value: string | string[] | undefined): string[] {
+  return first(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseType(value: string | string[] | undefined): ServiceTab {
+  const parsed = first(value);
+  return SERVICE_TYPES.some(({ key }) => key === parsed) ? (parsed as ServiceTypeKey) : "all";
+}
+
+function parseSort(value: string | string[] | undefined): SortOrder {
+  const parsed = first(value);
+  return parsed === "price" || parsed === "expensive" ? parsed : "default";
+}
+
+function makeDefaults(): CatalogFilterValues {
+  return { providers: [], os: [], locations: [], resourceValues: {} };
+}
+
+function parseDraft(params: Record<string, string | string[] | undefined>): CatalogFilterValues {
+  const resourceValues: Partial<Record<ResourceKey, number[]>> = {};
+  for (const key of RESOURCE_KEYS) {
+    const values = parseList(params[key])
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+    if (values.length) resourceValues[key] = values;
+  }
+  return {
+    providers: parseList(params.providers),
+    os: parseList(params.os),
+    locations: parseList(params.location),
+    resourceValues,
+  };
+}
+
+function buildQuery({
+  type,
+  draft,
+  sort,
+  page,
+  pageSize,
+}: {
+  type: ServiceTab;
+  draft: CatalogFilterValues;
+  sort: SortOrder;
+  page: number;
+  pageSize: number;
+}): string {
+  const params = new URLSearchParams();
+  if (type !== "all") params.set("type", type);
+  if (draft.providers.length) params.set("providers", draft.providers.join(","));
+  if (draft.os.length) params.set("os", draft.os.join(","));
+  if (draft.locations.length) params.set("location", draft.locations.join(","));
+  for (const key of RESOURCE_KEYS) {
+    const values = draft.resourceValues[key];
+    if (values?.length) params.set(key, values.join(","));
+  }
+  if (sort !== "default") params.set("sort", sort);
+  if (page > 1) params.set("page", String(page));
+  params.set("page_size", String(pageSize));
+  return params.toString();
 }
 
 export function HomePlanCatalog({
-  plans,
+  plansPage,
+  searchParams,
   loading = false,
 }: {
-  plans: PublicPlan[];
+  plansPage: PlansPage;
+  searchParams: Record<string, string | string[] | undefined>;
   loading?: boolean;
 }) {
   const config = useSiteConfig();
   const ot = useTranslations();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+
+  const [type, setType] = useState<ServiceTab>(() => parseType(searchParams.type));
+  const [draft, setDraft] = useState<CatalogFilterValues>(() => parseDraft(searchParams));
+  const [sort, setSort] = useState<SortOrder>(() => parseSort(searchParams.sort));
+  const [companySearch, setCompanySearch] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
+  const pageSize = plansPage.pageSize || config.catalog.defaultPageSize;
 
   const serviceTabs: { id: ServiceTab; label: string }[] = [
     { id: "all", label: ot("anyOption") },
     ...SERVICE_TYPES.map(({ key, labelKey }) => ({ id: key, label: ot(labelKey) })),
   ];
 
-  const [type, setType] = useState<ServiceTab>("all");
-  const [companySearch, setCompanySearch] = useState("");
-  const [sort, setSort] = useState<SortOrder>("default");
-  const [pageSize, setPageSize] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
-  const effectivePageSize = pageSize ?? config.catalog.defaultPageSize;
-
-  const makeDefaults = (): CatalogFilterValues => ({
-    providers: [],
-    os: [],
-    locations: [],
-    cpuCount: "",
-    ramUnit: "",
-    ramValue: "",
-    storageUnit: "",
-    storageValue: ""
-  });
-
-  const [draft, setDraft] = useState<CatalogFilterValues>(makeDefaults);
-  const [applied, setApplied] = useState<CatalogFilterValues>(makeDefaults);
-  const [isDirty, setIsDirty] = useState(false);
-
-  const scopedPlans = useMemo(
-    () => plans.filter((plan) => type === "all" || serviceOf(plan) === type),
-    [plans, type],
-  );
-
-  const activeServices = type === "all" ? SERVICE_TYPES.map(({ key }) => key) : [type];
-
-  const activeResources = useMemo(() => {
-    const resourceSets = activeServices.map((service) => new Set(resourcesForType(service)));
-    if (!resourceSets.length) return [];
-    return [...resourceSets[0]].filter((resource) =>
-      resourceSets.every((set) => set.has(resource)),
-    ) as ResourceKey[];
-  }, [type]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const companyNames = useMemo(
+  const activeResources = useMemo(
     () =>
-      [...new Set(scopedPlans.map((plan) => plan.company_name))].sort((a, b) =>
-        a.localeCompare(b, "fa"),
+      resourcesForServices(
+        type === "all" ? SERVICE_TYPES.map(({ key }) => key) : [type],
       ),
-    [scopedPlans],
+    [type],
   );
 
-  const operatingSystems = useMemo(
-    () =>
-      [...new Set(
-        scopedPlans
-          .map((plan) => String(fieldValue(plan, ["operating_system", "os"]) ?? ""))
-          .filter(Boolean),
-      )].sort((a, b) => a.localeCompare(b, "fa")),
-    [scopedPlans],
-  );
-
-  const availableLocations = useMemo(
-    () =>
-      [...new Set(
-        scopedPlans
-          .map((plan) => String(fieldValue(plan, ["location", "datacenter_location"]) ?? ""))
-          .filter(Boolean),
-      )].sort((a, b) => a.localeCompare(b, "fa")),
-    [scopedPlans],
-  );
-
-  const supportsField = (keys: string[]) =>
-    activeServices.every((service) =>
-      scopedPlans.some((plan) => serviceOf(plan) === service && fieldValue(plan, keys)),
-    );
-
-  const activeOperatingSystems = supportsField(["operating_system", "os"]) ? operatingSystems : [];
-  const activeLocations = supportsField(["location", "datacenter_location"]) ? availableLocations : [];
-
-  const resourceOptions = (resource: ResourceKey) => {
-    const values = [...new Set(
-      scopedPlans
-        .map((plan) => numberValue(fieldValue(plan, RESOURCE_FIELDS[resource])))
-        .filter((value) => value > 0),
-    )].sort((a, b) => a - b);
-    return values.length ? values : config.catalog.resourceOptions[resource];
-  };
-
-  // Filtering uses APPLIED — nothing changes until the user clicks Apply.
-  const filteredPlans = useMemo(() => plans.filter((plan) => {
-    const price = priceOf(plan);
-    const location = String(fieldValue(plan, ["location", "datacenter_location"]) ?? "");
-    const operatingSystem = String(fieldValue(plan, ["operating_system", "os"]) ?? "").toLowerCase();
-
-    return (type === "all" || serviceOf(plan) === type)
-      && (!applied.providers.length || applied.providers.includes(plan.company_name))
-      && (!price || price <= applied.maxPrice)
-      && (!applied.os.length || applied.os.some((value) => operatingSystem.includes(value.toLowerCase())))
-      && (!applied.locations.length || applied.locations.includes(location))
-      && activeResources.every((resource) => {
-        const selected = applied.resourceValues[resource] ?? [];
-        const value = numberValue(fieldValue(plan, RESOURCE_FIELDS[resource]));
-        return !selected.length || selected.includes(value);
-      });
-  }), [activeResources, applied, plans, type]);
-
-  const sortedPlans = useMemo(() => {
-    const result = [...filteredPlans];
-    if (sort === "price") return result.sort((a, b) => priceOf(a) - priceOf(b));
-    if (sort === "expensive") return result.sort((a, b) => priceOf(b) - priceOf(a));
-    return result;
-  }, [filteredPlans, sort]);
-
-  const totalPages = Math.max(1, Math.ceil(sortedPlans.length / effectivePageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pagePlans = sortedPlans.slice(
-    (currentPage - 1) * effectivePageSize,
-    currentPage * effectivePageSize,
-  );
-
-  useEffect(() => {
-    setPage(1);
-  }, [type, applied, sort, pageSize]);
-
-  function updateDraft(patch: Partial<CatalogFilterValues>) {
-    setDraft((prev) => ({ ...prev, ...patch }));
-    setIsDirty(true);
+  function navigate(overrides: {
+    type?: ServiceTab;
+    draft?: CatalogFilterValues;
+    sort?: SortOrder;
+    page?: number;
+  }) {
+    const query = buildQuery({
+      type: overrides.type ?? type,
+      draft: overrides.draft ?? draft,
+      sort: overrides.sort ?? sort,
+      page: overrides.page ?? 1,
+      pageSize,
+    });
+    startTransition(() => router.push(query ? `${pathname}?${query}` : pathname));
   }
 
   function toggleDraftArray<K extends "providers" | "os" | "locations">(key: K, value: string) {
     setDraft((prev) => {
-      const arr = prev[key];
-      return { ...prev, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
+      const values = prev[key];
+      return {
+        ...prev,
+        [key]: values.includes(value)
+          ? values.filter((item) => item !== value)
+          : [...values, value],
+      };
     });
     setIsDirty(true);
   }
@@ -210,7 +179,9 @@ export function HomePlanCatalog({
         ...prev,
         resourceValues: {
           ...prev.resourceValues,
-          [resource]: values.includes(value) ? values.filter((v) => v !== value) : [...values, value],
+          [resource]: values.includes(value)
+            ? values.filter((item) => item !== value)
+            : [...values, value],
         },
       };
     });
@@ -218,23 +189,25 @@ export function HomePlanCatalog({
   }
 
   function applyFilters() {
-    setApplied(draft);
     setIsDirty(false);
-    setPage(1);
-    onApplyFilters?.(draft);
+    navigate({ draft, page: 1 });
   }
 
   function resetFilters() {
-    const next = makeDefaults();
-    setDraft(next);
-    setApplied(next);
-    setIsDirty(false);
-    setCompanySearch("");
-    setSort("default");
-    setPageSize(null);
+    setDraft(makeDefaults());
     setType("all");
-    setPage(1);
+    setSort("default");
+    setCompanySearch("");
+    setIsDirty(false);
+    startTransition(() => router.push(pathname));
   }
+
+  const hasActiveFilters =
+    type !== "all" ||
+    draft.providers.length > 0 ||
+    draft.os.length > 0 ||
+    draft.locations.length > 0 ||
+    RESOURCE_KEYS.some((key) => (draft.resourceValues[key]?.length ?? 0) > 0);
 
   return (
     <section aria-labelledby="home-plans-title" className="flex flex-col gap-[24px]">
@@ -254,7 +227,26 @@ export function HomePlanCatalog({
         className="w-full max-w-full"
         selectedKey={type}
         variant="secondary"
-        onSelectionChange={(key) => setType(String(key) as ServiceTab)}
+        onSelectionChange={(key) => {
+          const next = String(key) as ServiceTab;
+          const nextResources = new Set(
+            resourcesForServices(
+              next === "all" ? SERVICE_TYPES.map(({ key: service }) => service) : [next],
+            ),
+          );
+          const nextDraft: CatalogFilterValues = {
+            ...draft,
+            resourceValues: Object.fromEntries(
+              Object.entries(draft.resourceValues).filter(([resource]) =>
+                nextResources.has(resource as ResourceKey),
+              ),
+            ),
+          };
+          setType(next);
+          setDraft(nextDraft);
+          setIsDirty(false);
+          navigate({ type: next, draft: nextDraft, page: 1 });
+        }}
       >
         <Tabs.ListContainer className="bg-transparent">
           <Tabs.List aria-label={ot("serviceTabsLabel")} className="w-full max-w-full justify-start gap-[4px] overflow-x-auto">
@@ -274,13 +266,17 @@ export function HomePlanCatalog({
       <div className="grid gap-[24px] lg:grid-cols-[225px_minmax(0,1fr)] lg:items-start lg:gap-[32px]">
         <CatalogFilters
           activeResources={activeResources}
-          companies={companyNames}
+          companies={plansPage.facets.companies}
           companySearch={companySearch}
           isDirty={isDirty}
-          locations={activeLocations}
-          operatingSystems={activeOperatingSystems}
+          locations={plansPage.facets.locations}
+          operatingSystems={plansPage.facets.operating_systems}
           providers={draft.providers}
-          resourceOptions={resourceOptions}
+          resourceOptions={(resource) =>
+            plansPage.facets.resources[resource]?.length
+              ? plansPage.facets.resources[resource]
+              : config.catalog.resourceOptions[resource]
+          }
           resourceValues={draft.resourceValues}
           selectedLocations={draft.locations}
           selectedOs={draft.os}
@@ -295,29 +291,32 @@ export function HomePlanCatalog({
         <div className="min-w-0">
           <div className="mb-[14px] flex flex-col justify-between gap-[12px] sm:flex-row sm:items-center">
             <Typography color="muted" type="body-xs">
-              {ot("plansCount", { count: sortedPlans.length.toLocaleString("fa-IR") })}
+              {ot("plansCount", { count: plansPage.count.toLocaleString("fa-IR") })}
             </Typography>
             <SortAndPageSizeControls
-              onPageSizeChange={setPageSize}
-              onSortChange={setSort}
-              pageSize={effectivePageSize}
+              onPageSizeChange={() => undefined}
+              onSortChange={(value) => {
+                setSort(value);
+                navigate({ sort: value, page: 1 });
+              }}
+              pageSize={pageSize}
               sort={sort}
             />
           </div>
 
-          {loading ? (
+          {loading || isPending ? (
             <div aria-hidden className="grid gap-[12px] md:grid-cols-2">
               {Array.from({ length: 4 }, (_, index) => (
                 <Skeleton className="h-[180px] rounded-[var(--radius)]" key={index} />
               ))}
             </div>
-          ) : pagePlans.length ? (
+          ) : plansPage.plans.length ? (
             <div className="grid gap-[12px] md:grid-cols-2">
-              {pagePlans.map((plan) => <PlanCard key={plan.id} plan={plan} />)}
+              {plansPage.plans.map((plan) => <PlanCard key={plan.id} plan={plan} />)}
             </div>
           ) : (
             <div className="py-[36px] text-center text-[13px] text-muted">
-              {plans.length ? ot("noPlansForFilters") : ot("noPlansPublished")}
+              {hasActiveFilters ? ot("noPlansForFilters") : ot("noPlansPublished")}
             </div>
           )}
 
@@ -330,7 +329,11 @@ export function HomePlanCatalog({
           </div>
 
           <div className="mt-[20px]">
-            <PlanPagination onPageChange={setPage} page={currentPage} totalPages={totalPages} />
+            <PlanPagination
+              onPageChange={(page) => navigate({ page })}
+              page={plansPage.page}
+              totalPages={plansPage.totalPages}
+            />
           </div>
         </div>
       </div>

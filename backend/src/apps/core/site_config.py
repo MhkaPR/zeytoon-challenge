@@ -47,7 +47,7 @@ def public_site_config():
             "priceMin": _int(config.CATALOG_PRICE_MIN, 300000),
             "priceMax": _int(config.CATALOG_PRICE_MAX, 1500000),
             "priceStep": _int(config.CATALOG_PRICE_STEP, 50000),
-            "pageSizes": _number_list(config.CATALOG_PAGE_SIZES, [8, 12, 20]),
+            "pageSizes": _number_list(config.CATALOG_PAGE_SIZES, [8, 12]),
             "defaultPageSize": _int(config.CATALOG_PAGE_SIZE_DEFAULT, 8),
             "resourceOptions": _resource_options(config.CATALOG_RESOURCE_OPTIONS),
             "companyFilterVisible": _int(

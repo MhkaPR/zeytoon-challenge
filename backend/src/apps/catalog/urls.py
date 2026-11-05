@@ -8,6 +8,7 @@ app_name = "catalog"
 
 router = SimpleRouter(trailing_slash=False)
 router.register("", api.SiteConfigViewSet, basename="site-config")
+router.register("companies", api.PublishedCompaniesViewSet, basename="published-companies")
 router.register("plans", api.PublishedPlansViewSet, basename="published-plans")
 router.register("", api.RecentCompaniesViewSet, basename="recent-companies")
 

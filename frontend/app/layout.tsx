@@ -6,6 +6,7 @@ import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
 import { Header } from "@/src/features/site/Header";
 import { SiteConfigProvider } from "@/src/features/site/SiteConfigProvider";
+import { getSiteConfig } from "@/src/lib/config/getSiteConfig";
 
 import { geistMono, geistSans, vazirmatn } from "./fonts";
 import "./globals.css";
@@ -24,7 +25,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * login experience is a modal over the current page instead of a separate route
  * (requirement: header on nearly all pages, login as a modal on main pages).
  */
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const siteConfig = await getSiteConfig();
+
   return (
     <html
       lang="fa"
@@ -33,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-[var(--ds-white)] text-[var(--ds-ink)]">
         <NextIntlClientProvider>
-          <SiteConfigProvider>
+          <SiteConfigProvider initialConfig={siteConfig}>
             <SessionProvider>
               <LoginDialogProvider>
                 <Header />

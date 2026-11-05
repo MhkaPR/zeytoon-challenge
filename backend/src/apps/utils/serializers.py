@@ -20,4 +20,25 @@ def parse_input(serializer_cls, data, *, code="invalid_field", message=None):
     return serializer.validated_data
 
 
-__all__ = ["parse_input", "serializers"]
+class PageMetaSerializer(serializers.Serializer):
+    """Pagination metadata shared by every paginated list response."""
+
+    count = serializers.IntegerField()
+    page = serializers.IntegerField()
+    page_size = serializers.IntegerField()
+    total_pages = serializers.IntegerField()
+
+
+class PaginatedResponseSerializer(serializers.Serializer):
+    """Shared `{data, page}` envelope for every paginated list response."""
+
+    data = serializers.ListField(child=serializers.JSONField())
+    page = serializers.DictField()
+
+
+__all__ = [
+    "PageMetaSerializer",
+    "PaginatedResponseSerializer",
+    "parse_input",
+    "serializers",
+]

@@ -240,6 +240,7 @@ can change thresholds without a redeploy.
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `NEXT_PUBLIC_API_BASE_URL` | Absolute backend base URL; when unset the frontend uses a same-origin `/api/*` proxy (see below) | unset (proxy to `http://localhost:8000`) |
+| `API_INTERNAL_BASE_URL` | Backend origin used by server components when `NEXT_PUBLIC_API_BASE_URL` is unset; set this in Docker/container deployments where the backend hostname differs from `localhost` | `http://localhost:8000` |
 
 ---
 

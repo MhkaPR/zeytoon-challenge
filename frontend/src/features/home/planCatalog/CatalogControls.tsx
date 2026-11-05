@@ -44,7 +44,17 @@ export function SortAndPageSizeControls({
 }
 
 /** HeroUI pagination control for the current filtered result set. */
-export function PlanPagination({ page, totalPages, onPageChange }: { page: number; totalPages: number; onPageChange: (page: number) => void }) {
+export function PlanPagination({
+  page,
+  totalPages,
+  onPageChange,
+  ariaLabel,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  ariaLabel?: string;
+}) {
   const ot = useTranslations();
   if (totalPages <= 1) return null;
   const pages: (number | "ellipsis")[] = [];
@@ -59,7 +69,7 @@ export function PlanPagination({ page, totalPages, onPageChange }: { page: numbe
   }
 
   return (
-    <Pagination aria-label={ot("paginationLabel")} className="justify-center" size="sm">
+    <Pagination aria-label={ariaLabel ?? ot("paginationLabel")} className="justify-center" size="sm">
       <Pagination.Content>
         <Pagination.Item>
           <Pagination.Previous isDisabled={page === 1} onPress={() => onPageChange(page - 1)}>

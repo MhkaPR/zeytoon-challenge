@@ -5,29 +5,33 @@ import { AboutTorb } from "./AboutTorb";
 import { FaqSection } from "./FaqSection";
 import { HomeFooter } from "./HomeFooter";
 import { HomePlanCatalog } from "./HomePlanCatalog";
+import { HomeCtas } from "./HomeCtas";
 import { HowItWorks } from "./HowItWorks";
 import { RecentlyApproved } from "./RecentlyApproved";
 import { SearchBox } from "./SearchBox";
-import type { PublicPlan, RecentPublicCompany } from "@/src/lib/api/publicCatalog";
+import type { PlansPage, RecentPublicCompany } from "@/src/lib/api/publicCatalog";
 import {SiteConfig} from "@/src/lib/config/siteConfig";
 
 /**
  * The main page body: hero, search, catalog, homepage sections, and site footer.
  *
- * Published catalog records are fetched by the client-rendered home route.
+ * Published catalog records are fetched on the server and passed into the interactive
+ * catalog client component.
  */
 export function MainBody({
   brandLogo,
-  plans,
+  plansPage,
   recentCompanies,
   loading = false,
-  siteConfig
+  searchParams,
+  siteConfig,
 }: {
   brandLogo?: ReactNode;
-  plans: PublicPlan[];
+  plansPage: PlansPage;
   recentCompanies: RecentPublicCompany[];
   loading?: boolean;
-  siteConfig: SiteConfig
+  searchParams: Record<string, string | string[] | undefined>;
+  siteConfig: SiteConfig;
 }) {
   const ot = useTranslations();
   return (
@@ -57,11 +61,17 @@ export function MainBody({
           <div className="w-full max-w-[720px] rounded-[var(--radius)] border border-[var(--separator)] bg-surface p-[8px] shadow-overlay">
             <SearchBox />
           </div>
+          <HomeCtas />
         </section>
 
         <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
           <section className="scroll-mt-[80px]" id="pricing">
-            <HomePlanCatalog loading={loading} plans={plans} />
+            <HomePlanCatalog
+              key={JSON.stringify(searchParams)}
+              loading={loading}
+              plansPage={plansPage}
+              searchParams={searchParams}
+            />
           </section>
           <section className="scroll-mt-[80px]" id="providers">
             <RecentlyApproved companies={recentCompanies} loading={loading} />

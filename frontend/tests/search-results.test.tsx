@@ -41,12 +41,13 @@ describe("ResultsList", () => {
 });
 
 describe("CompanyCard", () => {
-  it("renders the company name, domain, and fallback description", () => {
+  it("renders the company name, domain, plan count, and company action", () => {
     const { container, getByText } = render(
-      <CompanyCard name="Example Hosting" domain="example.com" />,
+      <CompanyCard name="Example Hosting" domain="example.com" planCount={3} />,
     );
     expect(getByText("Example Hosting")).toBeInTheDocument();
     expect(getByText("example.com")).toBeInTheDocument();
-    expect(container.textContent).toContain(strings.companyCardFallback);
+    expect(container.textContent).toContain("طرح منتشرشده");
+    expect(getByText(strings.viewCompany)).toBeInTheDocument();
   });
 });

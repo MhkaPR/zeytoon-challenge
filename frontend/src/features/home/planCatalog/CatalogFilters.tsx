@@ -1,6 +1,6 @@
 "use client";
 
-import { Accordion, Button, Checkbox, Label, SearchField, Slider, Typography } from "@heroui/react";
+import { Accordion, Button, Checkbox, Label, SearchField, Typography } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -9,7 +9,6 @@ import type { ReactNode } from "react";
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 
 import { RESOURCE_LABELS, type ResourceKey } from "../serviceTypes";
-import { formatPrice } from "../planCatalogUtils";
 
 /** Persian ↔ Arabic normalization + English case-insensitive matching. */
 function normalizeSearch(value: string): string {
@@ -144,44 +143,6 @@ function CompanyFilterSection({
         )}
       </div>
     </FilterDisclosure>
-  );
-}
-
-function PriceRangeFilter({
-  value,
-  priceMax,
-  onChange,
-}: {
-  value: number;
-  priceMax: number;
-  onChange: (value: number) => void;
-}) {
-  const ot = useTranslations();
-  const config = useSiteConfig();
-  const step = config.catalog.priceStep;
-  const upper = Math.max(step, Math.ceil(Math.max(priceMax, step) / step) * step);
-  const clamped = Math.min(upper, Math.max(0, value));
-
-  return (
-    <section className="flex flex-col gap-[10px] border-b border-[var(--separator)] pb-[16px]">
-      <Label className="font-semibold">{ot("monthlyPriceRange")}</Label>
-      {/* No `dir` override: inherits page direction so the thumb follows the drag in both RTL and LTR. */}
-      <div>
-        <Slider
-          aria-label={ot("maxMonthlyPriceAria")}
-          maxValue={upper}
-          minValue={0}
-          step={step}
-          value={clamped}
-          onChange={(next) => typeof next === "number" && onChange(next)}
-        >
-          <Slider.Track><Slider.Fill /><Slider.Thumb /></Slider.Track>
-        </Slider>
-      </div>
-      <Typography color="muted" type="body-xs">
-        {ot("upToPrice", { price: formatPrice(clamped) })}
-      </Typography>
-    </section>
   );
 }
 

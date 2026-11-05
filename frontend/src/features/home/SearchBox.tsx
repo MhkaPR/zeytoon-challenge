@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button, Label, SearchField } from "@heroui/react";
+import { Label, SearchField } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 

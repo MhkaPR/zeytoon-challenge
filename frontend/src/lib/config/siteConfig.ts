@@ -41,7 +41,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     priceMin: 300000,
     priceMax: 1500000,
     priceStep: 50000,
-    pageSizes: [8, 12, 20],
+    pageSizes: [8, 12],
     defaultPageSize: 8,
     resourceOptions: {
       ram: [1, 2, 4, 8, 16, 32, 64],
@@ -68,8 +68,6 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     github: "https://github.com",
   },
 };
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 function asNumber(value: unknown, fallback: number): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -165,15 +163,3 @@ export function mergeSiteConfig(payload: unknown): SiteConfig {
   };
 }
 
-/** Fetch the public runtime configuration, falling back to the built-in defaults. */
-export async function getSiteConfig(): Promise<SiteConfig> {
-  try {
-    const response = await fetch(`${API_BASE}/api/v1/catalog/site-config`, {
-      cache: "no-store",
-    });
-    if (!response.ok) return DEFAULT_SITE_CONFIG;
-    return mergeSiteConfig(await response.json());
-  } catch {
-    return DEFAULT_SITE_CONFIG;
-  }
-}

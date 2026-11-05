@@ -1,13 +1,11 @@
 
 import { Suspense } from "react";
 import { MainBody } from "@/src/features/home/MainBody";
-import {
-  getPublishedPlans,
-  getRecentCompanies,
-} from "@/src/lib/api/publicCatalog";
+import { getPlansPage, getRecentCompanies } from "@/src/lib/api/publicCatalog";
 import {Skeleton} from "@heroui/react";
-import {getSiteConfig} from "@/src/lib/config/siteConfig";
-import {SearchParams} from "next/dist/server/request/search-params";
+import {getSiteConfig} from "@/src/lib/config/getSiteConfig";
+
+type SearchParams = Record<string, string | string[] | undefined>;
 
 export default function MainPage({
   searchParams,
@@ -29,13 +27,25 @@ async function MainContent({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  new URLSearchParams()
-  const [plans, recentCompanies, siteConfig] = await Promise.all([
-    getPublishedPlans(params),
+  const siteConfig = await getSiteConfig();
+  const requestedPageSize = Array.isArray(params.page_size)
+    ? params.page_size[0]
+    : params.page_size;
+  const [plansPage, recentCompanies] = await Promise.all([
+    getPlansPage({
+      ...params,
+      page_size: requestedPageSize ?? String(siteConfig.catalog.defaultPageSize),
+    }),
     getRecentCompanies(),
-    getSiteConfig()
   ]);
 
 
-  return <MainBody plans={plans} recentCompanies={recentCompanies} siteConfig={siteConfig}/>;
+  return (
+    <MainBody
+      plansPage={plansPage}
+      recentCompanies={recentCompanies}
+      searchParams={params}
+      siteConfig={siteConfig}
+    />
+  );
 }

@@ -8,7 +8,6 @@ import { useState } from "react";
 import {ensureHttps, PublicPlan} from "@/src/lib/api/publicCatalog";
 import { fieldValue, formatPrice, priceOf } from "../planCatalogUtils";
 import NextLink from "next/link";
-import * as domain from "node:domain";
 
 /** Company icon with a neutral local fallback when the domain has no favicon. */
 function CompanyFavicon({ domain }: { domain: string }) {
@@ -97,7 +96,7 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
         <NextLink className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={`/companies/${encodeURIComponent(plan.domain)}`}>
          <Button className="w-full" variant="secondary">{ot("viewPlanDetails")}</Button>
         </NextLink>
-        <a  target="_blank" rel="noopener noreferrer" className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={ensureHttps(plan.domain)}>
+        <a  target="_blank" rel="noopener noreferrer" className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={ensureHttps(plan.url ?? plan.domain)}>
          <Button className="w-full" variant="primary">{ot("viewPlanPage")}</Button>
         </a>
         </div>
