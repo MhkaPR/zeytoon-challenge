@@ -38,6 +38,7 @@ function page(overrides: Partial<PlansPage> = {}): PlansPage {
       operating_systems: [],
       locations: [],
       resources: { ram: [], cpu: [], disk: [], traffic: [] },
+      resource_units: { ram: "GB", cpu: "core", disk: "GB", traffic: "GB" },
     },
     ...overrides,
   };
@@ -115,6 +116,28 @@ describe("PlanCatalog", () => {
     expect(screen.getByText(strings.resourceCpu)).toBeInTheDocument();
     expect(screen.getByText(strings.resourceDisk)).toBeInTheDocument();
     expect(screen.getByText(strings.resourceTraffic)).toBeInTheDocument();
+  });
+
+  it("labels resource filter options with meaningful units", async () => {
+    const user = userEvent.setup();
+    render(
+      <PlanCatalog
+        plansPage={page({
+          plans: [],
+          count: 0,
+          facets: {
+            companies: [],
+            operating_systems: [],
+            locations: [],
+            resources: { ram: [], cpu: [], disk: [1024], traffic: [] },
+            resource_units: { ram: "GB", cpu: "core", disk: "GB", traffic: "GB" },
+          },
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: strings.resourceDisk }));
+    expect(screen.getByText(new RegExp(strings.unitTB))).toBeInTheDocument();
   });
 
   it("renders plan-card skeletons while loading", () => {

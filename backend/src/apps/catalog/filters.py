@@ -1,3 +1,5 @@
+import math
+
 import django_filters
 from django.db.models import Q
 
@@ -22,12 +24,66 @@ RESOURCE_ALIASES: dict[str, tuple[str, ...]] = {
     "traffic": ("traffic_amount", "bandwidth_amount", "traffic", "bandwidth"),
 }
 
+RESOURCE_UNITS: dict[str, str] = {
+    "ram": "GB",
+    "cpu": "core",
+    "disk": "GB",
+    "traffic": "GB",
+}
+
+RESOURCE_UNIT_ALIASES: dict[str, tuple[str, ...]] = {
+    "ram": ("ram_unit",),
+    "cpu": (),
+    "disk": ("storage_unit", "disk_unit"),
+    "traffic": ("traffic_unit", "bandwidth_unit"),
+}
+
+DATA_SIZE_TO_GB: dict[str, float] = {
+    "B": 1 / (1024**3),
+    "KB": 1 / (1024**2),
+    "MB": 1 / 1024,
+    "GB": 1,
+    "TB": 1024,
+    "PB": 1024**2,
+}
+
 PLAN_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
     "host": ("hosting", "wordpress"),
     "virtual_server": ("virtual_server", "vps"),
     "dedicated_server": ("dedicated_server", "dedicated"),
     "cdn": ("cdn",),
 }
+
+
+def _number(value) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def normalize_resource_value(resource: str, values: dict) -> float | None:
+    """Return one plan's resource value in its canonical filter unit."""
+    if not isinstance(values, dict):
+        return None
+    for alias in RESOURCE_ALIASES[resource]:
+        amount = _number(values.get(alias))
+        if amount is None:
+            continue
+        if resource == "cpu":
+            return amount
+        unit = None
+        for unit_alias in RESOURCE_UNIT_ALIASES[resource]:
+            candidate = values.get(unit_alias)
+            if isinstance(candidate, str) and candidate.strip():
+                unit = candidate.strip().upper()
+                break
+        factor = DATA_SIZE_TO_GB.get(unit or "GB", 1)
+        return round(amount * factor, 6)
+    return None
 
 
 def _csv(value: str | None) -> list[str]:
@@ -230,10 +286,17 @@ class PublishedPlanFilter(django_filters.FilterSet):
         values = _json_values(_csv(value))
         if not values:
             return queryset
-        query = Q()
-        for key in RESOURCE_ALIASES[name]:
-            query |= Q(**{f"values__{key}__in": values})
-        return queryset.filter(query)
+        requested = [float(item) for item in values]
+        matching_ids = [
+            record.pk
+            for record in queryset
+            if (normalized := normalize_resource_value(name, record.values)) is not None
+            and any(
+                math.isclose(normalized, wanted, rel_tol=1e-6, abs_tol=1e-6)
+                for wanted in requested
+            )
+        ]
+        return queryset.filter(pk__in=matching_ids)
 
     def filter_sort(self, queryset, name, value):
         if value == "price":

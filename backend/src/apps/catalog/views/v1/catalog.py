@@ -9,7 +9,12 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from apps.pipeline.interfaces import PipelineInterface
-from apps.catalog.filters import RESOURCE_ALIASES, PublishedPlanFilter
+from apps.catalog.filters import (
+    RESOURCE_ALIASES,
+    RESOURCE_UNITS,
+    PublishedPlanFilter,
+    normalize_resource_value,
+)
 from apps.catalog.models import PublishedRecord
 from apps.catalog.serializers.v1.catalog import (
     PublicCompanySerializer,
@@ -150,12 +155,10 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
             for key in ("location", "datacenter_location"):
                 if values.get(key):
                     locations.add(str(values[key]))
-            for resource, aliases in RESOURCE_ALIASES.items():
-                for alias in aliases:
-                    value = values.get(alias)
-                    if isinstance(value, (int, float)) and value > 0:
-                        resources[resource].add(float(value))
-                        break
+            for resource in RESOURCE_ALIASES:
+                normalized = normalize_resource_value(resource, values)
+                if normalized is not None:
+                    resources[resource].add(normalized)
         return {
             "companies": companies,
             "operating_systems": sorted(operating_systems, key=str.casefold),
@@ -163,6 +166,7 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
             "resources": {
                 key: sorted(values) for key, values in resources.items()
             },
+            "resource_units": RESOURCE_UNITS,
         }
 
 

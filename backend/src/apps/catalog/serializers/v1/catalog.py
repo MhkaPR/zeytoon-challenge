@@ -18,6 +18,7 @@ class PlanFacetsSerializer(serializers.Serializer):
     resources = serializers.DictField(
         child=serializers.ListField(child=serializers.FloatField())
     )
+    resource_units = serializers.DictField(child=serializers.CharField())
 
 
 class PublicCompanySerializer(serializers.Serializer):

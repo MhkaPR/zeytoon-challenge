@@ -35,6 +35,7 @@ describe("MainBody", () => {
             operating_systems: [],
             locations: [],
             resources: { ram: [], cpu: [], disk: [], traffic: [] },
+            resource_units: { ram: "GB", cpu: "core", disk: "GB", traffic: "GB" },
           },
         }}
         recentCompanies={[]}

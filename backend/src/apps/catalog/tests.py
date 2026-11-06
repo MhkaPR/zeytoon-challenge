@@ -73,3 +73,68 @@ class PublishedCatalogPaginationTests(TestCase):
                 }
             ],
         )
+
+
+class PublishedCatalogResourceUnitTests(TestCase):
+    def setUp(self):
+        owner = User.objects.create_user(
+            username="units-owner", password="secret", phone_number="09120000002"
+        )
+        company = Company.objects.create(
+            owner=owner,
+            domain="units.example",
+            company_name="Units Co",
+            representative_name="Rep",
+            phone_number="09120000003",
+        )
+        self.site = Site.objects.create(company=company, domain="units.example")
+        self.link = Link.objects.create(
+            site=self.site,
+            url="https://units.example/plans",
+            url_hash="units-hash",
+        )
+        PublishedRecord.objects.create(
+            site=self.site.pk,
+            link=self.link.pk,
+            trace=0,
+            classification=0,
+            plan_type="hosting",
+            natural_key="one-tb",
+            values={
+                "plan_name": "One TB",
+                "storage_amount": 1,
+                "storage_unit": "TB",
+                "price_amount": 1000,
+            },
+            is_published=True,
+        )
+        PublishedRecord.objects.create(
+            site=self.site.pk,
+            link=self.link.pk,
+            trace=0,
+            classification=0,
+            plan_type="hosting",
+            natural_key="five-hundred-gb",
+            values={
+                "plan_name": "500 GB",
+                "storage_amount": 500,
+                "storage_unit": "GB",
+                "price_amount": 500,
+            },
+            is_published=True,
+        )
+
+    def test_disk_filter_uses_canonical_gb_values(self):
+        response = self.client.get("/api/v1/catalog/plans?disk=1024")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual([plan["values"]["plan_name"] for plan in body["data"]], ["One TB"])
+
+    def test_facets_expose_canonical_values_and_units(self):
+        response = self.client.get("/api/v1/catalog/plans")
+
+        self.assertEqual(response.status_code, 200)
+        facets = response.json()["page"]["facets"]
+        self.assertEqual(facets["resources"]["disk"], [500.0, 1024.0])
+        self.assertEqual(facets["resource_units"]["disk"], "GB")

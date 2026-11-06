@@ -23,6 +23,7 @@ export interface PlanFacets {
   operating_systems: string[];
   locations: string[];
   resources: Record<ResourceKey, number[]>;
+  resource_units: Record<ResourceKey, string>;
 }
 
 export interface PlansPage {
@@ -53,6 +54,7 @@ const EMPTY_FACETS: PlanFacets = {
   operating_systems: [],
   locations: [],
   resources: { ram: [], cpu: [], disk: [], traffic: [] },
+  resource_units: { ram: "GB", cpu: "core", disk: "GB", traffic: "GB" },
 };
 
 export async function getPlansPage(
@@ -84,7 +86,18 @@ export async function getPlansPage(
       page: page.page ?? 1,
       pageSize: page.page_size ?? plans.length,
       totalPages: page.total_pages ?? 1,
-      facets: { ...EMPTY_FACETS, ...page.facets },
+      facets: {
+        ...EMPTY_FACETS,
+        ...page.facets,
+        resources: {
+          ...EMPTY_FACETS.resources,
+          ...(page.facets?.resources ?? {}),
+        },
+        resource_units: {
+          ...EMPTY_FACETS.resource_units,
+          ...(page.facets?.resource_units ?? {}),
+        },
+      },
     };
   } catch {
     return { plans: [], count: 0, page: 1, pageSize: 0, totalPages: 1, facets: EMPTY_FACETS };

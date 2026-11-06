@@ -23,6 +23,25 @@ function normalizeSearch(value: string): string {
 
 type CheckboxOption = { value: string | number; label: string };
 
+function formatResourceValue(
+  t: (key: string) => string,
+  resource: ResourceKey,
+  value: number,
+  unit?: string,
+) {
+  const formatted = value.toLocaleString("fa-IR");
+  if (resource === "cpu" || unit === "core") {
+    return `${formatted} ${t("unitCore")}`;
+  }
+  if (unit === "GB") {
+    if (value >= 1024 && value % 1024 === 0) {
+      return `${(value / 1024).toLocaleString("fa-IR")} ${t("unitTB")}`;
+    }
+    return `${formatted} ${t("unitGB")}`;
+  }
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
 function CheckboxList({
   options,
   selected,
@@ -152,6 +171,7 @@ export function CatalogFilters({
   onProvidersChange,
   activeResources,
   resourceOptions,
+  resourceUnits,
   resourceValues,
   onResourceValuesChange,
   operatingSystems,
@@ -170,6 +190,7 @@ export function CatalogFilters({
   onProvidersChange: (value: string) => void;
   activeResources: ResourceKey[];
   resourceOptions: (resource: ResourceKey) => number[];
+  resourceUnits: Partial<Record<ResourceKey, string>>;
   resourceValues: Partial<Record<ResourceKey, number[]>>;
   onResourceValuesChange: (resource: ResourceKey, value: number) => void;
   operatingSystems: string[];
@@ -209,7 +230,10 @@ export function CatalogFilters({
           >
             <CheckboxList
               onToggle={(value) => onResourceValuesChange(resource, Number(value))}
-              options={resourceOptions(resource).map((value) => ({ value, label: value.toLocaleString("fa-IR") }))}
+              options={resourceOptions(resource).map((value) => ({
+                value,
+                label: formatResourceValue(ot, resource, value, resourceUnits[resource]),
+              }))}
               selected={resourceValues[resource] ?? []}
             />
           </FilterDisclosure>

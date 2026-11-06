@@ -10,7 +10,7 @@ import {
 import { RotateCcw } from "lucide-react";
 import NextLink from "next/link";
 import { useTranslations } from "next-intl";
-import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 import {
@@ -253,6 +253,19 @@ function CatalogSkeleton() {
   );
 }
 
+class RequestTracker {
+  private current = 0;
+
+  next() {
+    this.current += 1;
+    return this.current;
+  }
+
+  isCurrent(request: number) {
+    return this.current === request;
+  }
+}
+
 export function PlanCatalog({
   plansPage,
   searchParams = {},
@@ -285,7 +298,7 @@ export function PlanCatalog({
   const [companySearch, setCompanySearch] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const requestIdRef = useRef(0);
+  const requestTracker = useMemo(() => new RequestTracker(), []);
 
   const serviceTabs: { id: ServiceTab; label: string }[] = [
     { id: "all", label: ot("anyOption") },
@@ -310,8 +323,7 @@ export function PlanCatalog({
     const nextDraft = overrides.draft ?? draft;
     const nextSort = overrides.sort ?? sort;
     const nextPageSize = overrides.pageSize ?? pageSize;
-    const request = requestIdRef.current + 1;
-    requestIdRef.current = request;
+    const request = requestTracker.next();
     setIsFetching(true);
     try {
       const next = await getPlansPage({
@@ -324,11 +336,11 @@ export function PlanCatalog({
           pageSize: nextPageSize,
         }),
       });
-      if (request !== requestIdRef.current) return;
+      if (!requestTracker.isCurrent(request)) return;
       setData(next);
       setPage(next.page || nextPage);
     } finally {
-      if (request === requestIdRef.current) setIsFetching(false);
+      if (requestTracker.isCurrent(request)) setIsFetching(false);
     }
   }
 
@@ -426,6 +438,7 @@ export function PlanCatalog({
           ? data.facets.resources[resource]
           : config.catalog.resourceOptions[resource]
       }
+      resourceUnits={data.facets.resource_units}
       resourceValues={draft.resourceValues}
       selectedLocations={draft.locations}
       selectedOs={draft.os}
