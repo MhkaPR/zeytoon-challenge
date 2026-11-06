@@ -1,9 +1,9 @@
-import { Card, Typography } from "@heroui/react";
+import { Typography } from "@heroui/react";
 import { getTranslations } from "next-intl/server";
 
+import { PlanCatalog } from "@/src/features/home/PlanCatalog";
 import { SearchBox } from "@/src/features/home/SearchBox";
-import { PlanCard } from "@/src/features/home/planCatalog/PlanCard";
-import { getPublishedPlans } from "@/src/lib/api/publicCatalog";
+import { getPlansPage } from "@/src/lib/api/publicCatalog";
 
 /** Search results, rendered on the server from the public catalog API. */
 export default async function SearchPage({
@@ -13,9 +13,9 @@ export default async function SearchPage({
 }) {
   const raw = (await searchParams).q;
   const query = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
-  const [ot, plans] = await Promise.all([
+  const [ot, plansPage] = await Promise.all([
     getTranslations(),
-    getPublishedPlans(query ? { q: query } : {}),
+    getPlansPage({ ...(query ? { q: query } : {}), page_size: "12" }),
   ]);
 
   return (
@@ -23,18 +23,25 @@ export default async function SearchPage({
       <Typography className="text-[32px] font-semibold" type="h1">{ot("searchTitle")}</Typography>
       <SearchBox />
       {query && <Typography color="muted">{ot("searchResultsFor", { query })}</Typography>}
-      {plans.length ? (
-        <div className="grid gap-[14px] sm:grid-cols-2">
-          {plans.map((plan) => <PlanCard key={plan.id} plan={plan} />)}
-        </div>
-      ) : (
-        <Card variant="default">
-          <Card.Header>
-            <Card.Title>{query ? ot("searchNoPlansTitle") : ot("resultsEmptyTitle")}</Card.Title>
-            <Card.Description>{query ? ot("searchNoPlansBody") : ot("searchEmptyHint")}</Card.Description>
-          </Card.Header>
-        </Card>
-      )}
+      <PlanCatalog
+        ariaLabel={ot("searchTitle")}
+        baseParams={query ? { q: query } : {}}
+        description={null}
+        emptyState={
+          <div className="rounded-[var(--radius)] border border-[var(--separator)] p-[24px]">
+            <Typography className="font-semibold" type="h2">
+              {query ? ot("searchNoPlansTitle") : ot("resultsEmptyTitle")}
+            </Typography>
+            <Typography color="muted">
+              {query ? ot("searchNoPlansBody") : ot("searchEmptyHint")}
+            </Typography>
+          </div>
+        }
+        headerAction={null}
+        plansPage={plansPage}
+        showServiceTabs={false}
+        title={null}
+      />
     </main>
   );
 }

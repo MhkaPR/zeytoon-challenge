@@ -1,6 +1,6 @@
 "use client";
 
-import { Label, ListBox, Pagination, Select } from "@heroui/react";
+import { Label, ListBox, Select } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
@@ -26,6 +26,9 @@ export function SortAndPageSizeControls({
 }) {
   const ot = useTranslations();
   const config = useSiteConfig();
+  const pageSizes = config.catalog.pageSizes.includes(pageSize)
+    ? config.catalog.pageSizes
+    : [...config.catalog.pageSizes, pageSize].sort((a, b) => a - b);
   return (
     <div className="flex flex-wrap items-center gap-[12px]">
       <div className="flex items-center gap-[7px]">
@@ -39,57 +42,29 @@ export function SortAndPageSizeControls({
           </Select.Popover>
         </Select>
       </div>
+      <div className="flex items-center gap-[7px]">
+        <Label className="shrink-0 text-[11px] text-muted">{ot("pageSizeLabel")}</Label>
+        <Select
+          aria-label={ot("pageSizeAria")}
+          className="w-[92px]"
+          value={String(pageSize)}
+          variant="primary"
+          onChange={(value) => value && onPageSizeChange(Number(value))}
+        >
+          <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              {pageSizes.map((size) => (
+                <ListBox.Item id={String(size)} key={size} textValue={size.toLocaleString("fa-IR")}>
+                  {size.toLocaleString("fa-IR")}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
     </div>
-  );
-}
-
-/** HeroUI pagination control for the current filtered result set. */
-export function PlanPagination({
-  page,
-  totalPages,
-  onPageChange,
-  ariaLabel,
-}: {
-  page: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  ariaLabel?: string;
-}) {
-  const ot = useTranslations();
-  if (totalPages <= 1) return null;
-  const pages: (number | "ellipsis")[] = [];
-  if (totalPages <= 7) {
-    pages.push(...Array.from({ length: totalPages }, (_, index) => index + 1));
-  } else {
-    pages.push(1);
-    if (page > 3) pages.push("ellipsis");
-    for (let current = Math.max(2, page - 1); current <= Math.min(totalPages - 1, page + 1); current += 1) pages.push(current);
-    if (page < totalPages - 2) pages.push("ellipsis");
-    pages.push(totalPages);
-  }
-
-  return (
-    <Pagination aria-label={ariaLabel ?? ot("paginationLabel")} className="justify-center" size="sm">
-      <Pagination.Content>
-        <Pagination.Item>
-          <Pagination.Previous isDisabled={page === 1} onPress={() => onPageChange(page - 1)}>
-            <Pagination.PreviousIcon /><span>{ot("previousPage")}</span>
-          </Pagination.Previous>
-        </Pagination.Item>
-        {pages.map((item, index) => item === "ellipsis" ? (
-          <Pagination.Item key={`ellipsis-${index}`}><Pagination.Ellipsis /></Pagination.Item>
-        ) : (
-          <Pagination.Item key={item}>
-            <Pagination.Link isActive={item === page} onPress={() => onPageChange(item)}>{item.toLocaleString("fa-IR")}</Pagination.Link>
-          </Pagination.Item>
-        ))}
-        <Pagination.Item>
-          <Pagination.Next isDisabled={page === totalPages} onPress={() => onPageChange(page + 1)}>
-            <span>{ot("nextPage")}</span><Pagination.NextIcon />
-          </Pagination.Next>
-        </Pagination.Item>
-      </Pagination.Content>
-    </Pagination>
   );
 }
 

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { AboutTorb } from "./AboutTorb";
 import { FaqSection } from "./FaqSection";
 import { HomeFooter } from "./HomeFooter";
-import { HomePlanCatalog } from "./HomePlanCatalog";
+import { PlanCatalog } from "./PlanCatalog";
 import { HomeCtas } from "./HomeCtas";
 import { HowItWorks } from "./HowItWorks";
 import { RecentlyApproved } from "./RecentlyApproved";
@@ -66,7 +66,7 @@ export function MainBody({
 
         <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
           <section className="scroll-mt-[80px]" id="pricing">
-            <HomePlanCatalog
+            <PlanCatalog
               key={JSON.stringify(searchParams)}
               loading={loading}
               plansPage={plansPage}

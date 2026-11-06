@@ -3,8 +3,6 @@
 import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Typography } from "@heroui/react";
 import { Sparkles, Table2 } from "lucide-react";
-import NextLink from "next/link";
-
 import type { ExtractedTable } from "@/src/lib/api/ops";
 import { StageBadge } from "../pipeline/StageBadge";
 
@@ -60,10 +58,7 @@ export function TableList({
 
       {!labelingEnabled && (
         <Typography className="text-[12px] text-muted">
-          {ot("labelingDisabled")}{" "}
-          <NextLink className="underline" href="/ops/settings">
-            {ot("navSettings")}
-          </NextLink>
+          {ot("labelingDisabled")}
         </Typography>
       )}
 

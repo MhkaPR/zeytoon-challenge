@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Skeleton, Typography } from "@heroui/react";
-import { ClipboardCheck, Globe, RefreshCw, Settings } from "lucide-react";
+import { ClipboardCheck, Globe } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect } from "react";
@@ -14,8 +14,6 @@ import { identityRole, isOperatorRole } from "@/src/lib/session";
 const NAV = [
   { href: "/ops", labelKey: "navApprovals", icon: ClipboardCheck },
   { href: "/ops/sites", labelKey: "navSites", icon: Globe },
-  { href: "/ops/replay", labelKey: "navReplay", icon: RefreshCw },
-  { href: "/ops/settings", labelKey: "navSettings", icon: Settings },
 ] as const;
 
 /**

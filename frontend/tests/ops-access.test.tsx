@@ -88,4 +88,17 @@ describe("ops access role", () => {
     expect(screen.getByText("console data")).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });
+
+  it("does not expose the removed replay and settings sections", () => {
+    session.current = { authenticated: true, role: "ops" };
+
+    render(
+      <OpsLayout>
+        <div>console data</div>
+      </OpsLayout>,
+    );
+
+    expect(screen.queryByRole("link", { name: opsStrings.navReplay })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: opsStrings.navSettings })).not.toBeInTheDocument();
+  });
 });
