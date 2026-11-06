@@ -11,7 +11,8 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const raw = (await searchParams).q;
+  const params = await searchParams;
+  const raw = params.q;
   const query = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
   const [ot, plansPage] = await Promise.all([
     getTranslations(),
@@ -21,7 +22,7 @@ export default async function SearchPage({
   return (
     <main className="mx-auto flex w-full max-w-[960px] flex-1 flex-col gap-[24px] px-[32px] py-[64px]">
       <Typography className="text-[32px] font-semibold" type="h1">{ot("searchTitle")}</Typography>
-      <SearchBox />
+      <SearchBox initialQuery={query} />
       {query && <Typography color="muted">{ot("searchResultsFor", { query })}</Typography>}
       <PlanCatalog
         ariaLabel={ot("searchTitle")}
@@ -38,7 +39,9 @@ export default async function SearchPage({
           </div>
         }
         headerAction={null}
+        key={query}
         plansPage={plansPage}
+        searchParams={params}
         showServiceTabs={false}
         title={null}
       />

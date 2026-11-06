@@ -2,10 +2,7 @@
 
 import {
   Button,
-  Label,
-  ListBox,
   Pagination,
-  Select,
   Skeleton,
   Tabs,
   Typography,
@@ -13,7 +10,7 @@ import {
 import { RotateCcw } from "lucide-react";
 import NextLink from "next/link";
 import { useTranslations } from "next-intl";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 import {
@@ -94,14 +91,6 @@ export type PlanCatalogProps = {
 };
 
 const RESOURCE_KEYS: ResourceKey[] = ["ram", "cpu", "disk", "traffic"];
-
-function resourcesForServices(services: ServiceTypeKey[]): ResourceKey[] {
-  const sets = services.map((service) => new Set(resourcesForType(service)));
-  if (!sets.length) return [];
-  return [...sets[0]].filter((resource) =>
-    sets.every((set) => set.has(resource)),
-  ) as ResourceKey[];
-}
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -234,6 +223,36 @@ function CatalogPagination({
   );
 }
 
+function CatalogSkeleton() {
+  return (
+    <div aria-hidden className="grid gap-[12px] md:grid-cols-2" data-testid="plan-catalog-skeleton">
+      {Array.from({ length: 4 }, (_, index) => (
+        <div
+          className="flex h-[180px] flex-col gap-[16px] rounded-[var(--radius)] border border-[var(--separator)] p-[18px]"
+          key={index}
+        >
+          <div className="flex items-start justify-between gap-[16px]">
+            <div className="flex flex-col gap-[8px]">
+              <Skeleton className="h-[18px] w-[150px] rounded-[6px]" />
+              <Skeleton className="h-[32px] w-[120px] rounded-[8px]" />
+            </div>
+            <Skeleton className="h-[18px] w-[72px] rounded-[6px]" />
+          </div>
+          <div className="grid grid-cols-2 gap-[10px] border-t border-[var(--separator)] pt-[14px]">
+            {Array.from({ length: 4 }, (_, item) => (
+              <Skeleton className="h-[24px] rounded-[6px]" key={item} />
+            ))}
+          </div>
+          <div className="mt-auto flex gap-[8px]">
+            <Skeleton className="h-[34px] flex-1 rounded-[8px]" />
+            <Skeleton className="h-[34px] flex-1 rounded-[8px]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function PlanCatalog({
   plansPage,
   searchParams = {},
@@ -266,13 +285,7 @@ export function PlanCatalog({
   const [companySearch, setCompanySearch] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const requestId = useRef(0);
-
-  useEffect(() => {
-    setData(plansPage);
-    setPage(plansPage.page);
-    setPageSize(plansPage.pageSize || config.catalog.defaultPageSize);
-  }, [config.catalog.defaultPageSize, plansPage]);
+  const requestIdRef = useRef(0);
 
   const serviceTabs: { id: ServiceTab; label: string }[] = [
     { id: "all", label: ot("anyOption") },
@@ -280,10 +293,7 @@ export function PlanCatalog({
   ];
 
   const activeResources = useMemo(
-    () =>
-      resourcesForServices(
-        type === "all" ? SERVICE_TYPES.map(({ key }) => key) : [type],
-      ),
+    () => (type === "all" ? RESOURCE_KEYS : resourcesForType(type)),
     [type],
   );
 
@@ -300,8 +310,8 @@ export function PlanCatalog({
     const nextDraft = overrides.draft ?? draft;
     const nextSort = overrides.sort ?? sort;
     const nextPageSize = overrides.pageSize ?? pageSize;
-    const request = requestId.current + 1;
-    requestId.current = request;
+    const request = requestIdRef.current + 1;
+    requestIdRef.current = request;
     setIsFetching(true);
     try {
       const next = await getPlansPage({
@@ -314,11 +324,11 @@ export function PlanCatalog({
           pageSize: nextPageSize,
         }),
       });
-      if (request !== requestId.current) return;
+      if (request !== requestIdRef.current) return;
       setData(next);
       setPage(next.page || nextPage);
     } finally {
-      if (request === requestId.current) setIsFetching(false);
+      if (request === requestIdRef.current) setIsFetching(false);
     }
   }
 
@@ -353,9 +363,7 @@ export function PlanCatalog({
 
   function changeType(next: ServiceTab) {
     const nextResources = new Set(
-      resourcesForServices(
-        next === "all" ? SERVICE_TYPES.map(({ key: service }) => service) : [next],
-      ),
+      next === "all" ? RESOURCE_KEYS : resourcesForType(next),
     );
     const nextDraft: CatalogFilterValues = {
       ...draft,
@@ -598,11 +606,7 @@ export function PlanCatalog({
           {renderedToolbar}
 
           {loading || isFetching ? (
-            <div aria-hidden className="grid gap-[12px] md:grid-cols-2">
-              {Array.from({ length: 4 }, (_, index) => (
-                <Skeleton className="h-[180px] rounded-[var(--radius)]" key={index} />
-              ))}
-            </div>
+            <CatalogSkeleton />
           ) : data.plans.length ? (
             <div className="grid gap-[12px] md:grid-cols-2">
               {data.plans.map((plan) => (

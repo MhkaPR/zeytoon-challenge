@@ -107,4 +107,20 @@ describe("PlanCatalog", () => {
     expect(screen.getByText("custom Host 1")).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: strings.paginationLabel })).not.toBeInTheDocument();
   });
+
+  it("shows every resource filter on the all tab", () => {
+    render(<PlanCatalog plansPage={page({ plans: [], count: 0 })} />);
+
+    expect(screen.getByText(strings.resourceRam)).toBeInTheDocument();
+    expect(screen.getByText(strings.resourceCpu)).toBeInTheDocument();
+    expect(screen.getByText(strings.resourceDisk)).toBeInTheDocument();
+    expect(screen.getByText(strings.resourceTraffic)).toBeInTheDocument();
+  });
+
+  it("renders plan-card skeletons while loading", () => {
+    render(<PlanCatalog loading plansPage={page()} />);
+
+    expect(screen.getByTestId("plan-catalog-skeleton")).toBeInTheDocument();
+    expect(screen.queryByText("Plan one")).not.toBeInTheDocument();
+  });
 });

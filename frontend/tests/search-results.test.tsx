@@ -47,7 +47,7 @@ describe("CompanyCard", () => {
     );
     expect(getByText("Example Hosting")).toBeInTheDocument();
     expect(getByText("example.com")).toBeInTheDocument();
-    expect(container.textContent).toContain("طرح منتشرشده");
+    expect(container.textContent).toContain("پلن منتشرشده");
     expect(getByText(strings.viewCompany)).toBeInTheDocument();
   });
 });
