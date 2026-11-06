@@ -467,6 +467,8 @@
   "specRam": "حافظه رم",
   "viewPlanDetails": "مشاهده جزئیات پلن",
   "viewPlanPage": "رفتن به صفحه پلن",
+  "planDetailsTitle": "جزئیات پلن",
+  "planDetailsPrice": "قیمت ماهانه",
   "noFilterOptions": "گزینه‌ای برای این فیلتر موجود نیست.",
   "companiesFilterTitle": "شرکت‌ها",
   "searchCompany": "جست‌وجوی شرکت",

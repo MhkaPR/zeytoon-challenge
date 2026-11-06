@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import {ensureHttps, PublicPlan} from "@/src/lib/api/publicCatalog";
 import { fieldValue, formatPrice, priceOf } from "../planCatalogUtils";
-import NextLink from "next/link";
+import { PlanDetailsModal } from "./PlanDetailsModal";
 
 /** Company icon with a neutral local fallback when the domain has no favicon. */
 function CompanyFavicon({ domain }: { domain: string }) {
@@ -38,6 +38,7 @@ function CompanyFavicon({ domain }: { domain: string }) {
 /** One published service plan. Plan name is the primary heading; provider is secondary. */
 export function PlanCard({ plan }: { plan: PublicPlan }) {
   const ot = useTranslations();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const price = priceOf(plan);
   const cpu = plan.values.vcpu_cores ?? plan.values.cpu_cores ?? plan.values.cpu;
   const ram = plan.values.ram_amount ?? plan.values.ram;
@@ -93,14 +94,19 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
           </div>
         </dl>
         <div className="flex justify-center gap-2 w-full">
-        <NextLink className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={`/companies/${encodeURIComponent(plan.domain)}`}>
-         <Button className="w-full" variant="secondary">{ot("viewPlanDetails")}</Button>
-        </NextLink>
+        <Button className="w-full" variant="secondary" onPress={() => setDetailsOpen(true)}>
+          {ot("viewPlanDetails")}
+        </Button>
         <a  target="_blank" rel="noopener noreferrer" className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={ensureHttps(plan.url ?? plan.domain)}>
          <Button className="w-full" variant="primary">{ot("viewPlanPage")}</Button>
         </a>
         </div>
       </Card.Content>
+      <PlanDetailsModal
+        isOpen={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        plan={plan}
+      />
     </Card>
   );
 }
