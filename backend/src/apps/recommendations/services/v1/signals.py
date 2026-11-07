@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.recommendations import conf
 from apps.recommendations.models import InterestProfile, InterestSignal
-from apps.recommendations.services.v1.state import UserState
+from apps.recommendations.services.v1.state import InterestClusters
 from apps.recommendations.services.v1.store import PlanSpaceProvider
 
 
@@ -89,17 +89,12 @@ class SignalRecorder:
 
     @staticmethod
     def _state(profile, bundle):
-        if (
-            profile.space_version == bundle["version"]
-            and len(profile.position) == bundle["values"].shape[1]
-        ):
-            return UserState(profile.position, profile.uncertainty)
-        return UserState(bundle["space"].prior(bundle["values"], bundle["masks"]))
+        return InterestClusters.from_profile(profile, bundle)
 
     @staticmethod
     def _save(profile, state, version):
-        profile.position = [float(value) for value in state.x]
-        profile.uncertainty = [float(value) for value in state.s]
+        profile.position = state.positions
+        profile.uncertainty = state.uncertainties
         profile.space_version = version
         profile.signal_count += 1
         profile.last_signal_at = timezone.now()

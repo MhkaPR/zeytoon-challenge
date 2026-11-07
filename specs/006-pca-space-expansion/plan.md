@@ -6,8 +6,9 @@
 
 Add a small semantic encoder that turns plan titles into ten values using the `pca.py`
 algorithm (`HashingVectorizer` + `PCA`). Append those ten values to the existing plan
-space, refresh the cached space with a scheduled Django Task, and let the existing
-profile reconciliation handle dimension changes. No new models, no public API change.
+space, refresh the cached space with a scheduled Django Task, and replace the single
+preference vector with a bounded set of interest clusters so several themes (python,
+node, email) stay represented. No new models, no public API change.
 
 ## Technical Context
 
@@ -23,7 +24,7 @@ django-constance, django-redis
 **Project Type**: Django web service
 
 **Constraints**: No new models or migrations; no public API change; refresh off the
-request path; all tunables in constance/settings
+request path; bounded multi-interest state; all tunables in constance/settings
 
 **Scale/Scope**: Demo-scale catalogue; ten semantic dimensions
 
@@ -57,22 +58,28 @@ backend/src/apps/recommendations/
 │   ├── semantic.py                          # NEW: title -> 10 PCA values
 │   ├── features.py                          # MODIFIED: include plan title
 │   ├── space.py                             # MODIFIED: append semantic dimensions
-│   └── store.py                             # MODIFIED: force-refresh helper
+│   ├── store.py                             # MODIFIED: force-refresh helper
+│   ├── state.py                             # MODIFIED: InterestClusters
+│   ├── ranking.py                           # MODIFIED: min distance across clusters
+│   └── signals.py                           # MODIFIED: update nearest cluster
 └── tests/
     ├── test_semantic.py                     # NEW
     ├── test_space.py                        # MODIFIED
-    └── test_tasks.py                        # NEW
+    ├── test_tasks.py                        # NEW
+    ├── test_state.py                        # MODIFIED: cluster tests
+    └── test_ranking.py                      # MODIFIED: multi-theme ranking
 
 backend/src/config/settings/base.py          # MODIFIED: constance defaults
 pyproject.toml                               # MODIFIED: scikit-learn
 ```
 
-**Structure Decision**: Everything stays in the existing recommendations app. Ranking
-and signal services need no change because they already rebuild state when the version
-or dimension count differs.
+**Structure Decision**: Everything stays in the existing recommendations app.
+`InterestProfile.position` and `.uncertainty` become lists of cluster vectors; a flat
+legacy list is read as one cluster. Ranking takes the minimum distance across clusters.
 
 ## Complexity Tracking
 
 | Item | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
 | `scikit-learn` dependency | Matches `pca.py` and Principle XII | Hand-rolled PCA duplicates a mature library |
+| Bounded interest clusters | A single vector averages python, node, and email into one point and swings to the latest theme | Decay or per-query caps still leave one averaged interest and cannot represent three themes at once |

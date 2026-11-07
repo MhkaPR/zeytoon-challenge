@@ -20,11 +20,18 @@ Invariants: `values.shape == masks.shape`; all values finite; column count equal
 Ten values in `[0, 1]` from `values["plan_name"]` (fallbacks `title`, `name`). Empty
 titles use `0.5` with mask `0`.
 
-## PreferenceState (existing, longer vectors)
+## PreferenceState (existing, now multi-cluster)
 
-`InterestProfile.position` and `.uncertainty` gain ten entries. If `space_version` or
-length differs from the active space, the existing ranking/signal code rebuilds the state
-from the cold-start prior. No migration.
+`InterestProfile.position` is a list of cluster vectors; `.uncertainty` is the matching
+list of uncertainty vectors. Each cluster has one value per active space dimension. A
+flat list of numbers is read as a single cluster for backward compatibility.
+
+Signals update the nearest cluster when its distance is at most
+`RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`; otherwise a new cluster is created. At
+`RECOMMENDATION_MAX_INTEREST_CLUSTERS` the least confident cluster is evicted. Ranking
+uses the minimum distance across clusters. If `space_version` or any vector length
+differs from the active space, the profile is rebuilt from the cold-start prior. No
+migration.
 
 ## Configuration
 
@@ -35,3 +42,5 @@ from the cold-start prior. No migration.
 | `RECOMMENDATION_SEMANTIC_NGRAM_MIN` | `2` |
 | `RECOMMENDATION_SEMANTIC_NGRAM_MAX` | `4` |
 | `RECOMMENDATION_SEMANTIC_RANDOM_STATE` | `0` |
+| `RECOMMENDATION_MAX_INTEREST_CLUSTERS` | `3` |
+| `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD` | `0.2` |

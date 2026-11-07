@@ -1,7 +1,7 @@
 """Runtime-tunable recommendation settings.
 
 Values resolve in this order: django-constance, Django settings, module default. No
-service hard-codes a weight, cap, or expiry.
+service hard-codes a weight, cap, expiry, semantic dimension, or cluster limit.
 """
 
 from django.conf import settings
@@ -24,6 +24,8 @@ DEFAULTS = {
     "RECOMMENDATION_SEMANTIC_NGRAM_MIN": 2,
     "RECOMMENDATION_SEMANTIC_NGRAM_MAX": 4,
     "RECOMMENDATION_SEMANTIC_RANDOM_STATE": 0,
+    "RECOMMENDATION_MAX_INTEREST_CLUSTERS": 3,
+    "RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD": 0.2,
 }
 
 
@@ -92,3 +94,11 @@ def semantic_ngram_range():
 
 def semantic_random_state():
     return int(_value("RECOMMENDATION_SEMANTIC_RANDOM_STATE"))
+
+
+def max_interest_clusters():
+    return int(_value("RECOMMENDATION_MAX_INTEREST_CLUSTERS"))
+
+
+def cluster_distance_threshold():
+    return float(_value("RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD"))

@@ -1,6 +1,6 @@
 import numpy as np
 
-from apps.recommendations.services.v1.state import UserState
+from apps.recommendations.services.v1.state import InterestClusters, UserState
 
 
 def test_stronger_signal_moves_more():
@@ -24,3 +24,35 @@ def test_repeated_signals_diminish():
     state.update(values, masks, 1.0)
     third_delta = state.x[0] - first - second_delta
     assert third_delta < second_delta
+
+
+def test_flat_position_is_one_cluster():
+    clusters = InterestClusters([0.1, 0.2])
+    assert len(clusters.states) == 1
+    assert np.allclose(clusters.states[0].x, [0.1, 0.2])
+
+
+def test_near_signal_updates_nearest_cluster():
+    clusters = InterestClusters(
+        [[0.0, 0.0], [1.0, 1.0]], max_clusters=3, threshold=0.2
+    )
+    clusters.update(np.array([0.1, 0.1]), np.array([1.0, 1.0]), noise=0.8)
+    assert len(clusters.states) == 2
+    assert clusters.states[0].x[0] > 0.0
+    assert np.allclose(clusters.states[1].x, [1.0, 1.0])
+
+
+def test_far_signal_creates_new_cluster():
+    clusters = InterestClusters(
+        [[0.0, 0.0], [1.0, 1.0]], max_clusters=3, threshold=0.2
+    )
+    clusters.update(np.array([0.5, 0.5]), np.array([1.0, 1.0]), noise=0.8)
+    assert len(clusters.states) == 3
+
+
+def test_cluster_cap_evicts_least_confident():
+    clusters = InterestClusters(
+        [[0.0, 0.0], [1.0, 1.0]], max_clusters=2, threshold=0.2
+    )
+    clusters.update(np.array([0.5, 0.5]), np.array([1.0, 1.0]), noise=0.8)
+    assert len(clusters.states) == 2

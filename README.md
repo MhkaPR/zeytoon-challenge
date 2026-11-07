@@ -233,7 +233,21 @@ can change thresholds without a redeploy.
 `LOCKOUT_DURATION_SECONDS`, `REQUEST_COOLDOWN_SECONDS`, `REQUEST_HOURLY_CAP`,
 `VERIFY_WINDOW_LIMIT`, `VERIFY_WINDOW_SECONDS`, `CONTACT_CHANNELS`,
 `RETURN_URL_ALLOWLIST`, `DEFAULT_RETURN_PATH`, `COMPANY_STEP_DEFINITIONS`,
-`COMPANY_REQUIREMENT_MESSAGES`, `COMPANY_STEP_LOCKED_MESSAGE`, `COMPANY_EMPTY_STATE_MESSAGE`.
+`COMPANY_REQUIREMENT_MESSAGES`, `COMPANY_STEP_LOCKED_MESSAGE`, `COMPANY_EMPTY_STATE_MESSAGE`,
+`RECOMMENDATION_SEMANTIC_DIMENSIONS`, `RECOMMENDATION_MAX_INTEREST_CLUSTERS`,
+`RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`.
+
+### Recommendation space refresh
+
+The semantic plan space is refreshed by a scheduled Django Task:
+
+```bash
+cd backend/src && python manage.py refresh_recommendation_space
+```
+
+Run the command from cron (daily by default). It enqueues the refresh; the task fits the
+space and writes it under its version key. A failed refresh leaves the previous key
+intact.
 
 ### Frontend
 

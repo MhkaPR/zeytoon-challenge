@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from apps.recommendations.models import InterestProfile
 from apps.recommendations.services.v1.recommender import Recommender
-from apps.recommendations.services.v1.state import UserState
+from apps.recommendations.services.v1.state import InterestClusters
 from apps.recommendations.services.v1.store import PlanSpaceProvider
 
 
@@ -30,18 +30,9 @@ class RankingService:
             profile = InterestProfile.objects.filter(visitor_id=visitor_id).first()
         else:
             profile = None
-        if (
-            profile is not None
-            and profile.space_version == bundle["version"]
-            and len(profile.position) == bundle["values"].shape[1]
-        ):
-            state = UserState(profile.position, profile.uncertainty)
-            position = state.x
-        else:
-            position = bundle["space"].prior(bundle["values"], bundle["masks"])
-
-        distances = self.recommender.distances(
-            bundle["values"][candidates], bundle["masks"][candidates], position
+        clusters = InterestClusters.from_profile(profile, bundle)
+        distances = clusters.distances(
+            bundle["values"][candidates], bundle["masks"][candidates]
         )
         ordered = self.recommender.order(
             [bundle["ids"][index] for index in candidates],

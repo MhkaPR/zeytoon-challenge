@@ -46,3 +46,24 @@ print(len(RankingService().rank(records, [r['id'] for r in records], visitor_id=
 ```
 
 Expected: no error; candidate ids are returned.
+
+## 5. Confirm multiple interests are kept
+
+```bash
+uv run python backend/src/manage.py shell -c "
+import uuid
+from apps.catalog.interfaces import CatalogInterface
+from apps.recommendations.services.v1.signals import SignalRecorder
+from apps.recommendations.models import InterestProfile
+records = CatalogInterface.published_plan_records()
+by_title = {r['values'].get('plan_name'): r['id'] for r in records}
+picks = [by_title[t] for t in ('python10', 'هاست nodejs 1', 'Email10') if t in by_title]
+v = uuid.uuid4()
+for plan_id in picks:
+    SignalRecorder().record(records, 'destination_visit', [plan_id], visitor_id=v)
+print(len(InterestProfile.objects.get(visitor_id=v).position))
+"
+```
+
+Expected: `3` clusters when the sample plans exist, so python, node, and email stay
+represented.

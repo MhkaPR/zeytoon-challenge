@@ -8,6 +8,7 @@ from apps.recommendations.models import InterestProfile
 from apps.recommendations.services.v1.features import PlanFeatureMapper
 from apps.recommendations.services.v1.ranking import RankingService
 from apps.recommendations.services.v1.recommender import Recommender
+from apps.recommendations.services.v1.signals import SignalRecorder
 from apps.recommendations.services.v1.space import PlanSpace
 from apps.recommendations.services.v1.state import UserState
 from apps.recommendations.tests.factories import catalog
@@ -60,3 +61,51 @@ def test_outdated_profile_is_rebuilt():
         visitor_id=visitor,
     )
     assert sorted(ordered) == sorted(record.pk for record in records)
+
+
+@pytest.mark.django_db
+def test_multiple_themes_are_kept_and_ranked():
+    titles = [
+        "python10",
+        "python20",
+        "python30",
+        "python40",
+        "هاست nodejs 1",
+        "هاست nodejs 2",
+        "هاست nodejs 3",
+        "هاست nodejs 4",
+        "Email10",
+        "Email20",
+        "Email30",
+        "Email40",
+    ]
+    records = catalog(
+        *[
+            {"price_amount": 10 + index, "plan_name": title}
+            for index, title in enumerate(titles)
+        ]
+    )
+    plan_records = CatalogInterface.published_plan_records()
+    visitor = uuid.uuid4()
+    recorder = SignalRecorder()
+    for index in (0, 4, 8):
+        recorder.record(
+            plan_records,
+            "destination_visit",
+            [records[index].pk],
+            visitor_id=visitor,
+        )
+
+    profile = InterestProfile.objects.get(visitor_id=visitor)
+    assert len(profile.position) == 3
+
+    ordered = RankingService().rank(
+        plan_records,
+        [record.pk for record in records],
+        visitor_id=visitor,
+    )
+    by_id = {record.pk: record.values["plan_name"] for record in records}
+    top = [by_id[plan_id] for plan_id in ordered[:6]]
+    assert any(title.startswith("python") for title in top)
+    assert any("nodejs" in title for title in top)
+    assert any(title.startswith("Email") for title in top)
