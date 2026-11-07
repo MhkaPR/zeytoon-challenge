@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import {ensureHttps, PublicPlan} from "@/src/lib/api/publicCatalog";
+import { sendSignal } from "@/src/lib/api/signals";
 import { fieldValue, formatPrice, priceOf } from "../planCatalogUtils";
 import { PlanDetailsModal } from "./PlanDetailsModal";
 
@@ -94,11 +95,29 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
           </div>
         </dl>
         <div className="flex justify-center gap-2 w-full">
-        <Button className="w-full" variant="secondary" onPress={() => setDetailsOpen(true)}>
+        <Button
+          className="w-full"
+          variant="secondary"
+          onPress={() => {
+            sendSignal("details_view", [plan.id]);
+            setDetailsOpen(true);
+          }}
+        >
           {ot("viewPlanDetails")}
         </Button>
-        <a  target="_blank" rel="noopener noreferrer" className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent" href={ensureHttps(plan.url ?? plan.domain)}>
-         <Button className="w-full" variant="primary">{ot("viewPlanPage")}</Button>
+        <a
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex justify-start mt-auto text-[12px] font-medium text-accent"
+          href={ensureHttps(plan.url ?? plan.domain)}
+        >
+          <Button
+            className="w-full"
+            variant="primary"
+            onPress={() => sendSignal("destination_visit", [plan.id])}
+          >
+            {ot("viewPlanPage")}
+          </Button>
         </a>
         </div>
       </Card.Content>

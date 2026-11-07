@@ -190,7 +190,11 @@ class PublishedPlanFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(method="filter_search")
     type = django_filters.CharFilter(method="filter_type")
     sort = django_filters.ChoiceFilter(
-        choices=(("price", "price"), ("expensive", "expensive")),
+        choices=(
+            ("price", "price"),
+            ("expensive", "expensive"),
+            ("relevance", "relevance"),
+        ),
         method="filter_sort",
     )
     providers = django_filters.CharFilter(method="filter_providers")

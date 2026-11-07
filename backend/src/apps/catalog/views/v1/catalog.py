@@ -1,5 +1,7 @@
 """Read-only public API for currently published plans."""
 
+import uuid
+
 from django.utils import timezone
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
@@ -16,6 +18,8 @@ from apps.catalog.filters import (
     normalize_resource_value,
 )
 from apps.catalog.models import PublishedRecord
+from apps.catalog.interfaces import CatalogInterface
+from apps.recommendations.interfaces import RecommendationsInterface
 from apps.catalog.serializers.v1.catalog import (
     PublicCompanySerializer,
     PublicPlanSerializer,
@@ -89,6 +93,46 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
         return PublishedRecord.objects.filter(is_published=True).order_by(
             "-published_at", "id"
         )
+
+    def list(self, request, *args, **kwargs):
+        """Related sort ranks the whole filtered set before pagination."""
+        sort = request.query_params.get("sort")
+        if sort in ("price", "expensive", "relevance"):
+            return super().list(request, *args, **kwargs)
+
+        queryset = self.filter_queryset(self.get_queryset())
+        records = list(queryset)
+        if not records:
+            return super().list(request, *args, **kwargs)
+
+        visitor_id = self._visitor_id(request)
+        ordered_ids = RecommendationsInterface.rank(
+            CatalogInterface.published_plan_records(),
+            [record.pk for record in records],
+            visitor_id=visitor_id,
+            user=request.user if request.user.is_authenticated else None,
+        )
+        by_id = {record.pk: record for record in records}
+        ordered = [by_id[plan_id] for plan_id in ordered_ids if plan_id in by_id]
+        seen = {record.pk for record in ordered}
+        ordered.extend(record for record in records if record.pk not in seen)
+
+        page = self.paginate_queryset(ordered)
+        instances = page if page is not None else ordered
+        data = self.serialize_page(instances)
+        if page is None:
+            return Response(data)
+        return self.paginator.get_paginated_response(
+            data, page_extra=self.get_page_extra()
+        )
+
+    @staticmethod
+    def _visitor_id(request):
+        raw = request.headers.get("X-Visitor-Id", "")
+        try:
+            return uuid.UUID(raw)
+        except (ValueError, AttributeError, TypeError):
+            return None
 
     def serialize_page(self, records):
         records = list(records)

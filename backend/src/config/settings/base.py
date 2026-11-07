@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.companies",
     "apps.catalog",
+    "apps.recommendations",
     "apps.pipeline",
     "apps.admin_console",
 ]
@@ -189,6 +190,7 @@ REST_FRAMEWORK = {
         # deliberately generous because it is shared by everyone behind one NAT/dev machine;
         # the per-phone limits above are what actually stop credential abuse.
         "otp_source": env("THROTTLE_OTP_SOURCE", "120/hour"),
+        "recommendation_signal": env("THROTTLE_RECOMMENDATION_SIGNAL", "30/min"),
     },
     "EXCEPTION_HANDLER": "apps.accounts.exceptions.api_exception_handler",
 }

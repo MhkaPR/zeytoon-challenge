@@ -4,6 +4,7 @@ import { MainBody } from "@/src/features/home/MainBody";
 import { getPlansPage, getRecentCompanies } from "@/src/lib/api/publicCatalog";
 import {Skeleton} from "@heroui/react";
 import {getSiteConfig} from "@/src/lib/config/getSiteConfig";
+import { visitorId } from "@/src/lib/visitor";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -35,7 +36,7 @@ async function MainContent({
     getPlansPage({
       ...params,
       page_size: requestedPageSize ?? String(siteConfig.catalog.defaultPageSize),
-    }),
+    }, { visitorId: await visitorId() }),
     getRecentCompanies(),
   ]);
 

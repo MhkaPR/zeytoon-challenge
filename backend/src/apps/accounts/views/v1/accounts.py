@@ -85,6 +85,7 @@ class OtpVerifyViewSet(GenericViewSet):
             payload["phone_number"],
             payload["code"],
             return_url=payload.get("return_url"),
+            visitor_id=request.COOKIES.get("visitor_id"),
         )
         user = result["user"]
         body = OtpVerifyResponseSerializer(
@@ -165,8 +166,14 @@ class LogoutViewSet(GenericViewSet):
         raw = request.COOKIES.get(REFRESH_COOKIE_NAME)
         if raw:
             services.revoke_tokens(raw)
+        visitor_id = request.COOKIES.get("visitor_id")
+        if visitor_id:
+            from apps.recommendations.interfaces import RecommendationsInterface
+
+            RecommendationsInterface.clear_visitor(visitor_id)
         response = Response(
             StatusSerializer({"status": "ok"}).data, status=status.HTTP_200_OK
         )
         response.delete_cookie(REFRESH_COOKIE_NAME, path="/api/v1/auth/")
+        response.delete_cookie("visitor_id", path="/")
         return response

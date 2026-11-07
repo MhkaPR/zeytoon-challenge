@@ -27,10 +27,13 @@ import {
 } from "./serviceTypes";
 import { CatalogFilters } from "./planCatalog/CatalogFilters";
 import { PlanCard } from "./planCatalog/PlanCard";
-import { SortAndPageSizeControls } from "./planCatalog/CatalogControls";
+import {
+  SortAndPageSizeControls,
+  type SortOption,
+} from "./planCatalog/CatalogControls";
 
 type ServiceTab = "all" | ServiceTypeKey;
-type SortOrder = "default" | "price" | "expensive";
+type SortOrder = "default" | "price" | "expensive" | "relevance";
 
 export type CatalogFilterValues = {
   providers: string[];
@@ -85,6 +88,8 @@ export type PlanCatalogProps = {
   footer?: ReactNode | ((context: { hasActiveFilters: boolean; onReset: () => void }) => ReactNode);
   showServiceTabs?: boolean;
   showSort?: boolean;
+  sortOptions?: SortOption[];
+  defaultSort?: SortOrder;
   showPagination?: boolean;
   ariaLabel?: string;
   className?: string;
@@ -110,7 +115,9 @@ function parseType(value: string | string[] | undefined): ServiceTab {
 
 function parseSort(value: string | string[] | undefined): SortOrder {
   const parsed = first(value);
-  return parsed === "price" || parsed === "expensive" ? parsed : "default";
+  return parsed === "price" || parsed === "expensive" || parsed === "relevance"
+    ? parsed
+    : "default";
 }
 
 function makeDefaults(): CatalogFilterValues {
@@ -281,6 +288,8 @@ export function PlanCatalog({
   footer,
   showServiceTabs = true,
   showSort = true,
+  sortOptions,
+  defaultSort = "default",
   showPagination = true,
   ariaLabel,
   className,
@@ -294,7 +303,9 @@ export function PlanCatalog({
   );
   const [type, setType] = useState<ServiceTab>(() => parseType(searchParams.type));
   const [draft, setDraft] = useState<CatalogFilterValues>(() => parseDraft(searchParams));
-  const [sort, setSort] = useState<SortOrder>(() => parseSort(searchParams.sort));
+  const [sort, setSort] = useState<SortOrder>(() =>
+    searchParams.sort ? parseSort(searchParams.sort) : defaultSort,
+  );
   const [companySearch, setCompanySearch] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -400,10 +411,10 @@ export function PlanCatalog({
     const defaults = makeDefaults();
     setDraft(defaults);
     setType("all");
-    setSort("default");
+    setSort(defaultSort);
     setCompanySearch("");
     setIsDirty(false);
-    void loadPage(1, { type: "all", draft: defaults, sort: "default" });
+    void loadPage(1, { type: "all", draft: defaults, sort: defaultSort });
   }
 
   function changeSort(value: SortOrder) {
@@ -498,6 +509,7 @@ export function PlanCatalog({
         <SortAndPageSizeControls
           onPageSizeChange={changePageSize}
           onSortChange={changeSort}
+          options={sortOptions}
           pageSize={pageSize}
           sort={sort}
         />

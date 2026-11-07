@@ -5,6 +5,7 @@ imports ``admin_console``. Provenance ids are opaque integers.
 """
 
 from apps.catalog import services
+from apps.catalog.models import PublishedRecord
 
 
 class CatalogInterface:
@@ -25,6 +26,15 @@ class CatalogInterface:
     @staticmethod
     def published_count(**kwargs):
         return services.published_count(**kwargs)
+
+    @staticmethod
+    def published_plan_records():
+        """Minimal published-plan rows used by the recommendation ranker."""
+        return list(
+            PublishedRecord.objects.filter(is_published=True).values(
+                "id", "values", "published_at"
+            )
+        )
 
 
 __all__ = ["CatalogInterface"]

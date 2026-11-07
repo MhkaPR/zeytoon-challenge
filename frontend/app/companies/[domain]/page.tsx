@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { PlanCatalog } from "@/src/features/home/PlanCatalog";
 import { getPlansPage } from "@/src/lib/api/publicCatalog";
+import { visitorId } from "@/src/lib/visitor";
 
 type Props = { params: Promise<{ domain: string }> };
 
@@ -12,7 +13,10 @@ export default async function CompanyPublicPage({ params }: Props) {
   const decodedDomain = decodeURIComponent(domain);
   const [ot, plansPage] = await Promise.all([
     getTranslations(),
-    getPlansPage({ domain: decodedDomain, page_size: "12" }),
+    getPlansPage(
+      { domain: decodedDomain, page_size: "12" },
+      { visitorId: await visitorId() },
+    ),
   ]);
   const companyName = plansPage.plans[0]?.company_name ?? decodedDomain;
 

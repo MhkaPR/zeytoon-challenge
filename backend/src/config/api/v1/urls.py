@@ -11,4 +11,6 @@ urlpatterns = [
     path("ops/", include("apps.admin_console.urls")),
     path("catalog", include("apps.catalog.urls")),
     path("catalog/", include("apps.catalog.urls")),
+    path("recommendations", include("apps.recommendations.urls")),
+    path("recommendations/", include("apps.recommendations.urls")),
 ]

@@ -3,7 +3,15 @@ import { getTranslations } from "next-intl/server";
 
 import { PlanCatalog } from "@/src/features/home/PlanCatalog";
 import { SearchBox } from "@/src/features/home/SearchBox";
+import { SearchImpressionBeacon } from "@/src/features/home/planCatalog/SearchImpressionBeacon";
 import { getPlansPage } from "@/src/lib/api/publicCatalog";
+import { visitorId } from "@/src/lib/visitor";
+
+const SEARCH_SORT_OPTIONS = [
+  { id: "relevance" as const, labelKey: "sortRelevance" },
+  { id: "price" as const, labelKey: "sortPriceAsc" },
+  { id: "expensive" as const, labelKey: "sortPriceDesc" },
+];
 
 /** Search results, rendered on the server from the public catalog API. */
 export default async function SearchPage({
@@ -16,7 +24,10 @@ export default async function SearchPage({
   const query = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
   const [ot, plansPage] = await Promise.all([
     getTranslations(),
-    getPlansPage({ ...(query ? { q: query } : {}), page_size: "12" }),
+    getPlansPage(
+      { ...(query ? { q: query } : {}), sort: "relevance", page_size: "12" },
+      { visitorId: await visitorId() },
+    ),
   ]);
 
   return (
@@ -24,9 +35,14 @@ export default async function SearchPage({
       <Typography className="text-[32px] font-semibold" type="h1">{ot("searchTitle")}</Typography>
       <SearchBox initialQuery={query} />
       {query && <Typography color="muted">{ot("searchResultsFor", { query })}</Typography>}
+      <SearchImpressionBeacon
+        planIds={plansPage.plans.map((plan) => plan.id)}
+        query={query}
+      />
       <PlanCatalog
         ariaLabel={ot("searchTitle")}
         baseParams={query ? { q: query } : {}}
+        defaultSort="relevance"
         description={null}
         emptyState={
           <div className="rounded-[var(--radius)] border border-[var(--separator)] p-[24px]">
@@ -43,6 +59,7 @@ export default async function SearchPage({
         plansPage={plansPage}
         searchParams={params}
         showServiceTabs={false}
+        sortOptions={SEARCH_SORT_OPTIONS}
         title={null}
       />
     </main>

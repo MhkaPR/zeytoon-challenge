@@ -68,7 +68,7 @@ def request_otp(raw_phone, source=None):
 # ---------------------------------------------------------------------------
 
 
-def verify_otp(raw_phone, code, return_url=None):
+def verify_otp(raw_phone, code, return_url=None, visitor_id=None):
     """Verify the code and log the user in, creating the account implicitly if needed."""
     phone = normalize_phone(raw_phone)
     if phone is None:
@@ -115,6 +115,10 @@ def verify_otp(raw_phone, code, return_url=None):
             phone_number=phone,
             defaults={"username": phone},
         )
+        if visitor_id:
+            from apps.recommendations.interfaces import RecommendationsInterface
+
+            RecommendationsInterface.merge_on_login(user, visitor_id)
 
     tokens = issue_tokens(user)
     redirect_to = resolve_return_url(return_url)

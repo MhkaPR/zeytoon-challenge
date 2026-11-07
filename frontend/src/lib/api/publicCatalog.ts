@@ -59,11 +59,16 @@ const EMPTY_FACETS: PlanFacets = {
 
 export async function getPlansPage(
   params: Record<string, string | string[] | undefined> = {},
+  options: { visitorId?: string } = {},
 ): Promise<PlansPage> {
   try {
     const query = await createQueryString(params);
+    const headers: Record<string, string> = {};
+    if (options.visitorId) headers["X-Visitor-Id"] = options.visitorId;
     const response = await fetch(`${apiBaseUrl()}/api/v1/catalog/plans?${query}`, {
       cache: "no-store",
+      credentials: "include",
+      headers,
     });
     if (!response.ok) {
       return { plans: [], count: 0, page: 1, pageSize: 0, totalPages: 1, facets: EMPTY_FACETS };

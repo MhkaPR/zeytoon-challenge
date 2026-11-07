@@ -8,6 +8,16 @@
 
 **Input**: User description: "Add a 'related plans' option to the catalog sort section, make it the default, and order plans by the viewer's demonstrated intent. Most viewers are anonymous, so intent is tracked per device and attached to the account on login."
 
+## Clarifications
+
+### Session 2026-11-06
+
+- Q: Should the company catalogue page also default to the related order, or only offer it as a sort option? → A: Default to related order.
+- Q: How long should an inactive viewer's interest history be kept before it is deleted? → A: 180 days of inactivity.
+- Q: Should an explicit cheapest/most-expensive choice persist on the next visit, or should every new visit start on related? → A: Every new visit starts on related.
+- Q: What is the maximum number of interest signals one viewer may contribute within a minute before further signals are ignored? → A: 30 signals per minute per viewer.
+- Q: What should the sort option be labeled in the UI? → A: «پیشنهاد برای شما» (recommended for you).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Anonymous visitor sees a personalized default order (Priority: P1)
@@ -23,7 +33,7 @@ A visitor who is not signed in opens the main catalog. Instead of a fixed order 
 1. **Given** a first-ever visitor with no recorded interest, **When** the catalog loads, **Then** the default order is a stable, deterministic order that is identical for every first-ever visitor and is clearly identified as "related plans".
 2. **Given** a visitor who has viewed details of plans of one type, **When** the catalog loads again, **Then** plans of that type rank higher than they did before.
 3. **Given** a visitor who has taken no new action, **When** they reload the catalog, **Then** the order is unchanged.
-4. **Given** the sort control, **When** the visitor opens it, **Then** "related plans" is listed first and selected by default.
+4. **Given** the sort control, **When** the visitor opens it, **Then** «پیشنهاد برای شما» is listed first and selected by default.
 
 ---
 
@@ -100,7 +110,7 @@ A visitor who wants a specific order still gets it. Choosing "cheapest" or "most
 
 ### Functional Requirements
 
-- **FR-001**: The main catalog MUST offer a sort option labeled as related plans and MUST select it by default when no explicit sort is requested.
+- **FR-001**: The main catalog MUST offer a sort option labeled «پیشنهاد برای شما» and MUST select it by default when no explicit sort is requested.
 - **FR-002**: The related order MUST reflect the accumulated interest of the current viewer, whether anonymous (device-scoped) or signed in (account-scoped).
 - **FR-003**: Anonymous interest MUST be scoped to the device and MUST persist across separate visits from that device without sign-in.
 - **FR-004**: The system MUST accept three interest signal types: visiting a plan's destination page (strongest), opening plan details (moderate), and the first page of results for a search the visitor typed (weakest).
@@ -118,10 +128,12 @@ A visitor who wants a specific order still gets it. Choosing "cheapest" or "most
 - **FR-016**: A plan that does not declare an attribute MUST NOT be penalized for that attribute when compared with plans that do declare it.
 - **FR-017**: A plan's destination page, details view, and search matching MUST remain available to visitors who never interact beyond viewing.
 - **FR-018**: Signal submission MUST be the only action the visitor's client performs to influence recommendations; the sign-in hand-off MUST NOT require a client-initiated request.
-- **FR-019**: Signal submission MUST accept signals from both anonymous and signed-in visitors and MUST cap how many signals one visitor can contribute within one minute; signals beyond the cap MUST be ignored.
+- **FR-019**: Signal submission MUST accept signals from both anonymous and signed-in visitors and MUST ignore any signals beyond 30 per viewer per minute.
 - **FR-020**: The cold-start related order MUST be the same for every viewer with no recorded interest.
-- **FR-021**: The related sort MUST apply to the main catalog and the company catalog page consistent with the main catalog; it MUST NOT apply to the search results page.
+- **FR-021**: The related sort MUST be the default on both the main catalog and the company catalog page; it MUST NOT be offered or applied on the search results page.
 - **FR-022**: A viewer's interest history MUST NOT be displayed to them or shared with another account; it MUST influence ordering only.
+- **FR-023**: Interest profiles and their recorded signals MUST be deleted after 180 days without a new signal.
+- **FR-024**: An explicit cheapest or most-expensive choice MUST apply only to the current view and MUST NOT persist; every new catalogue visit MUST start on related.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -146,10 +158,12 @@ A visitor who wants a specific order still gets it. Choosing "cheapest" or "most
 
 ## Assumptions
 
-- "Main catalog" means the pricing/catalog section of the home page; the company catalog page follows the same default, and the search results page does not.
+- "Main catalog" means the pricing/catalog section of the home page; the company catalog page also defaults to related, and the search results page does not offer it.
 - Anonymous identity is a random, opaque device identifier; no fingerprinting or personal data is used.
 - Anonymous interest does not sync across devices; cross-device continuity only exists after sign-in.
-- Interest profiles for devices and accounts expire after a period of inactivity (approx. 6 months), consistent with standard practice.
+- Interest profiles and their signals are deleted after 180 days of inactivity.
+- Sort choices are not stored per viewer; only the current view reflects an explicit price sort.
+- The internal term "related order" is presented to users as «پیشنهاد برای شما»; the two terms refer to the same behaviour.
 - Signals are best-effort: a lost signal slightly delays personalization but never breaks the order.
 - The search-impression signal applies to the first page of results for a submitted query only; later pages and empty queries produce no signal.
 - Ranking compares only attributes a plan declares; plans of different types are compared through their shared declared attributes.

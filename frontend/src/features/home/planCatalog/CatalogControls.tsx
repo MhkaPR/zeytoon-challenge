@@ -5,8 +5,9 @@ import { useTranslations } from "next-intl";
 
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 
-type SortOrder = "default" | "price" | "expensive";
-const SORT_OPTIONS: { id: SortOrder; labelKey: string }[] = [
+export type SortOrder = "default" | "price" | "expensive" | "relevance";
+export type SortOption = { id: SortOrder; labelKey: string };
+const SORT_OPTIONS: SortOption[] = [
   { id: "default", labelKey: "sortDefault" },
   { id: "price", labelKey: "sortPriceAsc" },
   { id: "expensive", labelKey: "sortPriceDesc" },
@@ -18,11 +19,13 @@ export function SortAndPageSizeControls({
   onSortChange,
   pageSize,
   onPageSizeChange,
+  options = SORT_OPTIONS,
 }: {
   sort: SortOrder;
   onSortChange: (value: SortOrder) => void;
   pageSize: number;
   onPageSizeChange: (value: number) => void;
+  options?: SortOption[];
 }) {
   const ot = useTranslations();
   const config = useSiteConfig();
@@ -37,7 +40,7 @@ export function SortAndPageSizeControls({
           <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
           <Select.Popover>
             <ListBox>
-              {SORT_OPTIONS.map((option) => <ListBox.Item id={option.id} key={option.id} textValue={ot(option.labelKey)}>{ot(option.labelKey)}<ListBox.ItemIndicator /></ListBox.Item>)}
+              {options.map((option) => <ListBox.Item id={option.id} key={option.id} textValue={ot(option.labelKey)}>{ot(option.labelKey)}<ListBox.ItemIndicator /></ListBox.Item>)}
             </ListBox>
           </Select.Popover>
         </Select>
