@@ -19,6 +19,11 @@ DEFAULTS = {
     "RECOMMENDATION_SIGNAL_CAP_PER_MINUTE": 30,
     "RECOMMENDATION_SPACE_CACHE_TTL": 3600,
     "RECOMMENDATION_N_BINS": 5,
+    "RECOMMENDATION_SEMANTIC_DIMENSIONS": 10,
+    "RECOMMENDATION_SEMANTIC_N_FEATURES": 1024,
+    "RECOMMENDATION_SEMANTIC_NGRAM_MIN": 2,
+    "RECOMMENDATION_SEMANTIC_NGRAM_MAX": 4,
+    "RECOMMENDATION_SEMANTIC_RANDOM_STATE": 0,
 }
 
 
@@ -68,3 +73,22 @@ def space_cache_ttl():
 
 def n_bins():
     return int(_value("RECOMMENDATION_N_BINS"))
+
+
+def semantic_dimensions():
+    return int(_value("RECOMMENDATION_SEMANTIC_DIMENSIONS"))
+
+
+def semantic_n_features():
+    return int(_value("RECOMMENDATION_SEMANTIC_N_FEATURES"))
+
+
+def semantic_ngram_range():
+    return (
+        int(_value("RECOMMENDATION_SEMANTIC_NGRAM_MIN")),
+        int(_value("RECOMMENDATION_SEMANTIC_NGRAM_MAX")),
+    )
+
+
+def semantic_random_state():
+    return int(_value("RECOMMENDATION_SEMANTIC_RANDOM_STATE"))

@@ -31,6 +31,7 @@ class PlanFeatureMapper:
         return {
             "id": record.get("id"),
             "published_at": record.get("published_at") or "",
+            "title": self._text(values, "plan_name", "title", "name") or "",
             "price": self._number(values, "price_amount", "price"),
             "cpu": normalize_resource_value("cpu", values),
             "ram": normalize_resource_value("ram", values),

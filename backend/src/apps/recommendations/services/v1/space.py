@@ -6,7 +6,11 @@ compared on attributes it actually declares.
 
 from __future__ import annotations
 
+import hashlib
+
 import numpy as np
+
+from apps.recommendations.services.v1.semantic import SemanticEncoder
 
 
 class NumericBinner:
@@ -47,8 +51,10 @@ class PlanSpace:
         self.binners = {}
         self.categories = {}
         self.names = []
+        self.semantic = SemanticEncoder()
 
     def fit(self, features):
+        self.semantic.fit([item.get("title") for item in features])
         for field in self.NUMERIC:
             self.binners[field] = NumericBinner(
                 [item.get(field) for item in features], self.n_bins
@@ -66,6 +72,7 @@ class PlanSpace:
         for field in self.CATEGORICAL:
             names.append(f"has_{field}")
             names.extend(f"{field}={value}" for value in self.categories[field])
+        names.extend(f"semantic_{index}" for index in range(self.semantic.dimensions))
         return names
 
     def transform(self, features):
@@ -89,6 +96,11 @@ class PlanSpace:
                 for category in self.categories[field]:
                     values.append(1.0 if value == category else 0.0)
                     mask.append(1.0 if present else 0.0)
+            semantic_values, semantic_masks = self.semantic.transform(
+                [item.get("title")]
+            )
+            values.extend(semantic_values[0].tolist())
+            mask.extend(semantic_masks[0].tolist())
             rows.append(values)
             masks.append(mask)
         return np.asarray(rows, float), np.asarray(masks, float)
@@ -105,4 +117,14 @@ class PlanSpace:
         stamps = [item.get("published_at") for item in features if item.get("published_at")]
         latest = max(stamps) if stamps else ""
         safe = "".join(ch for ch in str(latest) if ch.isalnum())
-        return f"{safe}-{len(features)}"
+        titles = "|".join(
+            f"{item.get('id')}:{item.get('title') or ''}" for item in features
+        )
+        digest = hashlib.sha1(titles.encode("utf-8")).hexdigest()[:12]
+        semantic = self.semantic
+        config = (
+            f"{semantic.dimensions}-{semantic.n_features}-"
+            f"{semantic.ngram_range[0]}-{semantic.ngram_range[1]}-"
+            f"{semantic.random_state}"
+        )
+        return f"{safe}-{len(features)}-{digest}-{config}"

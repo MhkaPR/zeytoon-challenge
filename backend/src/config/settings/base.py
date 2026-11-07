@@ -479,6 +479,27 @@ CONSTANCE_CONFIG = {
     "SOCIAL_TELEGRAM_URL": ("https://telegram.org", "Telegram profile URL."),
     "SOCIAL_LINKEDIN_URL": ("https://linkedin.com", "LinkedIn profile URL."),
     "SOCIAL_GITHUB_URL": ("https://github.com", "GitHub profile URL."),
+    # Recommendation space expansion (spec 006).
+    "RECOMMENDATION_SEMANTIC_DIMENSIONS": (
+        10,
+        "Semantic dimensions appended to the recommendation plan space.",
+    ),
+    "RECOMMENDATION_SEMANTIC_N_FEATURES": (
+        1024,
+        "Hashing vector size used for plan-title semantic components.",
+    ),
+    "RECOMMENDATION_SEMANTIC_NGRAM_MIN": (
+        2,
+        "Minimum character n-gram for plan-title hashing.",
+    ),
+    "RECOMMENDATION_SEMANTIC_NGRAM_MAX": (
+        4,
+        "Maximum character n-gram for plan-title hashing.",
+    ),
+    "RECOMMENDATION_SEMANTIC_RANDOM_STATE": (
+        0,
+        "Random state for deterministic PCA fitting.",
+    ),
 }
 
 
