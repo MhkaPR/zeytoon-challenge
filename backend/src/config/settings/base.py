@@ -10,6 +10,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -219,6 +220,7 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", ["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (*default_headers, "x-visitor-id")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", list(CORS_ALLOWED_ORIGINS))
 
 # The refresh cookie is httpOnly/Secure; CSRF uses Django's double-submit token.
