@@ -67,3 +67,12 @@ print(len(InterestProfile.objects.get(visitor_id=v).position))
 
 Expected: `3` clusters when the sample plans exist, so python, node, and email stay
 represented.
+
+## 6. Rebuild clusters from historical signals
+
+```bash
+uv run python backend/src/manage.py rebuild_interest_clusters --visitor-id <visitor-uuid>
+```
+
+Expected: the profile is replayed from its recorded signals and prints one line with the
+resulting cluster count. Use `--dry-run` to inspect without saving.

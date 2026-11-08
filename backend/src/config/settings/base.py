@@ -501,7 +501,7 @@ CONSTANCE_CONFIG = {
         "Random state for deterministic PCA fitting.",
     ),
     "RECOMMENDATION_MAX_INTEREST_CLUSTERS": (
-        3,
+        4,
         "Maximum number of separate interests kept per viewer profile.",
     ),
     "RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD": (

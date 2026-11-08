@@ -89,7 +89,7 @@ class SignalRecorder:
 
     @staticmethod
     def _state(profile, bundle):
-        return InterestClusters.from_profile(profile, bundle)
+        return InterestClusters.from_profile(profile, bundle, cold_start=False)
 
     @staticmethod
     def _save(profile, state, version):

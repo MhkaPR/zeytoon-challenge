@@ -22,11 +22,12 @@ export default async function SearchPage({
   const params = await searchParams;
   const raw = params.q;
   const query = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
+  const vid = await visitorId();
   const [ot, plansPage] = await Promise.all([
     getTranslations(),
     getPlansPage(
       { ...(query ? { q: query } : {}), sort: "relevance", page_size: "12" },
-      { visitorId: await visitorId() },
+      { visitorId: vid },
     ),
   ]);
 
@@ -57,6 +58,7 @@ export default async function SearchPage({
         headerAction={null}
         key={query}
         plansPage={plansPage}
+        visitorId={vid}
         searchParams={params}
         showServiceTabs={false}
         sortOptions={SEARCH_SORT_OPTIONS}

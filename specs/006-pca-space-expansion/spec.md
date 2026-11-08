@@ -100,12 +100,14 @@ three themes.
 - **FR-008**: A failed refresh MUST NOT replace the last working space.
 - **FR-009**: The feature MUST NOT change the public catalogue or signal API.
 - **FR-010**: Existing feature 005 ranking, sorting, pagination, and signal behaviour MUST keep working.
-- **FR-011**: A viewer profile MUST store up to a configurable maximum number of interest clusters (default three).
+- **FR-011**: A viewer profile MUST store up to a configurable maximum number of interest clusters (default four).
 - **FR-012**: A signal MUST update the nearest existing interest cluster when it is within the configured distance threshold.
 - **FR-013**: A signal farther than the threshold from every cluster MUST create a new cluster until the maximum is reached.
 - **FR-014**: When the maximum is reached, the least confident cluster MUST be replaced so the profile stays bounded.
 - **FR-015**: Ranking MUST use the minimum distance across all of a viewer's interest clusters.
 - **FR-016**: A legacy profile stored as one flat position vector MUST be read as a single cluster without a data migration.
+- **FR-017**: Client-side pagination MUST preserve the visitor identity so page two continues the same personalized order.
+- **FR-018**: A maintenance command MUST be able to rebuild interest clusters from a profile's recorded signals.
 
 ### Key Entities
 
@@ -125,6 +127,8 @@ three themes.
 - **SC-005**: A failed refresh leaves the previous order unchanged in 100% of observed requests.
 - **SC-006**: After signals for three distinct themes, the top catalogue results include plans from all three themes in 100% of observed loads.
 - **SC-007**: A profile never holds more than the configured maximum number of interest clusters.
+- **SC-008**: Page two of a personalized catalogue contains no plans from page one and follows the same visitor's order.
+- **SC-009**: Rebuilding a profile from its recorded signals restores every distinct theme that fits within the cluster cap.
 
 ## Assumptions
 
@@ -133,7 +137,7 @@ three themes.
 - Ten dimensions are added, not substituted.
 - The existing cache is reused; no new datastore is introduced.
 - Outdated profiles are reset to the cold-start prior; no data migration is needed.
-- The default maximum number of interest clusters is three; operators can change it.
+- The default maximum number of interest clusters is four; operators can change it.
 - A flat legacy profile is treated as one cluster.
 
 ## Dependencies

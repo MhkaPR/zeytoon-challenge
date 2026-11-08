@@ -86,7 +86,7 @@ class InterestClusters:
         ]
 
     @classmethod
-    def from_profile(cls, profile, bundle):
+    def from_profile(cls, profile, bundle, cold_start=True):
         dimensions = bundle["values"].shape[1]
         if (
             profile is not None
@@ -94,7 +94,9 @@ class InterestClusters:
             and cls._matches(profile.position, dimensions)
         ):
             return cls(profile.position, profile.uncertainty)
-        return cls(bundle["space"].prior(bundle["values"], bundle["masks"]))
+        if cold_start:
+            return cls(bundle["space"].prior(bundle["values"], bundle["masks"]))
+        return cls([])
 
     @staticmethod
     def _matches(position, dimensions):

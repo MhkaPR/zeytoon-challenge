@@ -62,6 +62,9 @@ backend/src/apps/recommendations/
 │   ├── state.py                             # MODIFIED: InterestClusters
 │   ├── ranking.py                           # MODIFIED: min distance across clusters
 │   └── signals.py                           # MODIFIED: update nearest cluster
+├── management/commands/
+│   ├── refresh_recommendation_space.py      # existing
+│   └── rebuild_interest_clusters.py         # NEW: replay historical signals
 └── tests/
     ├── test_semantic.py                     # NEW
     ├── test_space.py                        # MODIFIED
@@ -70,12 +73,21 @@ backend/src/apps/recommendations/
     └── test_ranking.py                      # MODIFIED: multi-theme ranking
 
 backend/src/config/settings/base.py          # MODIFIED: constance defaults
+backend/src/apps/catalog/views/v1/catalog.py # MODIFIED: visitor cookie fallback
+frontend/src/features/home/PlanCatalog.tsx   # MODIFIED: forward visitor id on paging
+frontend/src/features/home/MainBody.tsx      # MODIFIED: pass visitor id
+frontend/app/page.tsx                        # MODIFIED: pass visitor id
+frontend/app/companies/[domain]/page.tsx     # MODIFIED: pass visitor id
+frontend/app/search/page.tsx                 # MODIFIED: pass visitor id
 pyproject.toml                               # MODIFIED: scikit-learn
 ```
 
 **Structure Decision**: Everything stays in the existing recommendations app.
 `InterestProfile.position` and `.uncertainty` become lists of cluster vectors; a flat
 legacy list is read as one cluster. Ranking takes the minimum distance across clusters.
+Pagination forwards the visitor id from the server render so client-side page changes
+stay personalized, and a maintenance command replays historical signals to rebuild
+clusters after the state format changes.
 
 ## Complexity Tracking
 

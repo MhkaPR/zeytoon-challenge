@@ -75,6 +75,7 @@ export type PlanCatalogToolbarContext = {
 
 export type PlanCatalogProps = {
   plansPage: PlansPage;
+  visitorId?: string;
   searchParams?: Record<string, string | string[] | undefined>;
   baseParams?: Record<string, string | string[] | undefined>;
   loading?: boolean;
@@ -275,6 +276,7 @@ class RequestTracker {
 
 export function PlanCatalog({
   plansPage,
+  visitorId,
   searchParams = {},
   baseParams = {},
   loading = false,
@@ -337,7 +339,7 @@ export function PlanCatalog({
     const request = requestTracker.next();
     setIsFetching(true);
     try {
-      const next = await getPlansPage({
+      const params = {
         ...baseParams,
         ...buildParams({
           type: nextType,
@@ -346,7 +348,10 @@ export function PlanCatalog({
           page: nextPage,
           pageSize: nextPageSize,
         }),
-      });
+      };
+      const next = visitorId
+        ? await getPlansPage(params, { visitorId })
+        : await getPlansPage(params);
       if (!requestTracker.isCurrent(request)) return;
       setData(next);
       setPage(next.page || nextPage);

@@ -72,6 +72,24 @@ class RelatedSortTests(TestCase):
         overlap = set(self.ids(first)) & set(self.ids(second))
         self.assertEqual(overlap, set())
 
+    def test_cookie_visitor_keeps_personalized_pagination(self):
+        record = self.plans[0]
+        visitor = uuid.uuid4()
+        dim = self._dim()
+        InterestProfile.objects.create(
+            visitor_id=visitor,
+            position=[0.0] * dim,
+            uncertainty=[0.1] * dim,
+            space_version=self._version(),
+        )
+        self.client.cookies["visitor_id"] = str(visitor)
+        first = self.client.get("/api/v1/catalog/plans?page=1&page_size=3")
+        second = self.client.get("/api/v1/catalog/plans?page=2&page_size=3")
+        first_ids = self.ids(first)
+        second_ids = self.ids(second)
+        self.assertEqual(first_ids[0], record.pk)
+        self.assertEqual(set(first_ids) & set(second_ids), set())
+
     def test_price_sorts_ignore_visitor(self):
         ascending = self.client.get("/api/v1/catalog/plans?sort=price")
         descending = self.client.get("/api/v1/catalog/plans?sort=expensive")

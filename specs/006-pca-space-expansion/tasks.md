@@ -114,11 +114,25 @@ clusters, and confirm the top catalogue results include all three themes.
 
 ### Implementation for User Story 3
 
-- [X] T023 [US3] Add `RECOMMENDATION_MAX_INTEREST_CLUSTERS` (3) and `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD` (0.2) to `backend/src/config/settings/base.py` and getters to `backend/src/apps/recommendations/conf.py`
+- [X] T023 [US3] Add `RECOMMENDATION_MAX_INTEREST_CLUSTERS` (4) and `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD` (0.2) to `backend/src/config/settings/base.py` and getters to `backend/src/apps/recommendations/conf.py`
 - [X] T024 [US3] Implement `InterestClusters` in `backend/src/apps/recommendations/services/v1/state.py`: parse flat or nested positions, update the nearest cluster, create a cluster beyond the threshold, evict the least confident cluster at the cap, and expose positions/uncertainties
 - [X] T025 [US3] Update `backend/src/apps/recommendations/services/v1/ranking.py` to build `InterestClusters` from the profile and rank by the minimum distance across clusters
 - [X] T026 [US3] Update `backend/src/apps/recommendations/services/v1/signals.py` to save nested cluster positions and uncertainties while keeping the signal cap and search-centroid behaviour
 - [X] T027 [US3] Run `uv run pytest backend/src/apps/recommendations/tests backend/src/apps/catalog/tests -q` and fix failures
+
+---
+
+## Phase 7: Fixes - Pagination identity and historical cluster rebuild
+
+**Goal**: Personalized page changes keep the visitor identity, and profiles recorded
+before clusters existed can be rebuilt from their signals.
+
+- [X] T028 Add a `visitor_id` cookie fallback in `PublishedPlansViewSet._visitor_id` in `backend/src/apps/catalog/views/v1/catalog.py`
+- [X] T029 [P] Add a `visitorId` prop to `frontend/src/features/home/PlanCatalog.tsx` and pass it to `getPlansPage` in `loadPage`
+- [X] T030 [P] Pass the server visitor id through `frontend/src/features/home/MainBody.tsx`, `frontend/app/page.tsx`, `frontend/app/companies/[domain]/page.tsx`, and `frontend/app/search/page.tsx`
+- [X] T031 Add `backend/src/apps/recommendations/management/commands/rebuild_interest_clusters.py` to replay each profile's signals through `InterestClusters` and save the result
+- [X] T032 [P] Add tests in `backend/src/apps/catalog/tests/test_related_sort.py` for cookie-based pagination and in `backend/src/apps/recommendations/tests/test_tasks.py` for rebuilding clusters from signals
+- [X] T033 Run `uv run pytest backend/src/apps/recommendations/tests backend/src/apps/catalog/tests -q` and rebuild the local profile clusters
 
 ---
 

@@ -21,6 +21,7 @@ import {SiteConfig} from "@/src/lib/config/siteConfig";
 export function MainBody({
   brandLogo,
   plansPage,
+  visitorId,
   recentCompanies,
   loading = false,
   searchParams,
@@ -28,6 +29,7 @@ export function MainBody({
 }: {
   brandLogo?: ReactNode;
   plansPage: PlansPage;
+  visitorId?: string;
   recentCompanies: RecentPublicCompany[];
   loading?: boolean;
   searchParams: Record<string, string | string[] | undefined>;
@@ -71,6 +73,7 @@ export function MainBody({
               loading={loading}
               plansPage={plansPage}
               searchParams={searchParams}
+              visitorId={visitorId}
             />
           </section>
           <section className="scroll-mt-[80px]" id="providers">

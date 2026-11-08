@@ -11,11 +11,12 @@ type Props = { params: Promise<{ domain: string }> };
 export default async function CompanyPublicPage({ params }: Props) {
   const { domain } = await params;
   const decodedDomain = decodeURIComponent(domain);
+  const vid = await visitorId();
   const [ot, plansPage] = await Promise.all([
     getTranslations(),
     getPlansPage(
       { domain: decodedDomain, page_size: "12" },
-      { visitorId: await visitorId() },
+      { visitorId: vid },
     ),
   ]);
   const companyName = plansPage.plans[0]?.company_name ?? decodedDomain;
@@ -37,6 +38,7 @@ export default async function CompanyPublicPage({ params }: Props) {
         }
         headerAction={null}
         plansPage={plansPage}
+        visitorId={vid}
         showServiceTabs={false}
         title={ot("publishedPlansTitle")}
       />

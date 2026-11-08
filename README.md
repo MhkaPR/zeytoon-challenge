@@ -249,6 +249,13 @@ Run the command from cron (daily by default). It enqueues the refresh; the task 
 space and writes it under its version key. A failed refresh leaves the previous key
 intact.
 
+After a state-format change, rebuild a profile's interest clusters from its recorded
+signals:
+
+```bash
+cd backend/src && python manage.py rebuild_interest_clusters --visitor-id <uuid>
+```
+
 ### Frontend
 
 | Variable | Purpose | Default |

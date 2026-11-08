@@ -128,7 +128,9 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
 
     @staticmethod
     def _visitor_id(request):
-        raw = request.headers.get("X-Visitor-Id", "")
+        raw = request.headers.get("X-Visitor-Id") or request.COOKIES.get(
+            "visitor_id", ""
+        )
         try:
             return uuid.UUID(raw)
         except (ValueError, AttributeError, TypeError):
