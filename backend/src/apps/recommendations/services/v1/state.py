@@ -134,18 +134,19 @@ class InterestClusters:
             state.update(values, masks, noise, sign)
             self.states.append(state)
             return
+
         state, distance = self.nearest(values, masks)
         if distance <= self.threshold:
             state.update(values, masks, noise, sign)
             return
+
         new_state = UserState(values)
         new_state.update(values, masks, noise, sign)
         self.states.append(new_state)
+
         if len(self.states) > self.max_clusters:
-            worst = max(
-                range(len(self.states)),
-                key=lambda index: float(np.mean(self.states[index].s)),
-            )
+            pool = self.states[:-1]
+            worst = max(range(len(pool)), key=lambda i: float(np.mean(pool[i].s)))
             self.states.pop(worst)
 
     def distances(self, values, masks):
