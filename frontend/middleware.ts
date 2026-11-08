@@ -27,5 +27,11 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  // Skip only real static assets, not dynamic segments that contain a dot (for example
+  // ``/companies/example.com``). A blanket ``.*\..*`` exclusion also skipped company pages,
+  // so they rendered without an ``x-visitor-id`` header and the "recommended for you" order
+  // fell back to the cold-start ranking until the client refetched with the visitor cookie.
+  matcher: [
+    "/((?!api|_next|favicon.ico|.*\\.(?:ico|png|jpe?g|gif|svg|webp|avif|css|js|mjs|map|txt|xml|json|woff2?|ttf|otf)$).*)",
+  ],
 };
