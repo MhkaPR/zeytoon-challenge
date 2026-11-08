@@ -64,7 +64,7 @@ def test_outdated_profile_is_rebuilt():
 
 
 @pytest.mark.django_db
-def test_multiple_themes_are_kept_and_ranked_by_recent_activity():
+def test_multiple_themes_are_kept_and_ranked():
     titles = [
         "python10",
         "python20",
@@ -105,20 +105,22 @@ def test_multiple_themes_are_kept_and_ranked_by_recent_activity():
         visitor_id=visitor,
     )
     by_id = {record.pk: record.values["plan_name"] for record in records}
-    top = [by_id[plan_id] for plan_id in ordered]
-    assert all(title.startswith("Email") for title in top[:4])
+    top = [by_id[plan_id] for plan_id in ordered[:6]]
+    assert any(title.startswith("python") for title in top)
+    assert any("nodejs" in title for title in top)
+    assert any(title.startswith("Email") for title in top)
 
-    # Revisiting the oldest theme promotes it above the others.
-    recorder.record(
-        plan_records,
-        "destination_visit",
-        [records[0].pk],
-        visitor_id=visitor,
+
+@pytest.mark.django_db
+def test_suggest_returns_twenty_ranked_plans():
+    records = catalog(
+        *[
+            {"price_amount": 10 + index, "plan_name": f"plan {index}"}
+            for index in range(25)
+        ]
     )
-    ordered = RankingService().rank(
-        plan_records,
-        [record.pk for record in records],
-        visitor_id=visitor,
-    )
-    top = [by_id[plan_id] for plan_id in ordered]
-    assert all(title.startswith("python") for title in top[:4])
+    plan_records = CatalogInterface.published_plan_records()
+    suggested = RankingService().suggest(plan_records, limit=20)
+    assert len(suggested) == 20
+    assert len(set(suggested)) == 20
+    assert set(suggested).issubset({record.pk for record in records})

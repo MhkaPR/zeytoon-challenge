@@ -18,12 +18,12 @@ class RecommendationsInterface:
         )
 
     @staticmethod
-    def suggest(records, visitor_id=None, user=None, per_cluster=5):
+    def suggest(records, visitor_id=None, user=None, limit=20):
         return RankingService().suggest(
             records,
             visitor_id=visitor_id,
             user=user,
-            per_cluster=per_cluster,
+            limit=limit,
         )
 
     @staticmethod

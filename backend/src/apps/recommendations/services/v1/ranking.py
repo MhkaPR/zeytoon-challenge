@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 from apps.recommendations.models import InterestProfile
 from apps.recommendations.services.v1.recommender import Recommender
 from apps.recommendations.services.v1.state import InterestClusters
@@ -28,47 +26,26 @@ class RankingService:
 
         profile = self._profile(visitor_id, user)
         clusters = InterestClusters.from_profile(profile, bundle)
-        nearest, distances = clusters.nearest_clusters(
+        distances = clusters.distances(
             bundle["values"][candidates], bundle["masks"][candidates]
         )
-        cluster_ranks = clusters.cluster_ranks(nearest, distances)
-        ordered = self.recommender.order_by_cluster(
+        ordered = self.recommender.order(
             [bundle["ids"][index] for index in candidates],
             distances,
             [bundle["published_at"][index] for index in candidates],
-            cluster_ranks,
         )
         return ordered
 
-    def suggest(self, records, visitor_id=None, user=None, per_cluster=5):
-        """Return the most relevant plans from each cluster, newest activity first."""
+    def suggest(self, records, visitor_id=None, user=None, limit=20):
+        """Return the top ranked plans, using the cold-start prior when new."""
         bundle = self.provider.load(records)
         profile = self._profile(visitor_id, user)
-        clusters = InterestClusters.from_profile(profile, bundle, cold_start=False)
-        if not clusters.states:
-            return []
-
-        matrix = clusters.cluster_distances(bundle["values"], bundle["masks"])
-        plan_ids = bundle["ids"]
-        published_at = bundle["published_at"]
-        suggested = []
-        seen = set()
-        for cluster_index in clusters.activity_order():
-            distances = matrix[:, cluster_index]
-            rows = [
-                index for index in range(len(plan_ids)) if np.isfinite(distances[index])
-            ]
-            ordered = self.recommender.order(
-                [plan_ids[index] for index in rows],
-                [distances[index] for index in rows],
-                [published_at[index] for index in rows],
-            )
-            for plan_id in ordered[: max(int(per_cluster), 0)]:
-                if plan_id in seen:
-                    continue
-                seen.add(plan_id)
-                suggested.append(plan_id)
-        return suggested
+        clusters = InterestClusters.from_profile(profile, bundle)
+        distances = clusters.distances(bundle["values"], bundle["masks"])
+        ordered = self.recommender.order(
+            bundle["ids"], distances, bundle["published_at"]
+        )
+        return ordered[: max(int(limit), 0)]
 
     @staticmethod
     def _profile(visitor_id, user):

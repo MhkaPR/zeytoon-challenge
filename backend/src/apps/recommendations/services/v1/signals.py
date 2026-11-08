@@ -95,7 +95,6 @@ class SignalRecorder:
     def _save(profile, state, version):
         profile.position = state.positions
         profile.uncertainty = state.uncertainties
-        profile.activity_profile = state.activity
         profile.space_version = version
         profile.signal_count += 1
         profile.last_signal_at = timezone.now()
@@ -103,7 +102,6 @@ class SignalRecorder:
             update_fields=(
                 "position",
                 "uncertainty",
-                "activity_profile",
                 "space_version",
                 "signal_count",
                 "last_signal_at",

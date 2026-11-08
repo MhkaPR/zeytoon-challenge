@@ -99,7 +99,7 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
     @extend_schema(responses={200: PublicPlanSerializer(many=True)})
     @action(detail=False, methods=["get"], url_path="suggested")
     def suggested(self, request):
-        """Most relevant plans from each interest cluster, by recent activity."""
+        """Top 20 plans ranked by distance to the viewer's preference."""
         plan_ids = RecommendationsInterface.suggest(
             CatalogInterface.published_plan_records(),
             visitor_id=self._visitor_id(request),

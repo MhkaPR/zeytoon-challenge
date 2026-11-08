@@ -29,22 +29,6 @@ class Recommender:
         rows.sort(key=lambda row: (row[1], -row[2], row[3]))
         return [row[0] for row in rows]
 
-    @staticmethod
-    def order_by_cluster(plan_ids, distances, published_at, cluster_ranks):
-        """Order by cluster recency, then distance, newest, and id.
-
-        ``cluster_ranks`` holds a zero-based rank per plan where lower means the
-        cluster was active more recently. Plans without a usable cluster sort last.
-        """
-        rows = [
-            (plan_id, int(rank), float(distance), _epoch(stamp), plan_id)
-            for plan_id, distance, stamp, rank in zip(
-                plan_ids, distances, published_at, cluster_ranks
-            )
-        ]
-        rows.sort(key=lambda row: (row[1], row[2], -row[3], row[4]))
-        return [row[0] for row in rows]
-
 
 def _epoch(value):
     """Convert an ISO timestamp to an epoch float; unknown values sort oldest."""

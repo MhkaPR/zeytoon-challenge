@@ -66,17 +66,13 @@ class RelatedSortTests(TestCase):
         self.assertEqual(personalized.status_code, 200)
         self.assertEqual(self.ids(anonymous), self.ids(personalized))
 
-    def test_suggested_plans_rank_cluster_by_recent_activity(self):
+    def test_suggested_plans_are_ranked(self):
         visitor = uuid.uuid4()
         dim = self._dim()
         InterestProfile.objects.create(
             visitor_id=visitor,
             position=[[1.0] * dim, [0.0] * dim],
             uncertainty=[[0.1] * dim, [0.1] * dim],
-            activity_profile=[
-                "2026-01-01T00:00:00+00:00",
-                "2026-06-01T00:00:00+00:00",
-            ],
             space_version=self._version(),
         )
         response = self.client.get(
@@ -87,10 +83,12 @@ class RelatedSortTests(TestCase):
         self.assertEqual(set(ids), {plan.pk for plan in self.plans})
         self.assertEqual(len(ids), len(set(ids)))
 
-    def test_suggested_plans_empty_without_profile(self):
+    def test_suggested_plans_exist_without_profile(self):
         response = self.client.get("/api/v1/catalog/plans/suggested")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.ids(response), [])
+        ids = self.ids(response)
+        self.assertEqual(set(ids), {plan.pk for plan in self.plans})
+        self.assertEqual(len(ids), len(set(ids)))
 
     def test_pages_do_not_repeat(self):
         first = self.client.get("/api/v1/catalog/plans?page=1&page_size=3")
