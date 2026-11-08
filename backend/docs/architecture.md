@@ -83,8 +83,9 @@ Rules enforced by the codebase:
 - Views call services/selectors; business rules do not live in views.
 - API input is validated by DRF serializers, never Pydantic. Pydantic is used only for
   LLM structured output inside `pipeline`.
-- Cross-app access goes through the owning app's `interfaces.py`. Other apps must not
-  query another app's tables directly.
+- Cross-app access is intended to go through the owning app's `interfaces.py`. One known
+  exception is the company manual-links endpoint, which directly creates a pipeline `Site`
+  and enqueues pipeline work; it is documented in `companies/architecture.md`.
 - The ORM is used directly; there is no repository abstraction.
 - All models inherit `apps.utils.models.TimestampedModel`, which provides timestamps and
   soft delete.
