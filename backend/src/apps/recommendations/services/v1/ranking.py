@@ -31,12 +31,14 @@ class RankingService:
         else:
             profile = None
         clusters = InterestClusters.from_profile(profile, bundle)
-        distances = clusters.distances(
+        nearest, distances = clusters.nearest_clusters(
             bundle["values"][candidates], bundle["masks"][candidates]
         )
-        ordered = self.recommender.order(
+        cluster_ranks = clusters.cluster_ranks(nearest, distances)
+        ordered = self.recommender.order_by_cluster(
             [bundle["ids"][index] for index in candidates],
             distances,
             [bundle["published_at"][index] for index in candidates],
+            cluster_ranks,
         )
         return ordered

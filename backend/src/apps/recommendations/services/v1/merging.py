@@ -32,6 +32,7 @@ class StateMerger:
                     user=user,
                     position=visitor.position,
                     uncertainty=visitor.uncertainty,
+                    cluster_activity=visitor.cluster_activity,
                     space_version=visitor.space_version,
                     signal_count=visitor.signal_count,
                     last_signal_at=visitor.last_signal_at,

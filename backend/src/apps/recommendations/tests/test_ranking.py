@@ -64,7 +64,7 @@ def test_outdated_profile_is_rebuilt():
 
 
 @pytest.mark.django_db
-def test_multiple_themes_are_kept_and_ranked():
+def test_multiple_themes_are_kept_and_ranked_by_recent_activity():
     titles = [
         "python10",
         "python20",
@@ -105,7 +105,20 @@ def test_multiple_themes_are_kept_and_ranked():
         visitor_id=visitor,
     )
     by_id = {record.pk: record.values["plan_name"] for record in records}
-    top = [by_id[plan_id] for plan_id in ordered[:6]]
-    assert any(title.startswith("python") for title in top)
-    assert any("nodejs" in title for title in top)
-    assert any(title.startswith("Email") for title in top)
+    top = [by_id[plan_id] for plan_id in ordered]
+    assert all(title.startswith("Email") for title in top[:4])
+
+    # Revisiting the oldest theme promotes it above the others.
+    recorder.record(
+        plan_records,
+        "destination_visit",
+        [records[0].pk],
+        visitor_id=visitor,
+    )
+    ordered = RankingService().rank(
+        plan_records,
+        [record.pk for record in records],
+        visitor_id=visitor,
+    )
+    top = [by_id[plan_id] for plan_id in ordered]
+    assert all(title.startswith("python") for title in top[:4])

@@ -2,8 +2,8 @@
 
 import uuid
 
-from django.utils import timezone
 from django.db.models import Count
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
@@ -26,6 +26,10 @@ from apps.catalog.serializers.v1.catalog import (
 )
 from apps.core.site_config import public_site_config
 from apps.utils.views import EnvelopeListViewSet
+
+
+# Sorts handled by the standard DRF/filterset pipeline.
+_DEFAULT_SORTS = frozenset({"price", "expensive", "relevance"})
 
 
 class SiteConfigViewSet(GenericViewSet):
@@ -55,17 +59,19 @@ class PublishedCompaniesViewSet(EnvelopeListViewSet):
         search = self.request.query_params.get("q", "").strip()
         if search:
             needle = search.casefold()
-            site_ids = [
+            matching_sites = {
                 site.pk
                 for site in PipelineInterface.all_sites()
                 if needle in site.domain.casefold()
                 or needle in site.company.company_name.casefold()
-            ]
-            queryset = queryset.filter(site__in=site_ids)
+            }
+            queryset = queryset.filter(site__in=matching_sites)
         return queryset
 
     def serialize_page(self, rows):
         rows = list(rows)
+        if not rows:
+            return PublicCompanySerializer([], many=True).data
         sites = PipelineInterface.public_site_details(
             [row["site"] for row in rows]
         )
@@ -97,28 +103,41 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
     def list(self, request, *args, **kwargs):
         """Related sort ranks the whole filtered set before pagination."""
         sort = request.query_params.get("sort")
-        if sort in ("price", "expensive", "relevance"):
+        if sort in _DEFAULT_SORTS:
             return super().list(request, *args, **kwargs)
 
         queryset = self.filter_queryset(self.get_queryset())
-        records = list(queryset)
-        if not records:
+        record_ids = list(queryset.values_list("pk", flat=True))
+        if not record_ids:
             return super().list(request, *args, **kwargs)
 
         visitor_id = self._visitor_id(request)
-        ordered_ids = RecommendationsInterface.rank(
+        ranked_ids = RecommendationsInterface.rank(
             CatalogInterface.published_plan_records(),
-            [record.pk for record in records],
+            record_ids,
             visitor_id=visitor_id,
             user=request.user if request.user.is_authenticated else None,
         )
-        by_id = {record.pk: record for record in records}
-        ordered = [by_id[plan_id] for plan_id in ordered_ids if plan_id in by_id]
-        seen = {record.pk for record in ordered}
-        ordered.extend(record for record in records if record.pk not in seen)
 
-        page = self.paginate_queryset(ordered)
-        instances = page if page is not None else ordered
+        known_ids = set(record_ids)
+        ordered_ids = [pid for pid in ranked_ids if pid in known_ids]
+        if len(ordered_ids) < len(record_ids):
+            seen = set(ordered_ids)
+            ordered_ids.extend(
+                pid for pid in record_ids if pid not in seen
+            )
+
+        page = self.paginate_queryset(ordered_ids)
+        page_ids = page if page is not None else ordered_ids
+
+        # Fetch only the records that actually make it onto the page.
+        records_by_id = PublishedRecord.objects.in_bulk(page_ids)
+        instances = [
+            records_by_id[pid] for pid in page_ids if pid in records_by_id
+        ]
+
+
+
         data = self.serialize_page(instances)
         if page is None:
             return Response(data)
@@ -138,6 +157,8 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
 
     def serialize_page(self, records):
         records = list(records)
+        if not records:
+            return PublicPlanSerializer([], many=True).data
         sites = PipelineInterface.public_site_details(
             [record.site for record in records]
         )
@@ -176,25 +197,17 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
 
     @staticmethod
     def _facets(queryset):
-        records = list(queryset.values("site", "values"))
-        sites = PipelineInterface.public_site_details(
-            [record["site"] for record in records]
-        )
-        companies = sorted(
-            {
-                site["company_name"]
-                for record in records
-                if (site := sites.get(record["site"])) is not None
-            },
-            key=str.casefold,
-        )
+        site_ids: set[int] = set()
         operating_systems: set[str] = set()
         locations: set[str] = set()
         resources: dict[str, set[float]] = {
             key: set() for key in RESOURCE_ALIASES
         }
-        for record in records:
-            values = record["values"] or {}
+
+        # Stream values instead of materialising the whole list.
+        for site_id, values in queryset.values_list("site", "values"):
+            site_ids.add(site_id)
+            values = values or {}
             for key in ("os", "operating_system"):
                 if values.get(key):
                     operating_systems.add(str(values[key]))
@@ -205,6 +218,16 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
                 normalized = normalize_resource_value(resource, values)
                 if normalized is not None:
                     resources[resource].add(normalized)
+
+        sites = PipelineInterface.public_site_details(list(site_ids))
+        companies = sorted(
+            {
+                site["company_name"]
+                for site_id in site_ids
+                if (site := sites.get(site_id)) is not None
+            },
+            key=str.casefold,
+        )
         return {
             "companies": companies,
             "operating_systems": sorted(operating_systems, key=str.casefold),
@@ -224,7 +247,9 @@ class RecentCompaniesViewSet(GenericViewSet):
     @action(detail=False, methods=["get"], url_path="companies/recent")
     def recent(self, request):
         now = timezone.localtime()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_start = now.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
         companies = PipelineInterface.public_recent_companies(month_start)
         return Response(
             {

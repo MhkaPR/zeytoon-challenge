@@ -15,3 +15,18 @@ def test_newest_wins_tie():
         ["2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z"],
     )
     assert ordered == [2, 1]
+
+
+def test_cluster_recency_outranks_publication_time():
+    ordered = Recommender.order_by_cluster(
+        [1, 2, 3, 4],
+        np.array([0.1, 0.1, 0.1, 0.1]),
+        [
+            "2026-01-01T00:00:00Z",
+            "2026-02-01T00:00:00Z",
+            "2026-03-01T00:00:00Z",
+            "2026-04-01T00:00:00Z",
+        ],
+        [1, 0, 1, 0],
+    )
+    assert ordered == [2, 4, 1, 3]

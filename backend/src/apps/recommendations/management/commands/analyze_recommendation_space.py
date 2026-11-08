@@ -12,7 +12,7 @@ from apps.pipeline.interfaces import PipelineInterface
 from apps.recommendations import conf
 from apps.recommendations.models import InterestProfile
 from apps.recommendations.services.v1.features import PlanFeatureMapper
-from apps.recommendations.services.v1.recommender import _epoch
+from apps.recommendations.services.v1.recommender import Recommender
 from apps.recommendations.services.v1.space import PlanSpace
 from apps.recommendations.services.v1.state import InterestClusters
 
@@ -172,13 +172,25 @@ class Command(BaseCommand):
 
     @staticmethod
     def _ranking(bundle, clusters, top):
-        distances = clusters.distances(bundle["values"], bundle["masks"])
-        rows = [
-            (plan_id, float(distances[index]), bundle["published_at"][index])
+        nearest, distances = clusters.nearest_clusters(
+            bundle["values"], bundle["masks"]
+        )
+        ranks = clusters.cluster_ranks(nearest, distances)
+        ordered = Recommender.order_by_cluster(
+            bundle["ids"], distances, bundle["published_at"], ranks
+        )
+        distance_of = {
+            plan_id: float(distances[index])
             for index, plan_id in enumerate(bundle["ids"])
+        }
+        published_of = {
+            plan_id: bundle["published_at"][index]
+            for index, plan_id in enumerate(bundle["ids"])
+        }
+        return [
+            (plan_id, distance_of[plan_id], published_of[plan_id])
+            for plan_id in ordered[: max(int(top), 0)]
         ]
-        rows.sort(key=lambda row: (row[1], -_epoch(row[2]), row[0]))
-        return rows[: max(int(top), 0)]
 
     def _print_space(self, bundle, profile, clusters):
         space = bundle["space"]
@@ -238,7 +250,8 @@ class Command(BaseCommand):
             nearest = np.argsort(per_plan)[:5]
             self._line(
                 f"  cluster {cluster_index}: mean_uncertainty="
-                f"{float(np.mean(state.s)):.3f}"
+                f"{float(np.mean(state.s)):.3f} "
+                f"last_active={clusters.activity[cluster_index]}"
             )
             for index in nearest:
                 plan_id = bundle["ids"][index]
@@ -315,6 +328,7 @@ class Command(BaseCommand):
                     "signal_count": profile.signal_count,
                     "clusters": clusters.positions,
                     "uncertainties": clusters.uncertainties,
+                    "activity": clusters.activity,
                 }
             ),
             "vectors": vectors,
