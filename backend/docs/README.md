@@ -9,6 +9,8 @@ documents are organized by concern and by Django app.
 |---|---|
 | [`architecture.md`](architecture.md) | System context, module layout, layering, cross-app contracts, persistence, and runtime services. |
 | [`workflow.md`](workflow.md) | End-to-end request and business workflows across the backend. |
+| [`pipeline-design.md`](pipeline-design.md) | Narrative design rationale for the site-maintenance pipeline: problem, idea, solution, and tradeoffs. |
+| [`recommendations-design.md`](recommendations-design.md) | Narrative design rationale for the recommendation system: problem, idea, solution, and tradeoffs. |
 
 ## App documents
 
