@@ -139,7 +139,7 @@ class InterestClusters:
             clusters = cls(
                 profile.position,
                 profile.uncertainty,
-                profile.cluster_activity,
+                profile.activity_profile,
             )
             clusters._hydrate_activity(profile, bundle)
             return clusters
@@ -240,18 +240,25 @@ class InterestClusters:
             result = np.minimum(result, _masked_distances(values, masks, state.x))
         return result
 
-    def nearest_clusters(self, values, masks):
-        """Return each plan's nearest cluster index and its distance."""
+    def cluster_distances(self, values, masks):
+        """Return a plan-by-cluster matrix of masked distances."""
         values = np.asarray(values, float)
         masks = np.asarray(masks, float)
         if not self.states:
+            return np.full((values.shape[0], 0), np.inf)
+        return np.column_stack(
+            [_masked_distances(values, masks, state.x) for state in self.states]
+        )
+
+    def nearest_clusters(self, values, masks):
+        """Return each plan's nearest cluster index and its distance."""
+        values = np.asarray(values, float)
+        matrix = self.cluster_distances(values, masks)
+        if matrix.shape[1] == 0:
             return (
                 np.zeros(values.shape[0], dtype=int),
                 np.full(values.shape[0], np.inf),
             )
-        matrix = np.column_stack(
-            [_masked_distances(values, masks, state.x) for state in self.states]
-        )
         indices = np.argmin(matrix, axis=1)
         distances = matrix[np.arange(matrix.shape[0]), indices]
         return indices, distances

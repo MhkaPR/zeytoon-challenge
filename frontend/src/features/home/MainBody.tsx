@@ -5,11 +5,16 @@ import { AboutTorb } from "./AboutTorb";
 import { FaqSection } from "./FaqSection";
 import { HomeFooter } from "./HomeFooter";
 import { PlanCatalog } from "./PlanCatalog";
+import { SuggestedPlans } from "./SuggestedPlans";
 import { HomeCtas } from "./HomeCtas";
 import { HowItWorks } from "./HowItWorks";
 import { RecentlyApproved } from "./RecentlyApproved";
 import { SearchBox } from "./SearchBox";
-import type { PlansPage, RecentPublicCompany } from "@/src/lib/api/publicCatalog";
+import type {
+  PlansPage,
+  PublicPlan,
+  RecentPublicCompany,
+} from "@/src/lib/api/publicCatalog";
 import {SiteConfig} from "@/src/lib/config/siteConfig";
 
 /**
@@ -21,6 +26,7 @@ import {SiteConfig} from "@/src/lib/config/siteConfig";
 export function MainBody({
   brandLogo,
   plansPage,
+  suggestedPlans,
   visitorId,
   recentCompanies,
   loading = false,
@@ -29,6 +35,7 @@ export function MainBody({
 }: {
   brandLogo?: ReactNode;
   plansPage: PlansPage;
+  suggestedPlans: PublicPlan[];
   visitorId?: string;
   recentCompanies: RecentPublicCompany[];
   loading?: boolean;
@@ -67,6 +74,7 @@ export function MainBody({
         </section>
 
         <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
+          <SuggestedPlans loading={loading} plans={suggestedPlans} />
           <section className="scroll-mt-[80px]" id="pricing">
             <PlanCatalog
               key={JSON.stringify(searchParams)}

@@ -28,10 +28,6 @@ from apps.core.site_config import public_site_config
 from apps.utils.views import EnvelopeListViewSet
 
 
-# Sorts handled by the standard DRF/filterset pipeline.
-_DEFAULT_SORTS = frozenset({"price", "expensive", "relevance"})
-
-
 class SiteConfigViewSet(GenericViewSet):
     """Public runtime configuration consumed by the frontend SPA."""
 
@@ -100,50 +96,20 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
             "-published_at", "id"
         )
 
-    def list(self, request, *args, **kwargs):
-        """Related sort ranks the whole filtered set before pagination."""
-        sort = request.query_params.get("sort")
-        if sort in _DEFAULT_SORTS:
-            return super().list(request, *args, **kwargs)
-
-        queryset = self.filter_queryset(self.get_queryset())
-        record_ids = list(queryset.values_list("pk", flat=True))
-        if not record_ids:
-            return super().list(request, *args, **kwargs)
-
-        visitor_id = self._visitor_id(request)
-        ranked_ids = RecommendationsInterface.rank(
+    @extend_schema(responses={200: PublicPlanSerializer(many=True)})
+    @action(detail=False, methods=["get"], url_path="suggested")
+    def suggested(self, request):
+        """Most relevant plans from each interest cluster, by recent activity."""
+        plan_ids = RecommendationsInterface.suggest(
             CatalogInterface.published_plan_records(),
-            record_ids,
-            visitor_id=visitor_id,
+            visitor_id=self._visitor_id(request),
             user=request.user if request.user.is_authenticated else None,
         )
-
-        known_ids = set(record_ids)
-        ordered_ids = [pid for pid in ranked_ids if pid in known_ids]
-        if len(ordered_ids) < len(record_ids):
-            seen = set(ordered_ids)
-            ordered_ids.extend(
-                pid for pid in record_ids if pid not in seen
-            )
-
-        page = self.paginate_queryset(ordered_ids)
-        page_ids = page if page is not None else ordered_ids
-
-        # Fetch only the records that actually make it onto the page.
-        records_by_id = PublishedRecord.objects.in_bulk(page_ids)
+        records_by_id = PublishedRecord.objects.in_bulk(plan_ids)
         instances = [
-            records_by_id[pid] for pid in page_ids if pid in records_by_id
+            records_by_id[plan_id] for plan_id in plan_ids if plan_id in records_by_id
         ]
-
-
-
-        data = self.serialize_page(instances)
-        if page is None:
-            return Response(data)
-        return self.paginator.get_paginated_response(
-            data, page_extra=self.get_page_extra()
-        )
+        return Response({"data": self.serialize_page(instances)})
 
     @staticmethod
     def _visitor_id(request):

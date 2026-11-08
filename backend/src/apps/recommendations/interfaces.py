@@ -18,6 +18,15 @@ class RecommendationsInterface:
         )
 
     @staticmethod
+    def suggest(records, visitor_id=None, user=None, per_cluster=5):
+        return RankingService().suggest(
+            records,
+            visitor_id=visitor_id,
+            user=user,
+            per_cluster=per_cluster,
+        )
+
+    @staticmethod
     def record_signals(records, kind, plan_ids, query="", visitor_id=None, user=None):
         return SignalRecorder().record(
             records,

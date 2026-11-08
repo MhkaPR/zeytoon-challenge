@@ -1,7 +1,11 @@
 
 import { Suspense } from "react";
 import { MainBody } from "@/src/features/home/MainBody";
-import { getPlansPage, getRecentCompanies } from "@/src/lib/api/publicCatalog";
+import {
+  getPlansPage,
+  getRecentCompanies,
+  getSuggestedPlans,
+} from "@/src/lib/api/publicCatalog";
 import {Skeleton} from "@heroui/react";
 import {getSiteConfig} from "@/src/lib/config/getSiteConfig";
 import { visitorId } from "@/src/lib/visitor";
@@ -33,11 +37,12 @@ async function MainContent({
     ? params.page_size[0]
     : params.page_size;
   const vid = await visitorId();
-  const [plansPage, recentCompanies] = await Promise.all([
+  const [plansPage, suggestedPlans, recentCompanies] = await Promise.all([
     getPlansPage({
       ...params,
       page_size: requestedPageSize ?? String(siteConfig.catalog.defaultPageSize),
     }, { visitorId: vid }),
+    getSuggestedPlans({ visitorId: vid }),
     getRecentCompanies(),
   ]);
 
@@ -45,6 +50,7 @@ async function MainContent({
   return (
     <MainBody
       plansPage={plansPage}
+      suggestedPlans={suggestedPlans}
       visitorId={vid}
       recentCompanies={recentCompanies}
       searchParams={params}

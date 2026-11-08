@@ -126,6 +126,25 @@ export async function getPublishedPlans(
   return [first, ...remaining].flatMap((page) => page.plans);
 }
 
+export async function getSuggestedPlans(
+  options: { visitorId?: string } = {},
+): Promise<PublicPlan[]> {
+  try {
+    const headers: Record<string, string> = {};
+    if (options.visitorId) headers["X-Visitor-Id"] = options.visitorId;
+    const response = await fetch(`${apiBaseUrl()}/api/v1/catalog/plans/suggested`, {
+      cache: "no-store",
+      credentials: "include",
+      headers,
+    });
+    if (!response.ok) return [];
+    const payload = (await response.json()) as { data?: PublicPlan[] };
+    return payload.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getCompaniesPage({
   q = "",
   page = 1,

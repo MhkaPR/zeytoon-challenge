@@ -38,6 +38,7 @@ describe("MainBody", () => {
             resource_units: { ram: "GB", cpu: "core", disk: "GB", traffic: "GB" },
           },
         }}
+        suggestedPlans={[]}
         recentCompanies={[]}
         searchParams={{}}
         siteConfig={DEFAULT_SITE_CONFIG}

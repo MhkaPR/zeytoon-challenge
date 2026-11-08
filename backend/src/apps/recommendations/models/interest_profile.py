@@ -25,7 +25,7 @@ class InterestProfile(TimestampedModel):
     visitor_id = models.UUIDField(null=True, blank=True, db_index=True)
     position = models.JSONField(default=list, blank=True)
     uncertainty = models.JSONField(default=list, blank=True)
-    cluster_activity = models.JSONField(default=list, blank=True)
+    activity_profile = models.JSONField(default=list, blank=True)
     space_version = models.CharField(max_length=64, blank=True, default="")
     signal_count = models.PositiveIntegerField(default=0)
     last_signal_at = models.DateTimeField(null=True, blank=True, db_index=True)

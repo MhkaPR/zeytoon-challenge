@@ -29,4 +29,5 @@ def test_cluster_recency_outranks_publication_time():
         ],
         [1, 0, 1, 0],
     )
-    assert ordered == [2, 4, 1, 3]
+    # Cluster 0 (ranks 2 and 4) sorts before cluster 1; newest wins within a cluster.
+    assert ordered == [4, 2, 3, 1]

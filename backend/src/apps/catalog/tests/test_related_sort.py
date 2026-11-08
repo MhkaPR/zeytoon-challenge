@@ -50,21 +50,47 @@ class RelatedSortTests(TestCase):
         self.assertEqual(first.status_code, 200)
         self.assertEqual(self.ids(first), self.ids(second))
 
-    def test_related_order_prefers_interested_plan(self):
-        record = self.plans[0]
+    def test_main_catalog_ignores_interests(self):
         visitor = uuid.uuid4()
         dim = self._dim()
         InterestProfile.objects.create(
             visitor_id=visitor,
-            position=[0.0] * dim,
+            position=[1.0] * dim,
             uncertainty=[0.1] * dim,
             space_version=self._version(),
         )
-        response = self.client.get(
+        anonymous = self.client.get("/api/v1/catalog/plans")
+        personalized = self.client.get(
             "/api/v1/catalog/plans", headers={"X-Visitor-Id": str(visitor)}
         )
+        self.assertEqual(personalized.status_code, 200)
+        self.assertEqual(self.ids(anonymous), self.ids(personalized))
+
+    def test_suggested_plans_rank_cluster_by_recent_activity(self):
+        visitor = uuid.uuid4()
+        dim = self._dim()
+        InterestProfile.objects.create(
+            visitor_id=visitor,
+            position=[[1.0] * dim, [0.0] * dim],
+            uncertainty=[[0.1] * dim, [0.1] * dim],
+            activity_profile=[
+                "2026-01-01T00:00:00+00:00",
+                "2026-06-01T00:00:00+00:00",
+            ],
+            space_version=self._version(),
+        )
+        response = self.client.get(
+            "/api/v1/catalog/plans/suggested", headers={"X-Visitor-Id": str(visitor)}
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.ids(response)[0], record.pk)
+        ids = self.ids(response)
+        self.assertEqual(set(ids), {plan.pk for plan in self.plans})
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_suggested_plans_empty_without_profile(self):
+        response = self.client.get("/api/v1/catalog/plans/suggested")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.ids(response), [])
 
     def test_pages_do_not_repeat(self):
         first = self.client.get("/api/v1/catalog/plans?page=1&page_size=3")
