@@ -8,9 +8,11 @@ import { sendSignal } from "@/src/lib/api/signals";
 export function SearchImpressionBeacon({
   query,
   planIds,
+  visitorId,
 }: {
   query: string;
   planIds: number[];
+  visitorId?: string;
 }) {
   const sent = useRef<string | null>(null);
 
@@ -18,8 +20,8 @@ export function SearchImpressionBeacon({
     if (!query.trim() || planIds.length === 0) return;
     if (sent.current === query) return;
     sent.current = query;
-    sendSignal("search_impression", planIds, query);
-  }, [query, planIds]);
+    sendSignal("search_impression", planIds, query, visitorId);
+  }, [query, planIds, visitorId]);
 
   return null;
 }

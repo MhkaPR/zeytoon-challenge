@@ -24,4 +24,20 @@ describe("signal client", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
+  it("forwards the visitor id as a header", () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+    sendSignal("details_view", [42], undefined, "visitor-123");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/recommendations/signals"),
+      expect.objectContaining({
+        headers: {
+          "Content-Type": "application/json",
+          "X-Visitor-Id": "visitor-123",
+        },
+      }),
+    );
+    vi.unstubAllGlobals();
+  });
 });

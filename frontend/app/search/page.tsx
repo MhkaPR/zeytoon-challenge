@@ -39,6 +39,7 @@ export default async function SearchPage({
       <SearchImpressionBeacon
         planIds={plansPage.plans.map((plan) => plan.id)}
         query={query}
+        visitorId={vid}
       />
       <PlanCatalog
         ariaLabel={ot("searchTitle")}

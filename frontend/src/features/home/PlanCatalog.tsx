@@ -641,7 +641,11 @@ export function PlanCatalog({
             <div className="grid gap-[12px] md:grid-cols-2">
               {data.plans.map((plan) => (
                 <Fragment key={plan.id}>
-                  {renderPlan ? renderPlan(plan) : <PlanCard plan={plan} />}
+                  {renderPlan ? (
+                    renderPlan(plan)
+                  ) : (
+                    <PlanCard plan={plan} visitorId={visitorId} />
+                  )}
                 </Fragment>
               ))}
             </div>

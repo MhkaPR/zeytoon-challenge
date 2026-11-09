@@ -52,5 +52,15 @@ class RankingService:
         if user is not None and getattr(user, "pk", None):
             return InterestProfile.objects.filter(user=user).first()
         if visitor_id:
-            return InterestProfile.objects.filter(visitor_id=visitor_id).first()
+            profile = InterestProfile.objects.filter(visitor_id=visitor_id).first()
+            if profile is None:
+                return None
+            if profile.merged_into_id:
+                # After login the device profile is tombstoned and later signals are
+                # redirected to the account profile. Read the account state too, not the
+                # frozen pre-merge snapshot, or suggestions ignore everything since login.
+                return InterestProfile.objects.filter(
+                    user_id=profile.merged_into_id
+                ).first()
+            return profile
         return None

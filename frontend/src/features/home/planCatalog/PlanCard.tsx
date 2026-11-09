@@ -37,7 +37,13 @@ function CompanyFavicon({ domain }: { domain: string }) {
 }
 
 /** One published service plan. Plan name is the primary heading; provider is secondary. */
-export function PlanCard({ plan }: { plan: PublicPlan }) {
+export function PlanCard({
+  plan,
+  visitorId,
+}: {
+  plan: PublicPlan;
+  visitorId?: string;
+}) {
   const ot = useTranslations();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const price = priceOf(plan);
@@ -99,7 +105,7 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
           className="w-full"
           variant="secondary"
           onPress={() => {
-            sendSignal("details_view", [plan.id]);
+            sendSignal("details_view", [plan.id], undefined, visitorId);
             setDetailsOpen(true);
           }}
         >
@@ -114,7 +120,9 @@ export function PlanCard({ plan }: { plan: PublicPlan }) {
           <Button
             className="w-full"
             variant="primary"
-            onPress={() => sendSignal("destination_visit", [plan.id])}
+            onPress={() =>
+              sendSignal("destination_visit", [plan.id], undefined, visitorId)
+            }
           >
             {ot("viewPlanPage")}
           </Button>

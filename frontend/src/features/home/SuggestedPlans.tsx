@@ -13,9 +13,11 @@ import { PlanCard } from "./planCatalog/PlanCard";
  */
 export function SuggestedPlans({
   plans,
+  visitorId,
   loading = false,
 }: {
   plans: PublicPlan[];
+  visitorId?: string;
   loading?: boolean;
 }) {
   const ot = useTranslations();
@@ -65,7 +67,7 @@ export function SuggestedPlans({
             className="shrink-0 snap-start list-none"
             key={plan.id}
           >
-            <PlanCard plan={plan} />
+            <PlanCard plan={plan} visitorId={visitorId} />
           </li>
         ))}
       </ul>

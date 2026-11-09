@@ -3,6 +3,7 @@ import uuid
 import numpy as np
 import pytest
 
+from apps.accounts.models import User
 from apps.catalog.interfaces import CatalogInterface
 from apps.recommendations.models import InterestProfile
 from apps.recommendations.services.v1.features import PlanFeatureMapper
@@ -124,3 +125,20 @@ def test_suggest_returns_twenty_ranked_plans():
     assert len(suggested) == 20
     assert len(set(suggested)) == 20
     assert set(suggested).issubset({record.pk for record in records})
+
+
+@pytest.mark.django_db
+def test_ranking_follows_a_merged_visitor_profile_to_the_account():
+    user = User.objects.create_user(
+        username="viewer", password="secret", phone_number="09120000002"
+    )
+    visitor = uuid.uuid4()
+    device = InterestProfile.objects.create(visitor_id=visitor)
+    account = InterestProfile.objects.create(user=user)
+    device.merged_into = user
+    device.save(update_fields=["merged_into", "updated_at"])
+
+    resolved = RankingService._profile(visitor, None)
+
+    assert resolved is not None
+    assert resolved.pk == account.pk

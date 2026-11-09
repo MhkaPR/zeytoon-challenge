@@ -57,7 +57,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     captureDefaultDurationMs: 15000,
   },
   contact: {
-    email: "support@torobhost.ir",
+    email: "support@mizbanhost.ir",
     phone: "021-12345678",
     address: "تهران، ایران",
   },

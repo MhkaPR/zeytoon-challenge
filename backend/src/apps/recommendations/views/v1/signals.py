@@ -1,5 +1,7 @@
 """Signal endpoint: the only client-initiated recommendation action."""
 
+import uuid
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
@@ -23,13 +25,26 @@ class SignalThrottle(SimpleRateThrottle):
         if request.user and request.user.is_authenticated:
             ident = f"u{request.user.pk}"
         else:
-            ident = f"v{request.COOKIES.get('visitor_id', '') or self.get_ident(request)}"
+            visitor = request.headers.get("X-Visitor-Id") or request.COOKIES.get(
+                "visitor_id", ""
+            )
+            ident = f"v{visitor or self.get_ident(request)}"
         return self.cache_format % {"scope": self.scope, "ident": ident}
 
 
 class SignalViewSet(GenericViewSet):
     authentication_classes = []
     throttle_classes = [SignalThrottle]
+
+    @staticmethod
+    def _visitor_id(request):
+        raw = request.headers.get("X-Visitor-Id") or request.COOKIES.get(
+            "visitor_id", ""
+        )
+        try:
+            return uuid.UUID(raw)
+        except (ValueError, AttributeError, TypeError):
+            return None
 
     @extend_schema(
         request=SignalRequestSerializer,
@@ -46,7 +61,7 @@ class SignalViewSet(GenericViewSet):
             payload["kind"],
             payload["plan_ids"],
             query=payload.get("query", ""),
-            visitor_id=request.COOKIES.get("visitor_id"),
+            visitor_id=self._visitor_id(request),
             user=request.user if request.user.is_authenticated else None,
         )
         return Response(

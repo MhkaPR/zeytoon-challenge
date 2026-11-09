@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from rest_framework.test import APIClient
 
 from apps.recommendations.models import InterestProfile, InterestSignal
 from apps.recommendations.services.v1.signals import SignalRecorder
@@ -43,3 +44,20 @@ def test_unknown_plan_ids_are_ignored():
     )
     assert result["accepted"] == 1
     assert result["ignored"] == 1
+
+
+@pytest.mark.django_db
+def test_signal_endpoint_attributes_the_visitor_header():
+    records = catalog({"price_amount": 10, "plan_name": "Email plan"})
+    visitor = uuid.uuid4()
+
+    response = APIClient().post(
+        "/api/v1/recommendations/signals",
+        {"kind": "details_view", "plan_ids": [records[0].pk]},
+        format="json",
+        HTTP_X_VISITOR_ID=str(visitor),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["accepted"] == 1
+    assert InterestProfile.objects.filter(visitor_id=visitor).exists()

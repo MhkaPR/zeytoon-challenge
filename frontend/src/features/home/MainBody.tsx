@@ -74,7 +74,11 @@ export function MainBody({
         </section>
 
         <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
-          <SuggestedPlans loading={loading} plans={suggestedPlans} />
+          <SuggestedPlans
+            loading={loading}
+            plans={suggestedPlans}
+            visitorId={visitorId}
+          />
           <section className="scroll-mt-[80px]" id="pricing">
             <PlanCatalog
               key={JSON.stringify(searchParams)}
