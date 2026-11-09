@@ -1,8 +1,8 @@
-# Torob Challenge — Host & Server Plan Comparison
+# Mizban Host — Host & Server Plan Comparison
 
-A Persian-first (RTL) host/server plan **search and comparison** platform. Users browse and
-compare hosting plans across providers; providers register a company, get verified, and
-manage their listings and credit from a dedicated panel.
+Mizban Host is a Persian-first (RTL) host/server plan **search and comparison** platform.
+Users browse and compare hosting plans across providers; providers register a company, get
+verified, and manage their listings and credit from a dedicated panel.
 
 This repository is a **modular monolith**: a Django 6 + DRF backend and a Next.js 16
 frontend, with PostgreSQL as the source of truth, Redis for cache/throttles, and Meilisearch
@@ -32,7 +32,7 @@ for the local search index. All services and data are hosted in Iran.
 - Multi-step registration with **locked steps**: a step opens only after the previous one is
   approved. Step one collects company info (domain, phone, optional internal number, company
   name, representative name); the next step is operator verification.
-- Verification is decided by an operator (admin panel is a separate application) and recorded
+- Verification is decided by an operator (admin console is a separate application) and recorded
   in an **append-only history** (outcome, actor, time, note). A not-approved outcome reopens
   step one for correction.
 - Mid-step abandonment clears only that step's draft; the user resumes at the same step.
@@ -46,10 +46,31 @@ for the local search index. All services and data are hosted in Iran.
   no credit.
 - Companies are **archived, never hard-deleted**; ownership transfer is admin-only.
 
-### 3. Public browsing (in progress)
+### 3. Admin Console & Site Data Pipeline (`specs/003-admin-ops-console`)
 
-Home page, search, service-type chips, filters, and a company directory shell. Search
-ranking/results and the crawl engine are owned by separate features.
+- Operator-facing approval queue for pending companies, with duplicate-domain warnings and an
+  append-only decision record per outcome.
+- Automated site-maintenance pipeline: crawl4ai link discovery, LLM link refiltering,
+  server-side headless capture, table extraction/classification, and schema-validated plan
+  extraction.
+- Compare-driven replay re-invokes extraction only when a change touches a plans table.
+- Operator-controlled LLM token budget and runtime thresholds; LLM-gated work pauses when the
+  budget is exhausted.
+
+### 4. Backend Contract & Public Browsing (`specs/004-backend-contract`)
+
+- Shared API contract for public browsing: home, search, service-type chips, filters, and the
+  company directory.
+- Typed frontend API clients and i18n catalogs keep the Persian-first RTL experience
+  consistent.
+
+### 5. Personalized Plan Ordering (`specs/005-related-plans-sort`, `specs/006-pca-space-expansion`)
+
+- Related plans are ordered by comparing a visitor's preference state with the plan space.
+- Interest signals (destination page, plan details, search impressions) adjust ordering and
+  carry into the account on login.
+- A periodic PCA refresh adds semantic title dimensions to the recommendation space; failed
+  refreshes leave the previous space intact.
 
 ---
 
@@ -66,7 +87,6 @@ ranking/results and the crawl engine are owned by separate features.
 | Frontend | Next.js 16.4, React 19.3, TypeScript 5, Tailwind CSS 4 |
 | UI kit | HeroUI v3 (`@heroui/react`, `@heroui/styles`) + React Aria |
 | Testing | pytest + pytest-django (backend), Vitest + Testing Library (frontend) |
-| Packaging | Docker + docker-compose |
 
 The design system is documented in `DESIGN.md` (Vercel-inspired, olive accent `#60782e`,
 fully RTL Persian). Product scope and governance live in `.specify/memory/constitution.md`.
@@ -78,26 +98,22 @@ fully RTL Persian). Product scope and governance live in `.specify/memory/consti
 ```
 backend/
   src/
-    config/        Django project (settings, urls, wsgi/asgi)
-    accounts/      OTP login, users, roles, JWT, throttling, SMS gateway
-    companies/     Registration steps, verification history, panel, credit ledger, crawl
-    utils/         Shared TimestampedModel base + structured JSON logging
-    catalog/       (scaffolded) plan catalog
-    crawler/       (scaffolded) crawl engine
-    search/        (scaffolded) search + index
-    normalizer/    (scaffolded) provider data normalization
-    reranker/      (scaffolded) result reranking
-    analytics/     (scaffolded) metrics
-    panel/         (scaffolded; panel logic lives in `companies`)
+    config/               Django project (settings, urls, wsgi/asgi)
+    apps/accounts/        OTP login, users, roles, JWT, throttling, SMS gateway
+    apps/companies/       Registration steps, verification history, panel, credit ledger, crawl
+    apps/admin_console/   Operator approval queue and automated site-data pipeline
+    apps/utils/           Shared TimestampedModel base + structured JSON logging
+    apps/catalog/         Plan catalog, filters,
+    apps/recommendations  recommendation space
+    apps/panel/           Scaffolded; panel logic lives in `companies`
 frontend/
-  app/             Next.js App Router pages (home, search, companies, panel, login, about)
+  app/             Next.js App Router pages (home, search, companies, panel, login, about, ops)
   src/features/    auth, company, panel, home, search, site feature modules
   src/lib/         Typed API clients (auth, companies), i18n strings, session
   tests/           Vitest + Testing Library tests
 specs/             Feature specifications, plans, data models, contracts, quickstarts
 .specify/          Spec Kit scaffolding + project constitution
 DESIGN.md          Design system (colors, typography, components)
-docker-compose.yaml Local orchestration (db, redis, meilisearch, backend)
 ```
 
 ---
@@ -108,7 +124,8 @@ docker-compose.yaml Local orchestration (db, redis, meilisearch, backend)
 
 - Python 3.14 and [uv](https://docs.astral.sh/uv/)
 - Node 20+ and Yarn 1.22
-- Docker (for PostgreSQL / Redis / Meilisearch, or run them locally)
+- PostgreSQL, Redis, and Meilisearch running locally (SQLite is the default database for local
+  development, but Redis is required for OTP storage, cache, and throttles)
 
 ### 1. Backend
 
@@ -116,8 +133,7 @@ docker-compose.yaml Local orchestration (db, redis, meilisearch, backend)
 # install dependencies into the project virtualenv
 uv sync
 
-# start the datastores
-docker compose up -d db redis meilisearch
+# make sure Redis (and PostgreSQL, if used) is running locally
 
 # migrate and create an operator (admin) account
 cd backend/src
@@ -126,8 +142,12 @@ python manage.py createsuperuser   # prompts for --phone_number
 python manage.py runserver 0.0.0.0:8000
 ```
 
-Local development defaults to SQLite; set `DB_ENGINE=postgresql` (with the `POSTGRES_*`
-variables) to use PostgreSQL, which is the production source of truth.
+Local development defaults to SQLite. Set `DATABASE_URL` to a PostgreSQL URL to use the
+production source of truth, for example:
+
+```bash
+export DATABASE_URL="postgresql://mizbanhost:mizbanhost@localhost:5432/mizbanhost"
+```
 
 In development the SMS gateway defaults to `ConsoleSmsGateway`, so OTP codes appear in the
 backend log instead of being sent.
@@ -155,12 +175,6 @@ Frontend runtime values (catalog price step/page sizes, resource options, contac
 links, ops polling intervals, and the default capture duration) are stored in
 django-constance. Edit them from the operator settings page at `/ops/settings`; the SPA
 loads the resolved values from `GET /api/v1/catalog/site-config`.
-
-### 3. Full stack with Docker
-
-```bash
-docker compose up --build
-```
 
 ---
 
@@ -213,9 +227,7 @@ can change thresholds without a redeploy.
 | `DJANGO_SECRET_KEY` | Django secret key | dev-only value |
 | `DJANGO_DEBUG` | Debug mode | `True` |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts | `localhost,127.0.0.1` |
-| `DB_ENGINE` | `sqlite` or `postgresql` | `sqlite` |
-| `SQLITE_TIMEOUT` | Seconds SQLite waits for a write lock before failing | `20` |
-| `POSTGRES_DB/USER/PASSWORD/HOST/PORT` | PostgreSQL connection | `torob` / `localhost:5432` |
+| `DATABASE_URL` | Database connection URL; use PostgreSQL in production | `sqlite:///db.sqlite3` |
 | `REDIS_URL` | Redis URL (cache, TTL, throttles) | `redis://localhost:6379/0` |
 | `CORS_ALLOWED_ORIGINS` | Exact frontend origin allowlist | `http://localhost:3000` |
 | `CSRF_TRUSTED_ORIGINS` | CSRF trusted origins | follows CORS |
@@ -261,7 +273,7 @@ cd backend/src && python manage.py rebuild_interest_clusters --visitor-id <uuid>
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `NEXT_PUBLIC_API_BASE_URL` | Absolute backend base URL; when unset the frontend uses a same-origin `/api/*` proxy (see below) | unset (proxy to `http://localhost:8000`) |
-| `API_INTERNAL_BASE_URL` | Backend origin used by server components when `NEXT_PUBLIC_API_BASE_URL` is unset; set this in Docker/container deployments where the backend hostname differs from `localhost` | `http://localhost:8000` |
+| `API_INTERNAL_BASE_URL` | Backend origin used by server components when `NEXT_PUBLIC_API_BASE_URL` is unset; set this in split-host deployments where the backend hostname differs from `localhost` | `http://localhost:8000` |
 
 ---
 
