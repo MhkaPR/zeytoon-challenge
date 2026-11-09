@@ -1,7 +1,7 @@
 "use client";
 
 import {Button, Card, Typography} from "@heroui/react";
-import {Building2,} from "lucide-react";
+import { Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 

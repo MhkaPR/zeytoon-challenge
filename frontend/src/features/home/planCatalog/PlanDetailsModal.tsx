@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Modal, Typography } from "@heroui/react";
+import { Building2 } from "lucide-react";
 import NextLink from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -9,7 +10,6 @@ import { ensureHttps, type PublicPlan } from "@/src/lib/api/publicCatalog";
 import { formatPrice, numberValue, priceOf } from "../planCatalogUtils";
 
 const HIDDEN_FIELDS = new Set(["plan_name", "name"]);
-const OTHER_FIELD = "other";
 const AMOUNT_UNITS: Record<string, string> = {
   ram_amount: "ram_unit",
   storage_amount: "storage_unit",
@@ -17,67 +17,6 @@ const AMOUNT_UNITS: Record<string, string> = {
   traffic_amount: "traffic_unit",
   bandwidth_amount: "bandwidth_unit",
 };
-
-type OtherAttribute = { label: string; value: string };
-
-function readableValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => readableValue(item))
-      .filter(Boolean)
-      .join("، ");
-  }
-  if (typeof value === "object") {
-    return Object.entries(value as Record<string, unknown>)
-      .filter(([, item]) => item !== null && item !== undefined && item !== "")
-      .map(([key, item]) => `${key.replaceAll("_", " ")}: ${readableValue(item)}`)
-      .filter(Boolean)
-      .join("، ");
-  }
-  return String(value);
-}
-
-function normalizeOtherAttributes(value: unknown): OtherAttribute[] {
-  if (value === null || value === undefined || value === "") return [];
-  const entries = Array.isArray(value) ? value : [value];
-
-  return entries.flatMap((entry) => {
-    if (entry === null || entry === undefined || entry === "") return [];
-
-    if (typeof entry === "object" && !Array.isArray(entry)) {
-      const record = entry as Record<string, unknown>;
-      const rawLabel = record.label ?? record.name ?? record.key ?? record.title;
-      const hasValue = "value" in record || "text" in record || "answer" in record;
-
-      if (rawLabel !== undefined && hasValue) {
-        const label = readableValue(rawLabel);
-        const attributeValue = readableValue(
-          record.value ?? record.text ?? record.answer,
-        );
-        return label && attributeValue ? [{ label, value: attributeValue }] : [];
-      }
-
-      return Object.entries(record)
-        .filter(([, item]) => item !== null && item !== undefined && item !== "")
-        .map(([key, item]) => ({
-          label: key.replaceAll("_", " "),
-          value: readableValue(item),
-        }))
-        .filter((attribute) => attribute.value);
-    }
-
-    const scalar = readableValue(entry);
-    return scalar ? [{ label: "", value: scalar }] : [];
-  });
-}
 
 function detailValue(
   key: string,
@@ -111,13 +50,12 @@ export function PlanDetailsModal({
     ...Object.entries(plan.values).filter(
       ([key, value]) =>
         !HIDDEN_FIELDS.has(key) &&
-        key !== OTHER_FIELD &&
+        key !== "other" &&
         value !== null &&
         value !== undefined &&
         value !== "",
     ),
   ];
-  const otherAttributes = normalizeOtherAttributes(plan.values[OTHER_FIELD]);
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -157,34 +95,6 @@ export function PlanDetailsModal({
                 ))}
               </dl>
 
-              {otherAttributes.length > 0 ? (
-                <section
-                  aria-labelledby="plan-other-attributes"
-                  className="flex flex-col gap-[10px]"
-                >
-                  <h3
-                    className="text-[13px] font-semibold"
-                    id="plan-other-attributes"
-                  >
-                    {ot("otherAttributes")}
-                  </h3>
-                  <dl className="grid grid-cols-1 gap-x-[16px] gap-y-[10px] rounded-[var(--radius)] bg-surface-secondary p-[14px] sm:grid-cols-2">
-                    {otherAttributes.map((attribute, index) => (
-                      <div
-                        className="flex flex-col gap-[3px]"
-                        key={`${attribute.label}-${index}`}
-                      >
-                        {attribute.label ? (
-                          <dt className="text-[11px] text-muted">
-                            {attribute.label}
-                          </dt>
-                        ) : null}
-                        <dd className="text-[13px]">{attribute.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              ) : null}
             </Modal.Body>
             <Modal.Footer>
               <NextLink
@@ -192,6 +102,7 @@ export function PlanDetailsModal({
                 href={`/companies/${encodeURIComponent(plan.domain)}`}
               >
                 <Button className="w-full" variant="secondary">
+                  <Building2 aria-hidden className="size-4" />
                   {ot("viewCompany")}
                 </Button>
               </NextLink>

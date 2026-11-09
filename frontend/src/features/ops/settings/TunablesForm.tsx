@@ -11,6 +11,7 @@ import {
   Typography,
   TextArea,
 } from "@heroui/react";
+import { Save } from "lucide-react";
 import { useState } from "react";
 
 const NUMBER_FIELDS = [
@@ -166,6 +167,7 @@ export function TunablesForm({
           onSave(payload);
         }}
       >
+        <Save aria-hidden className="size-4" />
         {busy ? ot("saving") : ot("saveSettings")}
       </Button>
     </Card>

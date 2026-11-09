@@ -209,7 +209,10 @@ def extract_link_tables(link, actor=None):
         raise Trace.DoesNotExist("trace_required")
     path = _materialize(trace)
     config = constants.table_discovery_config()
-    result = domtrack_client.extract_tables(
+    result = _run_with_retries(
+        "extraction",
+        link,
+        domtrack_client.extract_tables,
         path,
         min_rows=config["min_rows"],
         min_cols=config["min_cols"],
@@ -369,7 +372,10 @@ def process_link_tables(link, actor=None):
     for table in accepted:
         classification = table.classification
         table_context = _table_context(table)
-        plan_type, plans = llm.infer_and_extract_plans(
+        plan_type, plans = _run_with_retries(
+            "schema_extraction",
+            link,
+            llm.infer_and_extract_plans,
             table_context,
             link=link,
             table=table,
@@ -533,7 +539,10 @@ def extract_link_plans(link, actor=None):
     for table in tables:
         classification = table.classification
         table_context = _table_context(table)
-        plan_type, plans = llm.infer_and_extract_plans(
+        plan_type, plans = _run_with_retries(
+            "schema_extraction",
+            link,
+            llm.infer_and_extract_plans,
             table_context,
             link=link,
             table=table,
@@ -550,6 +559,11 @@ def extract_link_plans(link, actor=None):
                 skipped += 1
             continue
         for plan in valid:
+            identity = _plan_values_identity(plan_type, plan.values)
+            if identity in seen_plans:
+                skipped += 1
+                continue
+            seen_plans.add(identity)
             current_index = record_index
             record_index += 1
             pending_records.append(
@@ -605,6 +619,9 @@ def _natural_key(values, plan_type, index):
 
 def _plan_values_identity(plan_type, values):
     """Identify exact duplicate extracted plans while preserving meaningful variants."""
+    values = {
+        key: value for key, value in (values or {}).items() if key != "other"
+    }
     serialized = json.dumps(
         {"plan_type": plan_type, "values": values},
         ensure_ascii=False,
@@ -613,6 +630,13 @@ def _plan_values_identity(plan_type, values):
         default=str,
     )
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _without_other(values):
+    """Drop the legacy ``other`` bucket from values written or read by the pipeline."""
+    return {
+        key: value for key, value in (values or {}).items() if key != "other"
+    }
 
 
 def plans_payload(link):
@@ -624,7 +648,7 @@ def plans_payload(link):
             "trace_id": plan.table.trace_id,
             "plan_type": plan.plan_type,
             "natural_key": plan.natural_key,
-            "values": plan.values,
+            "values": _without_other(plan.values),
             "confidence": plan.confidence,
             "ignored": plan_fingerprint(plan.plan_type, plan.values) in excluded,
         }
@@ -694,7 +718,10 @@ def label_link_tables(link, actor=None, tables=None):
     provider = config["provider"]
     model = config["model"] or ""
     language = config["language"]
-    result = domtrack_client.label_tables(
+    result = _run_with_retries(
+        "labeling",
+        link,
+        domtrack_client.label_tables,
         [_domtrack_table(table) for table in tables], config
     )
     labeled_tables = (result or {}).get("tables") or []
@@ -799,12 +826,17 @@ def publish_link_plans(link, actor=None):
         raise ValueError("plans_required")
     excluded = set(link.plan_exclusions.values_list("fingerprint", flat=True))
     published = 0
+    seen_identities = set()
     for plan in plans:
         if (
             not _plan_is_complete(plan.values, plan.plan_type, plan.confidence)
             or plan_fingerprint(plan.plan_type, plan.values) in excluded
         ):
             continue
+        identity = _plan_values_identity(plan.plan_type, plan.values)
+        if identity in seen_identities:
+            continue
+        seen_identities.add(identity)
         CatalogInterface.upsert_published_record(
             source="admin_console",
             site=link.site_id,
@@ -813,7 +845,7 @@ def publish_link_plans(link, actor=None):
             classification=plan.classification_id,
             plan_type=plan.plan_type,
             natural_key=plan.natural_key,
-            values=plan.values,
+            values=_without_other(plan.values),
         )
         published += 1
     if not published and not all(
@@ -1049,27 +1081,36 @@ def set_token_budget(amount, period="monthly", scope="global", actor=None):
 # ---------------------------------------------------------------------------
 
 
-def _run_with_retries(stage, link, fn, *args, **kwargs):
+def _run_with_retries(stage, target_link, fn, *args, **kwargs):
     """Run ``fn`` with backoff; dead-letter the link when attempts are exhausted."""
     attempts = max(1, constants.retry_max_attempts())
     last_error = None
     for attempt in range(1, attempts + 1):
         try:
-            return fn(*args, **kwargs)
+            result = fn(*args, **kwargs)
+            if target_link.retry_count or target_link.last_error:
+                target_link.retry_count = 0
+                target_link.last_error = ""
+                target_link.save(
+                    update_fields=["retry_count", "last_error", "updated_at"]
+                )
+            return result
         except llm.LlmBudgetExhausted:
             raise
         except Exception as exc:  # noqa: BLE001 - retried then dead-lettered
             last_error = exc
-            link.retry_count = attempt
-            link.last_error = str(exc)[:500]
-            link.save(update_fields=["retry_count", "last_error", "updated_at"])
-            events.stage_failed(link, stage, str(exc)[:200])
+            target_link.retry_count = attempt
+            target_link.last_error = str(exc)[:500]
+            target_link.save(
+                update_fields=["retry_count", "last_error", "updated_at"]
+            )
+            events.stage_failed(target_link, stage, str(exc)[:200])
             if attempt < attempts:
                 _sleep(constants.retry_backoff_seconds() * attempt)
-    Link.objects.filter(pk=link.pk).update(
+    Link.objects.filter(pk=target_link.pk).update(
         pipeline_stage=Link.PipelineStage.DEAD_LETTERED
     )
-    link.pipeline_stage = Link.PipelineStage.DEAD_LETTERED
+    target_link.pipeline_stage = Link.PipelineStage.DEAD_LETTERED
     raise last_error
 
 

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Input, Label, TextField, Typography } from "@heroui/react";
+import { UserMinus, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 import type { Recipient } from "@/src/lib/api/ops";
@@ -47,6 +48,7 @@ export function RecipientManager({
         }}
         size="sm"
       >
+        <UserPlus aria-hidden className="size-4" />
         {ot("addRecipient")}
       </Button>
 
@@ -83,6 +85,7 @@ export function RecipientManager({
                   size="sm"
                   variant="ghost"
                 >
+                  <UserMinus aria-hidden className="size-4" />
                   {ot("deactivate")}
                 </Button>
               </div>

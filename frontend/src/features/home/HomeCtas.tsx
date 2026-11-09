@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@heroui/styles";
+import { Building2, Server } from "lucide-react";
 import NextLink from "next/link";
 
 /**
@@ -12,12 +13,14 @@ export function HomeCtas() {
   return (
     <div className="flex flex-row w-full flex-col items-stretch justify-center gap-[12px] sm:flex-row sm:items-center">
       <NextLink className={buttonVariants({ size: "lg" })} href="/companies">
+        <Building2 aria-hidden className="size-4" />
         {ot("ctaViewCompanies")}
       </NextLink>
       <NextLink
         className={buttonVariants({ size: "lg", variant: "secondary" })}
         href="/search"
       >
+        <Server aria-hidden className="size-4" />
         {ot("ctaViewHosts")}
       </NextLink>
     </div>

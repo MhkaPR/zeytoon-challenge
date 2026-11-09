@@ -6,6 +6,7 @@ import "handsontable/styles/ht-theme-main.css";
 
 import { HotTable } from "@handsontable/react-wrapper";
 import { Button, Card, Label, ListBox, Select, Typography } from "@heroui/react";
+import { Save } from "lucide-react";
 import { useMemo, useState } from "react";
 import { registerAllModules } from 'handsontable/registry';
 
@@ -170,6 +171,7 @@ export function MappingWorkspace({
         isDisabled={busy || missing.length > 0}
         onPress={save}
       >
+        <Save aria-hidden className="size-4" />
         {busy ? ot("saving") : ot("saveRecipe")}
       </Button>
     </div>

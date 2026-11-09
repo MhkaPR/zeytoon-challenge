@@ -62,36 +62,22 @@ class LlmBudgetExhausted(Exception):
 
 
 def _sanitize_plan_values(raw_values, plan_type):
-    """Coerce one record's fields onto its plan schema without discarding data.
+    """Coerce one record's fields onto its plan schema.
 
-    Unknown keys are preserved in ``values.other`` and mismatched types are coerced
-    or dropped, mirroring the standalone extraction path. Returns the cleaned dict,
-    or ``None`` when the record is unusable (no ``plan_name`` or not a mapping).
+    Only schema fields are kept. Unknown keys are dropped and mismatched types are
+    coerced or dropped, mirroring the standalone extraction path. Returns the cleaned
+    dict, or ``None`` when the record is unusable (no ``plan_name`` or not a mapping).
     """
     if not isinstance(raw_values, dict):
         return None
     values = dict(raw_values)
     fields = plan_schema.schema_for(plan_type).field_map()
     allowed_fields = set(fields)
-    other = values.get("other", [])
-    if not isinstance(other, list):
-        other = []
-    else:
-        other = [
-            entry
-            for entry in other
-            if isinstance(entry, dict)
-            and entry.get("key") not in (None, "")
-            and entry.get("value") not in (None, "")
-        ]
     for key in list(values):
-        if key not in allowed_fields and key != "other":
-            value = values.pop(key)
-            if value not in (None, ""):
-                other.append({"key": str(key), "value": str(value)})
-    values["other"] = other
+        if key not in allowed_fields:
+            values.pop(key)
     for key, value in list(values.items()):
-        if key == "other" or value is None:
+        if value is None:
             continue
         field = fields[key]
         try:
@@ -412,14 +398,13 @@ class LlmClient:
             "disk_unit='GB', disk_type='SSD'; '32GB DDR4' means ram_amount=32, "
             "ram_unit='GB', ram_type='DDR4'; 'Intel Core i7-6700 (4 Core)' means "
             "cpu_model='Intel Core i7-6700' and cpu_cores=4. Use these fields instead of "
-            "placing those facts in other. Every plan must contain a values object. Preserve "
-            "each meaningful table column that does not map to the selected schema in "
-            "values.other as an array of {key, value} objects, using its original header and "
-            "cell content without translation, omission, or invention. Set confidence to "
-            "1.0 when the plan name and price are explicit in the corresponding row and "
-            "unambiguous; optional missing technical or billing details do not lower "
-            "confidence. Use below 1.0 only when name or price is ambiguous, inferred, or "
-            "unsupported. Do not invent plans. Return JSON with plan_type and plans, where "
+            "placing those facts in unmapped columns. Every plan must contain a values "
+            "object with only the selected schema fields; ignore columns that do not map "
+            "to the schema. Set confidence to 1.0 when the plan name and price are explicit "
+            "in the corresponding row and unambiguous; optional missing technical or billing "
+            "details do not lower confidence. Use below 1.0 only when name or price is "
+            "ambiguous, inferred, or unsupported. Do not invent plans. Return JSON with "
+            "plan_type and plans, where "
             'plans is a list of {"values": {field_key: value}, "confidence": number}.'
         )
         raw = self.chat_json(
@@ -480,21 +465,14 @@ class LlmClient:
             "'2 * 512GB SSD' means disk_count=2, disk_amount=512, disk_unit='GB', "
             "disk_type='SSD'; '32GB DDR4' means ram_amount=32, ram_unit='GB', "
             "ram_type='DDR4'; 'Intel Core i7-6700 (4 Core)' means cpu_model='Intel Core i7-6700' "
-            "and cpu_cores=4. Use these fields instead of placing those facts in other. "
+            "and cpu_cores=4. Use these fields instead of unmapped columns. "
             "Set confidence to 1.0 when the plan name and price are explicitly present in "
             "the corresponding row and mapped unambiguously; optional missing CPU, RAM, "
             "storage, OS, or billing details do not lower confidence. Use below 1.0 only "
             "when name or price is ambiguous, inferred, or unsupported. Do not invent plans. "
             "Every plan item must contain a 'values' object with the schema fields; "
-            "never put plan fields directly at the item top level. Any meaningful table "
-            "column that does not map to a field in the selected schema must be preserved "
-            "in values.other as an array of {key, value} objects. Use the original column "
-            "header as key (preserve Persian headers in Persian) and the cell content as "
-            "value; do not translate, discard, or invent these facts. In particular, keep "
-            "each server specification such as CPU, RAM (e.g. 32GB DDR4), disks (e.g. "
-            "2 * 512GB SSD), location, traffic, setup fee, support, datacenter, and delivery "
-            "time in other when it is not represented by a schema field. Never omit these "
-            "technical facts just because their source headers are unusual or machine-generated. "
+            "never put plan fields directly at the item top level. Ignore table columns "
+            "that do not map to a field in the selected schema; never invent extra keys. "
             f"The output is a LIST of plans; each plan uses these field keys for plan type "
             f"'{plan_type}': {sorted(field_keys)}. "
             'Return JSON: {"plans": [{"values": {field_key: value}, "confidence": number}]}.'

@@ -11,6 +11,7 @@ import {
   TextField,
   Typography,
 } from "@heroui/react";
+import { Save } from "lucide-react";
 import { useState } from "react";
 
 export function LlmCeilingForm({
@@ -86,6 +87,7 @@ export function LlmCeilingForm({
         }
         variant="secondary"
       >
+        <Save aria-hidden className="size-4" />
         {busy ? ot("saving") : ot("saveCeiling")}
       </Button>
     </Card>

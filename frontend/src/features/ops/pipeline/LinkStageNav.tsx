@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRight } from "lucide-react";
+import { buttonVariants } from "@heroui/react";
+import { ArrowRight, Map, Send, Table2, Video } from "lucide-react";
 import NextLink from "next/link";
 
 
@@ -17,8 +18,10 @@ export function LinkStageNav({
 }) {
   const ot = useTranslations();
   const stages = [
-    { key: "capture", label: ot("openCapture") }, { key: "tables", label: ot("openTables") },
-    { key: "mapping", label: ot("openMapping") }, { key: "publish", label: ot("openPublishing") },
+    { key: "capture", label: ot("openCapture"), icon: Video },
+    { key: "tables", label: ot("openTables"), icon: Table2 },
+    { key: "mapping", label: ot("openMapping"), icon: Map },
+    { key: "publish", label: ot("openPublishing"), icon: Send },
   ] as const;
   return (
     <div className="flex flex-col gap-[8px]">
@@ -35,17 +38,18 @@ export function LinkStageNav({
         <ul className="flex flex-wrap gap-[6px]">
           {stages.map((stage) => {
             const isActive = stage.key === active;
+            const Icon = stage.icon;
             return (
               <li key={stage.key}>
                 <NextLink
                   aria-current={isActive ? "page" : undefined}
-                  className={`rounded-[var(--radius)] px-[10px] py-[6px] text-[13px] font-medium ${
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-surface-secondary text-muted hover:text-foreground"
-                  }`}
+                  className={buttonVariants({
+                    size: "sm",
+                    variant: isActive ? "primary" : "secondary",
+                  })}
                   href={`/ops/links/${linkId}/${stage.key}`}
                 >
+                  <Icon aria-hidden className="size-4" />
                   {stage.label}
                 </NextLink>
               </li>

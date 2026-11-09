@@ -142,7 +142,11 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
                     "domain": site["domain"],
                     "company_name": site["company_name"],
                     "plan_type": record.plan_type,
-                    "values": record.values,
+                    "values": {
+                        key: value
+                        for key, value in (record.values or {}).items()
+                        if key != "other"
+                    },
                     "url": links.get(record.link),
                     "published_at": (
                         record.published_at.isoformat()

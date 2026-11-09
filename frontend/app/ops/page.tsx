@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button, Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { buttonVariants, Button, Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { ArrowRight, RotateCcw } from "lucide-react";
 import NextLink from "next/link";
 import { useState } from "react";
 
@@ -107,7 +108,11 @@ export default function OpsApprovalsPage() {
         <Typography className="text-[13px] text-success" key={companyId} role="status">
           {result.outcome === "approved" ? ot("approvedHint") : ot("opsRejectedHint")}{" "}
           {result.siteId !== null && (
-            <NextLink className="underline" href={`/ops/sites/${result.siteId}`}>
+            <NextLink
+              className={buttonVariants({ size: "sm", variant: "secondary" })}
+              href={`/ops/sites/${result.siteId}`}
+            >
+              <ArrowRight aria-hidden className="size-4" />
               {ot("openSite")}
             </NextLink>
           )}
@@ -120,6 +125,7 @@ export default function OpsApprovalsPage() {
         <div className="flex flex-col items-start gap-[8px]">
           <Typography role="alert">{error}</Typography>
           <Button onPress={reload} size="sm" variant="secondary">
+            <RotateCcw aria-hidden className="size-4" />
             {ot("retry")}
           </Button>
         </div>
@@ -170,7 +176,11 @@ function PipelineSiteCard({ site }: { site: Site & { links_count: number } }) {
           {ot("pipelineNoLinks")}
         </Typography>
       )}
-      <NextLink className="w-fit text-[13px] underline" href={`/ops/sites/${site.id}`}>
+      <NextLink
+        className={buttonVariants({ size: "sm", variant: "secondary" })}
+        href={`/ops/sites/${site.id}`}
+      >
+        <ArrowRight aria-hidden className="size-4" />
         {ot("openSite")}
       </NextLink>
     </Card>

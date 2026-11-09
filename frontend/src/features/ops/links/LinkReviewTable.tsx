@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button, Typography } from "@heroui/react";
+import { buttonVariants, Button, Typography } from "@heroui/react";
+import { Check, Trash2, Undo2, Video } from "lucide-react";
 import NextLink from "next/link";
 import { useMemo, useState } from "react";
 
@@ -84,15 +85,21 @@ export function LinkReviewTable({
                       size="sm"
                       variant={isRemoved ? "secondary" : "ghost"}
                     >
+                      {isRemoved ? (
+                        <Undo2 aria-hidden className="size-4" />
+                      ) : (
+                        <Trash2 aria-hidden className="size-4" />
+                      )}
                       {isRemoved ? ot("restore") : ot("remove")}
                     </Button>
                   </td>
                   <td className="py-[10px]">
                     {link.review_state === "kept" && !isRemoved ? (
                       <NextLink
-                        className="rounded-[var(--radius)] bg-accent px-[10px] py-[6px] text-[12px] font-medium text-accent-foreground"
+                        className={buttonVariants({ size: "sm" })}
                         href={`/ops/links/${link.id}/capture`}
                       >
+                        <Video aria-hidden className="size-4" />
                         {ot("openCapture")}
                       </NextLink>
                     ) : (
@@ -116,6 +123,7 @@ export function LinkReviewTable({
           )
         }
       >
+        <Check aria-hidden className="size-4" />
         {busy ? ot("reviewing") : ot("reviewSubmit")}
       </Button>
     </div>

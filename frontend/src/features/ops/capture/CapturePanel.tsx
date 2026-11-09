@@ -13,7 +13,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@heroui/react";
-import { Upload, Video } from "lucide-react";
+import { ArrowLeft, RefreshCw, Upload, Video, XCircle } from "lucide-react";
 import { useState } from "react";
 
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
@@ -88,6 +88,7 @@ export function CapturePanel({
             {domtrack?.base_url ?? ""}
           </span>
           <Button size="sm" variant="ghost" onPress={onRecheck}>
+            <RefreshCw aria-hidden className="size-4" />
             {ot("domtrackRecheck")}
           </Button>
         </div>
@@ -146,6 +147,7 @@ export function CapturePanel({
           </Button>
           {capture && (
             <Button isDisabled={busy} onPress={onFail} variant="danger-soft">
+              <XCircle aria-hidden className="size-4" />
               {ot("failCapture")}
             </Button>
           )}
@@ -210,6 +212,7 @@ export function CapturePanel({
           onPress={onContinue}
           variant={traceStored ? "primary" : "secondary"}
         >
+          <ArrowLeft aria-hidden className="size-4" />
           {traceStored ? ot("continueToTables") : ot("advanceBlocked")}
         </Button>
         {capture?.trace_id && (

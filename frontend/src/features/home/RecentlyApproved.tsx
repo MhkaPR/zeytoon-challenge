@@ -1,7 +1,8 @@
 import { useTranslations } from "next-intl";
-import { Avatar, Skeleton, Typography } from "@heroui/react";
+import { Skeleton, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
+import { CompanyLogo } from "@/src/features/company/CompanyLogo";
 import type { RecentPublicCompany } from "@/src/lib/api/publicCatalog";
 /** The three newest verified companies registered during the current month. */
 export function RecentlyApproved({
@@ -38,9 +39,11 @@ export function RecentlyApproved({
             className="flex w-full flex-row items-center gap-[12px] rounded-[var(--radius)] p-[12px] transition-colors hover:bg-default-50 focus-visible:outline-none"
             href={`/companies/${encodeURIComponent(company.domain)}`}
           >
-            <Avatar>
-              <Avatar.Fallback>{company.domain.substring(0, 2).toUpperCase()}</Avatar.Fallback>
-            </Avatar>
+            <CompanyLogo
+              domain={company.domain}
+              name={company.company_name}
+              size={40}
+            />
             <div className="flex flex-1 flex-col gap-[2px]">
               <Typography className="font-medium">{company.company_name}</Typography>
               <Typography className="text-[12px]" color="muted" type="body">

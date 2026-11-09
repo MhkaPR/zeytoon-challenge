@@ -1,3 +1,4 @@
+import numpy as np
 titles = [
     # --- سری پایه / اقتصادی ---
     "سرور مجازی پایه",
@@ -62,10 +63,20 @@ from sklearn.decomposition import PCA
 
 hv = HashingVectorizer(analyzer="char_wb", ngram_range=(2, 4),
                        n_features=2**10, alternate_sign=False, norm="l2")
-
+X = hv.transform(titles)          # sparse
+X_dense = X.toarray()
 cleaned = [clean(t) for t in titles]
 X = hv.transform(cleaned).toarray()
 
 pca = PCA(n_components=4, random_state=0).fit(X)
 print("variance: ", pca.explained_variance_ratio_.round(3))
 
+Z = pca.transform(X_dense)        # shape: (n_titles, 4)
+
+for k in range(4):
+    scores = Z[:, k]
+    print(f"\n{'='*60}\nPC{k+1}  (var={pca.explained_variance_ratio_[k]:.3f})")
+    order = np.argsort(-np.abs(scores))   # مرتب‌سازی بر اساس قدرمطلق امتیاز
+    for i in order[:8]:
+        sign = "+" if scores[i] >= 0 else "-"
+        print(f"  {scores[i]:+.3f}  {titles[i]}")

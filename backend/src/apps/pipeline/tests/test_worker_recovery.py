@@ -166,3 +166,66 @@ def test_no_accepted_table_completes_instead_of_failing(
     assert link.pipeline_task_state == "completed"
     assert link.pipeline_stage == Link.PipelineStage.NO_PRICE_TABLES
     assert link.last_error == ""
+
+
+def test_llm_network_error_on_one_link_does_not_block_the_others(
+    site, monkeypatch
+):
+    first = Link.objects.create(
+        site=site,
+        url="https://example.com/first",
+        url_hash="first-link",
+        review_state=Link.ReviewState.KEPT,
+        pipeline_stage=Link.PipelineStage.EXTRACTED,
+    )
+    second = Link.objects.create(
+        site=site,
+        url="https://example.com/second",
+        url_hash="second-link",
+        review_state=Link.ReviewState.KEPT,
+        pipeline_stage=Link.PipelineStage.EXTRACTED,
+    )
+    processed = []
+
+    def fake_process(link):
+        processed.append(link.pk)
+        if link.pk == first.pk:
+            raise services.llm.LlmError("network down")
+        link.pipeline_stage = Link.PipelineStage.PLANS_EXTRACTED
+        link.save()
+
+    monkeypatch.setattr(services, "process_link_tables", fake_process)
+
+    tasks.run_site_pipeline_task.call(site.pk, discover=False)
+
+    assert set(processed) == {first.pk, second.pk}
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert first.last_error.startswith("classification:")
+    assert second.last_error == ""
+
+
+def test_discovery_failure_does_not_block_stored_links(site, monkeypatch):
+    link = Link.objects.create(
+        site=site,
+        url="https://example.com/stored",
+        url_hash="stored-link",
+        review_state=Link.ReviewState.KEPT,
+        pipeline_stage=Link.PipelineStage.EXTRACTED,
+    )
+    processed = []
+
+    monkeypatch.setattr(
+        services,
+        "discover_and_store_links",
+        lambda site: (_ for _ in ()).throw(services.llm.LlmError("network down")),
+    )
+    monkeypatch.setattr(
+        services,
+        "process_link_tables",
+        lambda target: processed.append(target.pk),
+    )
+
+    tasks.run_site_pipeline_task.call(site.pk)
+
+    assert processed == [link.pk]

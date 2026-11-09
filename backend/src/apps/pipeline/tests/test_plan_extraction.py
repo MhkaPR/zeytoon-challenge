@@ -93,6 +93,20 @@ def test_llm_plan_parser_rejects_response_with_no_valid_items(monkeypatch):
         client.extract_plans({}, "hosting", plan_schema.all_field_keys("hosting"))
 
 
+def test_unknown_and_other_fields_are_dropped():
+    values = llm._sanitize_plan_values(
+        {
+            "plan_name": "Starter",
+            "price_amount": 50000,
+            "other": [{"key": "location", "value": "Tehran"}],
+            "unmapped": "ignored",
+        },
+        "hosting",
+    )
+
+    assert values == {"plan_name": "Starter", "price_amount": 50000}
+
+
 def test_extraction_output_contains_no_selector_or_formula(planned_link, stub_llm):
     # The payload the model was asked to fill must be values only: no selectors or
     # formulas ever leave this stage (FR-028, SC-012).
@@ -122,7 +136,7 @@ def test_unmappable_table_is_skipped_without_dropping_siblings(
     assert PlanRecord.objects.count() == 1
 
 
-def test_duplicate_plan_names_across_tables_get_unique_link_keys(
+def test_duplicate_plans_across_tables_are_stored_once(
     extracted_link, stub_llm
 ):
     _add_classified_table(extracted_link, 1, ["Plan", "Price"])
@@ -132,11 +146,10 @@ def test_duplicate_plan_names_across_tables_get_unique_link_keys(
     services.extract_link_plans(extracted_link)
 
     records = list(PlanRecord.objects.filter(link=extracted_link))
-    assert len(records) == 2
-    assert len({record.natural_key for record in records}) == 2
+    assert len(records) == 1
 
     services.extract_link_plans(extracted_link)
-    assert PlanRecord.objects.filter(link=extracted_link).count() == 2
+    assert PlanRecord.objects.filter(link=extracted_link).count() == 1
 
 
 def test_extraction_accepts_name_price_without_server_specs(extracted_link, stub_llm):

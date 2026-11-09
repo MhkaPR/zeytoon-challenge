@@ -124,7 +124,6 @@ def _build_dynamic_filter_fields(plan_type: str) -> dict:
     """Translate a single PlanSchema into a `declared_filters` dict.
 
     Rules:
-      * skip the pseudo-field ``other`` (never a real extracted column),
       * if a field has a ``unit_family``, register a matching ``<key>_unit``
         companion filter defaulting to ``UNIT_DEFAULTS[unit_family]``.
     """
@@ -134,14 +133,10 @@ def _build_dynamic_filter_fields(plan_type: str) -> dict:
 
     declared = {}
     for schema_field in plan.fields:
-        # 1. skip the `other` field — it's not a real column.
-        if schema_field.key == "other":
-            continue
-
-        # 2. pick the right filter class based on the schema kind.
+        # 1. pick the right filter class based on the schema kind.
         filter_cls = _filter_for_field(schema_field)
 
-        # 3. build kwargs, using values for enums.
+        # 2. build kwargs, using values for enums.
         kwargs = {}
         if schema_field.kind == "enum" and schema_field.values:
             kwargs["choices"] = [(v, v) for v in schema_field.values]
@@ -151,7 +146,7 @@ def _build_dynamic_filter_fields(plan_type: str) -> dict:
 
         declared[schema_field.key] = filter_cls(**kwargs)
 
-        # 4. attach a default unit filter when the field has a unit family.
+        # 3. attach a default unit filter when the field has a unit family.
         if schema_field.unit_family:
             declared[f"{schema_field.key}_unit"] = django_filters.CharFilter(
                 method=_make_unit_method(schema_field.key, schema_field.unit_family),

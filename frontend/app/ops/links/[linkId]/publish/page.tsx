@@ -2,52 +2,13 @@
 
 import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { EyeOff, RotateCcw, Send } from "lucide-react";
 import { use, useState } from "react";
 
+import { LinkStageNav } from "@/src/features/ops/pipeline/LinkStageNav";
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { getPlans, publishLink, setPlanIgnored } from "@/src/lib/api/ops";
 import { getAccessToken } from "@/src/lib/session";
-
-function flattenOther(value: unknown, parentKey = "", depth = 0, fallbackLabel = ""): Array<{ key: string; value: string }> {
-  if (depth > 5 || value == null) return [];
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
-      try {
-        return flattenOther(JSON.parse(trimmed), parentKey, depth + 1);
-      } catch {
-        const pairs = [...trimmed.matchAll(/\{\s*'((?:\\.|[^'])*)'\s*:\s*'((?:\\.|[^'])*)'\s*\}/g)];
-        if (pairs.length) {
-          const decode = (text: string) => text
-            .replace(/\\u([\da-fA-F]{4})/g, (_, code: string) => String.fromCharCode(parseInt(code, 16)))
-            .replace(/\\'/g, "'")
-            .replace(/\\\\/g, "\\");
-          return pairs.flatMap(([, rawKey, rawValue]) =>
-            flattenOther({ [decode(rawKey)]: decode(rawValue) }, parentKey, depth + 1),
-          );
-        }
-      }
-    }
-    return trimmed ? [{ key: parentKey || fallbackLabel, value: trimmed }] : [];
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => flattenOther(entry, parentKey, depth + 1));
-  }
-  if (typeof value !== "object") return [];
-
-  const record = value as Record<string, unknown>;
-  if ("key" in record || "value" in record) {
-    const key = String(record.key ?? parentKey ?? fallbackLabel);
-    if (key === "values.other") return flattenOther(record.value, "", depth + 1);
-    if (record.value === "" || record.value == null) return [{ key, value: "" }];
-    return flattenOther(record.value, key, depth + 1);
-  }
-  return Object.entries(record).flatMap(([key, nested]) => {
-    if (key === "values.other" || key === "other") return flattenOther(nested, "", depth + 1);
-    if (nested === "" || nested == null) return [{ key, value: "" }];
-    return flattenOther(nested, key, depth + 1);
-  });
-}
 
 export default function OpsPublishPage({
   params,
@@ -103,6 +64,7 @@ export default function OpsPublishPage({
         <Typography className="text-[13px] text-muted">
           {ot("qualityReviewIntro")}
         </Typography>
+        <LinkStageNav active="publish" linkId={id} />
       </div>
 
       {accepted && (
@@ -155,6 +117,11 @@ export default function OpsPublishPage({
                       size="sm"
                       variant={plan.ignored ? "secondary" : "tertiary"}
                     >
+                      {plan.ignored ? (
+                        <RotateCcw aria-hidden className="size-4" />
+                      ) : (
+                        <EyeOff aria-hidden className="size-4" />
+                      )}
                       {savingPlanId === plan.id
                         ? ot("saving")
                         : plan.ignored
@@ -165,24 +132,7 @@ export default function OpsPublishPage({
                 </div>
                 <dl className="grid gap-[8px] sm:grid-cols-2">
                   {Object.entries(plan.values).flatMap(([key, value]) => {
-                    if (key === "other" && Array.isArray(value)) {
-                      const details = flattenOther(value);
-                      if (!details.length) return [];
-                      return [
-                        <div className="rounded-[var(--radius)] bg-surface-secondary p-[12px]" key="other">
-                          <dt className="mb-[8px] text-[12px] font-medium text-muted">{ot("otherAttributes")}</dt>
-                          <dd>
-                            <ul className="flex flex-col gap-[6px]">
-                              {details.map((item, index) => (
-                                <li className="text-[13px] leading-6" key={`other-${index}`}>
-                                  {item.value ? `${item.key}: ${item.value}` : item.key}
-                                </li>
-                              ))}
-                            </ul>
-                          </dd>
-                        </div>,
-                      ];
-                    }
+                    if (key === "other") return [];
                     const displayValue = Array.isArray(value)
                       ? value.join(", ")
                       : value && typeof value === "object"
@@ -204,6 +154,7 @@ export default function OpsPublishPage({
             isDisabled={busy || accepted || data.plans.every((plan) => plan.ignored)}
             onPress={acceptAndPublish}
           >
+            <Send aria-hidden className="size-4" />
             {busy ? ot("publishing") : ot("acceptAndPublish")}
           </Button>
         </>

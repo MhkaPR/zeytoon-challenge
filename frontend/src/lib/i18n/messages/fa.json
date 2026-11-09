@@ -488,7 +488,6 @@
   "serviceLinksAria": "لینک‌های سرویس",
   "submittingLinks": "در حال ثبت…",
   "submitLinks": "ثبت لینک‌ها",
-  "otherAttributes": "سایر مشخصات",
   "linksDiscovered": "{count} لینک تازه پیدا شد؛ پردازش در صف قرار گرفت.",
   "checkingDomain": "در حال بررسی دامنه…",
   "invalidPhone": "شماره موبایل نامعتبر است.",
@@ -536,8 +535,7 @@
     "price_currency": "واحد پول",
     "billing_period": "دوره صورتحساب",
     "location": "موقعیت",
-    "datacenter_location": "موقعیت دیتاسنتر",
-    "other": "سایر مشخصات"
+    "datacenter_location": "موقعیت دیتاسنتر"
   },
   "opsApprove": "تأیید شرکت",
   "opsRejectedHint": "شرکت تأییدنشده ماند و مرحله ثبت برای اصلاح باز شد.",

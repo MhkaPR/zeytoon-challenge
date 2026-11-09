@@ -80,7 +80,13 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
         }
     discovered = {"after_policy": 0}
     if discover and site.last_discovered_at is None:
-        discovered = services.discover_and_store_links(site)
+        try:
+            discovered = services.discover_and_store_links(site)
+        except Exception:  # noqa: BLE001 - discovery must not block stored links
+            logger.exception(
+                "site_pipeline_discovery_failed",
+                extra={"event": "site_pipeline_discovery_failed", "site_id": site.pk},
+            )
     completed = []
 
     links = Link.objects.filter(site=site, is_active=True).exclude(
@@ -100,6 +106,10 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
 
     for link in links:
         link.refresh_from_db()
+        if link_id is None and link.pipeline_task_state in ("queued", "running"):
+            # A per-link rerun owns this link; the site-wide pass must not process it
+            # twice and must continue with the remaining links.
+            continue
         if link.pipeline_stage == Link.PipelineStage.AWAITING_LLM_BUDGET:
             continue
         if link.review_state != Link.ReviewState.KEPT:
@@ -226,10 +236,16 @@ def recover_site_pipeline_tasks(backend_name="default"):
         backend_name=backend_name,
         status=TaskResultStatus.RUNNING,
     )
-    interrupted_link_ids = [
-        result.args_kwargs.get("kwargs", {}).get("link_id")
-        for result in interrupted.only("args_kwargs")
-    ]
+    interrupted_link_ids = []
+    interrupted_site_ids = []
+    for result in interrupted.only("args_kwargs"):
+        args = result.args_kwargs.get("args") or []
+        kwargs = result.args_kwargs.get("kwargs") or {}
+        link_pk = kwargs.get("link_id")
+        if link_pk:
+            interrupted_link_ids.append(link_pk)
+        elif args:
+            interrupted_site_ids.append(args[0])
     interrupted_count = interrupted.update(
         status=TaskResultStatus.READY,
         started_at=None,
@@ -239,20 +255,33 @@ def recover_site_pipeline_tasks(backend_name="default"):
         traceback="",
         run_after=timezone.now(),
     )
-    Link.objects.filter(pk__in=[pk for pk in interrupted_link_ids if pk]).update(
-        pipeline_task_state="queued"
-    )
+    if interrupted_link_ids:
+        Link.objects.filter(pk__in=interrupted_link_ids).update(
+            pipeline_task_state="queued"
+        )
+    if interrupted_site_ids:
+        # A site-wide task was interrupted mid-link. Reset its links so the
+        # requeued task can resume them instead of skipping them as running.
+        Link.objects.filter(
+            site_id__in=interrupted_site_ids, pipeline_task_state="running"
+        ).update(pipeline_task_state="idle")
 
     active_tasks = DBTaskResult.objects.filter(
         task_path=task_path,
         backend_name=backend_name,
         status__in=(TaskResultStatus.READY, TaskResultStatus.RUNNING),
     )
-    queued_site_ids = {
-        result.args_kwargs["args"][0]
-        for result in active_tasks.only("args_kwargs")
-        if result.args_kwargs.get("args")
-    }
+    active_site_ids = set()
+    site_wide_site_ids = set()
+    for result in active_tasks.only("args_kwargs"):
+        args = result.args_kwargs.get("args") or []
+        if not args:
+            continue
+        site_pk = args[0]
+        active_site_ids.add(site_pk)
+        kwargs = result.args_kwargs.get("kwargs") or {}
+        if not kwargs.get("link_id"):
+            site_wide_site_ids.add(site_pk)
     # A killed worker can leave a capture session in ``recording`` forever.
     # Such a session blocks start_capture, which makes the resumed site task
     # return successfully without advancing the queued link. Only close sessions
@@ -265,7 +294,7 @@ def recover_site_pipeline_tasks(backend_name="default"):
             review_state=Link.ReviewState.KEPT,
             pipeline_stage=Link.PipelineStage.DISCOVERED,
         )
-        .exclude(site_id__in=queued_site_ids)
+        .exclude(site_id__in=active_site_ids)
         .values("site_id"),
         state__in=CaptureSession.NON_TERMINAL,
     ).update(state=CaptureSession.State.FAILED, error="worker_interrupted")
@@ -313,7 +342,9 @@ def recover_site_pipeline_tasks(backend_name="default"):
             last_error="",
         ).values_list("site_id", flat=True)
     )
-    site_ids = unfinished_site_ids - queued_site_ids
+    # A queued per-link rerun only covers one link, so it must not suppress the
+    # site-wide recovery pass that checks the remaining links.
+    site_ids = unfinished_site_ids - site_wide_site_ids
     if site_ids:
         from apps.pipeline.models import Site
 

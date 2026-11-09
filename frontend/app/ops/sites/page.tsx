@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { buttonVariants, Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { ArrowRight, List } from "lucide-react";
 import NextLink from "next/link";
 
 import { useOpsData } from "@/src/features/ops/useOpsData";
@@ -60,15 +61,17 @@ export default function OpsSitesPage() {
               </Typography>
               <div className="flex flex-wrap gap-[8px]">
                 <NextLink
-                  className="rounded-[var(--radius)] bg-accent px-[12px] py-[6px] text-[13px] text-accent-foreground"
+                  className={buttonVariants({ size: "sm" })}
                   href={`/ops/sites/${site.id}`}
                 >
+                  <ArrowRight aria-hidden className="size-4" />
                   {ot("openSite")}
                 </NextLink>
                 <NextLink
-                  className="rounded-[var(--radius)] bg-surface-secondary px-[12px] py-[6px] text-[13px]"
+                  className={buttonVariants({ size: "sm", variant: "secondary" })}
                   href={`/ops/sites/${site.id}/links`}
                 >
+                  <List aria-hidden className="size-4" />
                   {ot("openLinks")}
                 </NextLink>
               </div>
