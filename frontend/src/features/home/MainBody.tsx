@@ -1,7 +1,7 @@
 import { useTranslations } from "next-intl";
 import { Typography } from "@heroui/react";
 import type { ReactNode } from "react";
-import { AboutTorb } from "./AboutTorb";
+import { AboutUs} from "@/src/features/home/AboutUs";
 import { FaqSection } from "./FaqSection";
 import { HomeFooter } from "./HomeFooter";
 import { PlanCatalog } from "./PlanCatalog";
@@ -95,7 +95,7 @@ export function MainBody({
             <HowItWorks />
           </section>
           <div className="rounded-[var(--radius)] bg-surface-secondary p-[20px] sm:p-[32px]">
-            <AboutTorb />
+            <AboutUs />
           </div>
           <FaqSection />
         </div>

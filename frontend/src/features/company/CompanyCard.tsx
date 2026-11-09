@@ -51,9 +51,9 @@ export function CompanyCard({
       )}
 
       <div className="mt-auto flex items-center justify-between gap-[12px] border-t border-[var(--separator)] pt-[14px]">
-        <Chip color="accent" size="sm" variant="soft">
+        <Typography type="body-sm">
           {ot("plansPublishedCount", { count: planCount })}
-        </Chip>
+        </Typography>
         <NextLink href={href}>
           <Button size="sm" variant="secondary">
             {ot("viewCompany")}
