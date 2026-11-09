@@ -14,7 +14,7 @@ import {
 } from "@/src/features/ops/mapping/FieldBindingPanel";
 import { MappingWorkspace } from "@/src/features/ops/mapping/MappingWorkspace";
 import type { ExtractedTable, PlanType, Recipe } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
+import { opsStrings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

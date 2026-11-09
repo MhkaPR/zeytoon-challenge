@@ -1,0 +1,9 @@
+"""Production settings with secure defaults."""
+
+from .base import *  # noqa: F403
+
+DEBUG = False
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"

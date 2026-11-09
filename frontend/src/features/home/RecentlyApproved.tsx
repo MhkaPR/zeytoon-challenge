@@ -1,56 +1,66 @@
-import { Avatar, Button, Typography } from "@heroui/react";
+import { useTranslations } from "next-intl";
+import { Skeleton, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
-import { recentlyApproved, strings } from "@/src/lib/i18n/strings";
+import { CompanyLogo } from "@/src/features/company/CompanyLogo";
+import type { RecentPublicCompany } from "@/src/lib/api/publicCatalog";
+/** The three newest verified companies registered during the current month. */
+export function RecentlyApproved({
+  companies,
+  loading = false,
+}: {
+  companies: RecentPublicCompany[];
+  loading?: boolean;
+}) {
+  const ot = useTranslations();
+  return (
+    <section className="flex flex-col">
+      <div className="flex flex-row items-end justify-between gap-[16px] py-2">
+        <div className="flex flex-col gap-[8px]">
+          <Typography className="text-[28px] font-semibold" type="h2">
+            {ot("recentlyApprovedTitle")}
+          </Typography>
+          <Typography className="max-w-[720px] leading-[1.8]" color="muted">
+            {ot("recentlyApprovedIntro")}
+          </Typography>
+        </div>
+      </div>
 
-/** Providers recently verified or approved, with when they were added (homepage). */
-export function RecentlyApproved() {
-    return (
-        <section className="flex flex-col">
-            <div className="py-2 flex flex-row items-end justify-between gap-[16px]">
-                <div className="flex flex-col gap-[8px]">
-                    <Typography className="text-[28px] font-semibold" type="h2">
-                        {strings.recentlyApprovedTitle}
-                    </Typography>
-                    <Typography className="max-w-[720px] leading-[1.8]" color="muted">
-                        {strings.recentlyApprovedIntro}
-                    </Typography>
-                </div>
-
-                <Button className="shrink-0 mb-[2px]" variant="ghost">
-                    {strings.moreDisplay}
-                </Button>
+      <hr className="mx-2" />
+      {loading ? (
+        <div className="flex flex-col gap-[12px] py-[16px]" aria-hidden>
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton className="h-[64px] rounded-[var(--radius)]" key={index} />
+          ))}
+        </div>
+      ) : companies.length ? companies.map((company) => (
+        <div className="flex flex-col" key={company.domain}>
+          <NextLink
+            className="flex w-full flex-row items-center gap-[12px] rounded-[var(--radius)] p-[12px] transition-colors hover:bg-default-50 focus-visible:outline-none"
+            href={`/companies/${encodeURIComponent(company.domain)}`}
+          >
+            <CompanyLogo
+              domain={company.domain}
+              name={company.company_name}
+              size={40}
+            />
+            <div className="flex flex-1 flex-col gap-[2px]">
+              <Typography className="font-medium">{company.company_name}</Typography>
+              <Typography className="text-[12px]" color="muted" type="body">
+                {company.domain}
+              </Typography>
             </div>
-
-            <hr className="mx-2" />
-
-            {recentlyApproved.map((item) => (
-                <div key={item.domain} className="flex flex-col">
-                    {/* NextLink کل ردیف را می‌گیرد و hover effect دارد */}
-                    <NextLink
-                        className="flex flex-row items-center w-full gap-[12px] rounded-[var(--radius)] p-[12px] hover:bg-default-50 transition-colors focus-visible:outline-none"
-                        href={`/companies/${encodeURIComponent(item.domain)}`}
-                    >
-                        <Avatar>
-                            <Avatar.Fallback>{item.domain.substring(0, 2).toUpperCase()}</Avatar.Fallback>
-                        </Avatar>
-
-                        {/* flex-1 باعث می‌شود این بخش فضای خالی را پر کند و زمان به سمت راست هل داده شود */}
-                        <div className="flex flex-1 flex-col gap-[2px]">
-                            <Typography className="font-medium">{item.name}</Typography>
-                            <Typography className="text-[12px]" color="muted" type="body">
-                                {item.domain}
-                            </Typography>
-                        </div>
-
-                        <Typography className="text-[12px] shrink-0" color="muted" type="body-xs">
-                            {item.time}
-                        </Typography>
-                    </NextLink>
-
-                    <hr className="mx-2" />
-                </div>
-            ))}
-        </section>
-    );
+            <Typography className="shrink-0 text-[12px]" color="muted" type="body-xs">
+              {new Intl.DateTimeFormat("fa-IR", { month: "long", day: "numeric", timeZone: "Asia/Tehran" }).format(new Date(company.created_at))}
+            </Typography>
+          </NextLink>
+          <hr className="mx-2" />
+        </div>
+      )) : (
+        <Typography className="py-[20px]" color="muted" type="body-sm">
+          {ot("recentlyApprovedEmpty")}
+        </Typography>
+      )}
+    </section>
+  );
 }

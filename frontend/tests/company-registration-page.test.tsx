@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 
 import { CompanyRegistrationPage } from "@/src/features/company/CompanyRegistrationPage";
 import { setAccessToken } from "@/src/lib/session";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

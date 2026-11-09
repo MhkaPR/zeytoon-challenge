@@ -1,16 +1,10 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { buttonVariants } from "@heroui/react";
+import { ArrowRight, Map, Send, Table2, Video } from "lucide-react";
 import NextLink from "next/link";
 
-import { opsStrings } from "@/src/lib/i18n/strings";
-
-const STAGES = [
-  { key: "capture", label: opsStrings.openCapture },
-  { key: "tables", label: opsStrings.openTables },
-  { key: "mapping", label: opsStrings.openMapping },
-  { key: "publish", label: opsStrings.openPublishing },
-] as const;
 
 /** Reachable stage switcher for one link, so every console screen has a path in the UI. */
 export function LinkStageNav({
@@ -22,6 +16,13 @@ export function LinkStageNav({
   active: string;
   siteId?: number | null;
 }) {
+  const ot = useTranslations();
+  const stages = [
+    { key: "capture", label: ot("openCapture"), icon: Video },
+    { key: "tables", label: ot("openTables"), icon: Table2 },
+    { key: "mapping", label: ot("openMapping"), icon: Map },
+    { key: "publish", label: ot("openPublishing"), icon: Send },
+  ] as const;
   return (
     <div className="flex flex-col gap-[8px]">
       {siteId != null && (
@@ -30,24 +31,25 @@ export function LinkStageNav({
           href={`/ops/sites/${siteId}/links`}
         >
           <ArrowRight aria-hidden className="size-4" />
-          {opsStrings.backToLinks}
+          {ot("backToLinks")}
         </NextLink>
       )}
-      <nav aria-label={opsStrings.console}>
+      <nav aria-label={ot("console")}>
         <ul className="flex flex-wrap gap-[6px]">
-          {STAGES.map((stage) => {
+          {stages.map((stage) => {
             const isActive = stage.key === active;
+            const Icon = stage.icon;
             return (
               <li key={stage.key}>
                 <NextLink
                   aria-current={isActive ? "page" : undefined}
-                  className={`rounded-[var(--radius)] px-[10px] py-[6px] text-[13px] font-medium ${
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-surface-secondary text-muted hover:text-foreground"
-                  }`}
+                  className={buttonVariants({
+                    size: "sm",
+                    variant: isActive ? "primary" : "secondary",
+                  })}
                   href={`/ops/links/${linkId}/${stage.key}`}
                 >
+                  <Icon aria-hidden className="size-4" />
                   {stage.label}
                 </NextLink>
               </li>

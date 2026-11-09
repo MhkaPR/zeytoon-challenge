@@ -1,6 +1,8 @@
 "use client";
 
-import { Button, Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { useTranslations } from "next-intl";
+import { buttonVariants, Button, Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { ArrowRight, RotateCcw } from "lucide-react";
 import NextLink from "next/link";
 import { useState } from "react";
 
@@ -8,7 +10,6 @@ import { CompanyForm } from "@/src/features/company/CompanyForm";
 import { ApprovalQueue } from "@/src/features/ops/approvals/ApprovalQueue";
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { decideVerification, getApprovalQueue, listSites, type Site } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 interface DecisionOutcome {
@@ -17,6 +18,7 @@ interface DecisionOutcome {
 }
 
 export default function OpsApprovalsPage() {
+  const ot = useTranslations();
   const { data, loading, error, reload } = useOpsData(getApprovalQueue, "approvals");
   const [busyCompanyId, setBusyCompanyId] = useState<number | null>(null);
   const [results, setResults] = useState<Record<number, DecisionOutcome>>({});
@@ -45,7 +47,7 @@ export default function OpsApprovalsPage() {
       reload();
       sites.reload();
     } catch (err) {
-      setFailure(opsErrorMessage(err));
+      setFailure(opsErrorMessage(err, ot));
     } finally {
       setBusyCompanyId(null);
     }
@@ -55,12 +57,12 @@ export default function OpsApprovalsPage() {
     <main className="flex flex-col gap-[20px]">
       <section className="flex flex-col gap-[12px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.registerForPipeline}
+          {ot("registerForPipeline")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.registerForPipelineHint}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("registerForPipelineHint")}</Typography>
         <CompanyForm
           onCreated={() => {
-            setRegistrationNotice(opsStrings.companyRegisteredForReview);
+            setRegistrationNotice(ot("companyRegisteredForReview"));
             reload();
             sites.reload();
           }}
@@ -74,7 +76,7 @@ export default function OpsApprovalsPage() {
 
       <section className="flex flex-col gap-[12px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.pipelineProgress}
+          {ot("pipelineProgress")}
         </Typography>
         {sites.loading ? (
           <Skeleton className="h-[120px] rounded-[var(--radius)]" />
@@ -82,7 +84,7 @@ export default function OpsApprovalsPage() {
           <Typography role="alert">{sites.error}</Typography>
         ) : !sites.data?.results.length ? (
           <Typography className="text-[13px] text-muted">
-            {opsStrings.noPipelineSites}
+            {ot("noPipelineSites")}
           </Typography>
         ) : (
           sites.data.results.map((site) => <PipelineSiteCard key={site.id} site={site} />)
@@ -91,9 +93,9 @@ export default function OpsApprovalsPage() {
 
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.approvalsTitle}
+          {ot("approvalsTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.approvalsIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("approvalsIntro")}</Typography>
       </div>
 
       {failure && (
@@ -104,10 +106,14 @@ export default function OpsApprovalsPage() {
 
       {Object.entries(results).map(([companyId, result]) => (
         <Typography className="text-[13px] text-success" key={companyId} role="status">
-          {result.outcome === "approved" ? opsStrings.approvedHint : opsStrings.rejectedHint}{" "}
+          {result.outcome === "approved" ? ot("approvedHint") : ot("opsRejectedHint")}{" "}
           {result.siteId !== null && (
-            <NextLink className="underline" href={`/ops/sites/${result.siteId}`}>
-              {opsStrings.openSite}
+            <NextLink
+              className={buttonVariants({ size: "sm", variant: "secondary" })}
+              href={`/ops/sites/${result.siteId}`}
+            >
+              <ArrowRight aria-hidden className="size-4" />
+              {ot("openSite")}
             </NextLink>
           )}
         </Typography>
@@ -119,7 +125,8 @@ export default function OpsApprovalsPage() {
         <div className="flex flex-col items-start gap-[8px]">
           <Typography role="alert">{error}</Typography>
           <Button onPress={reload} size="sm" variant="secondary">
-            {opsStrings.retry}
+            <RotateCcw aria-hidden className="size-4" />
+            {ot("retry")}
           </Button>
         </div>
       ) : (
@@ -134,6 +141,7 @@ export default function OpsApprovalsPage() {
 }
 
 function PipelineSiteCard({ site }: { site: Site & { links_count: number } }) {
+  const ot = useTranslations();
   const stages = [
     "discovered",
     "captured",
@@ -149,7 +157,7 @@ function PipelineSiteCard({ site }: { site: Site & { links_count: number } }) {
           {site.domain}
         </Typography>
         <Chip size="sm" variant="soft">
-          {site.links_count} {opsStrings.linksCount}
+          {site.links_count} {ot("linksCount")}
         </Chip>
       </div>
       {site.links_count ? (
@@ -159,17 +167,21 @@ function PipelineSiteCard({ site }: { site: Site & { links_count: number } }) {
               className="rounded-[var(--radius)] bg-surface-secondary p-[8px] text-[12px]"
               key={stage}
             >
-              {opsStrings.pipelineStage[stage] ?? stage}: {site.stage_counts?.[stage] ?? 0}
+              {ot.raw("pipelineStage")[stage] ?? stage}: {site.stage_counts?.[stage] ?? 0}
             </div>
           ))}
         </div>
       ) : (
         <Typography className="text-[12px] text-muted">
-          {opsStrings.pipelineNoLinks}
+          {ot("pipelineNoLinks")}
         </Typography>
       )}
-      <NextLink className="w-fit text-[13px] underline" href={`/ops/sites/${site.id}`}>
-        {opsStrings.openSite}
+      <NextLink
+        className={buttonVariants({ size: "sm", variant: "secondary" })}
+        href={`/ops/sites/${site.id}`}
+      >
+        <ArrowRight aria-hidden className="size-4" />
+        {ot("openSite")}
       </NextLink>
     </Card>
   );

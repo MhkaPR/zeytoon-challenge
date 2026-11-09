@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
 import { Header } from "@/src/features/site/Header";
+import { SiteConfigProvider } from "@/src/features/site/SiteConfigProvider";
+import { getSiteConfig } from "@/src/lib/config/getSiteConfig";
 
 import { geistMono, geistSans, vazirmatn } from "./fonts";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "ترب — مقایسه پلنهای میزبانی و سرور",
-  description: "جستوجو و مقایسه پلنهای میزبانی و سرور میان ارائهدهندگان مختلف.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const ot = await getTranslations();
+  return { title: ot("metaTitle"), description: ot("metaDescription") };
+}
 
 /**
  * Root layout. The product is Persian-first and fully RTL: ``lang="fa"`` and ``dir="rtl"``
@@ -21,7 +25,9 @@ export const metadata: Metadata = {
  * login experience is a modal over the current page instead of a separate route
  * (requirement: header on nearly all pages, login as a modal on main pages).
  */
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const siteConfig = await getSiteConfig();
+
   return (
     <html
       lang="fa"
@@ -29,12 +35,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${vazirmatn.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--ds-white)] text-[var(--ds-ink)]">
-        <SessionProvider>
-          <LoginDialogProvider>
-            <Header />
-            {children}
-          </LoginDialogProvider>
-        </SessionProvider>
+        <NextIntlClientProvider>
+          <SiteConfigProvider initialConfig={siteConfig}>
+            <SessionProvider>
+              <LoginDialogProvider>
+                <Header />
+                {children}
+              </LoginDialogProvider>
+            </SessionProvider>
+          </SiteConfigProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

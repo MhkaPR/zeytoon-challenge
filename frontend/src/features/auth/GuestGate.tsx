@@ -1,10 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Typography } from "@heroui/react";
 import { useEffect, useState } from "react";
 
 import type { SessionIdentity } from "@/src/lib/api/auth";
-import { strings } from "@/src/lib/i18n/strings";
 import { isGuest, loadIdentity } from "@/src/lib/session";
 
 import { useLoginDialog } from "./LoginDialog";
@@ -19,6 +19,7 @@ export interface GuestGateProps {
  * them to the originating page afterwards (spec FR-010, US2).
  */
 export function GuestGate({ children }: GuestGateProps) {
+  const ot = useTranslations();
   const session = useOptionalSession();
   // Fallback identity for isolated renders (e.g. tests) where no provider is present.
   const [localIdentity, setLocalIdentity] = useState<SessionIdentity | null>(null);
@@ -36,8 +37,8 @@ export function GuestGate({ children }: GuestGateProps) {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col gap-[16px]">
-        <Typography>{strings.pleaseLogin}</Typography>
-        {!isOpen && <Button onPress={open}>{strings.login}</Button>}
+        <Typography>{ot("pleaseLogin")}</Typography>
+        {!isOpen && <Button onPress={open}>{ot("login")}</Button>}
       </div>
     );
   }

@@ -1,7 +1,7 @@
 /**
  * Typed client for the company registration + panel API (contracts/companies-api.md).
  *
- * The panel surface, verification, plan eligibility, credit, and crawl all live in the
+ * The panel surface, verification, plan eligibility, and link submission all live in the
  * backend `companies` module under `/api/v1/companies`.
  */
 
@@ -11,7 +11,6 @@ import { AuthApiError, type ApiErrorBody } from "./auth";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 export type VerificationStatus = "pending" | "verified" | "rejected";
-export type ChargeStatus = "charged" | "not_charged";
 
 export interface Company {
   id: number;
@@ -21,8 +20,6 @@ export interface Company {
   phone_number: string;
   internal_number: string;
   verification_status: VerificationStatus;
-  charge_status: ChargeStatus;
-  crawl_enabled: boolean;
   is_archived: boolean;
   unverified: boolean;
 }
@@ -61,21 +58,6 @@ export interface PlanEligibility {
   allowed: boolean;
   missing: string[];
   message?: string;
-}
-
-export interface CreditEntry {
-  id: number;
-  direction: "charge" | "decharge";
-  amount: number;
-  reason: string;
-  reference: string;
-  created_at: string;
-}
-
-export interface CompanyCredit {
-  current_credit: number;
-  currency: string;
-  entries: CreditEntry[];
 }
 
 async function request<T>(
@@ -132,15 +114,11 @@ export function getPlanEligibility(accessToken: string, companyId: number) {
   );
 }
 
-export function getCompanyCredit(accessToken: string, companyId: number) {
-  return request<CompanyCredit>(`/api/v1/companies/${companyId}/credit`, accessToken);
-}
-
-export function setCrawlEnabled(accessToken: string, companyId: number, enabled: boolean) {
-  return request<{ crawl_enabled: boolean; credit_unchanged: boolean }>(
-    `/api/v1/companies/${companyId}/crawl`,
+export function addCompanyLinks(accessToken: string, companyId: number, urls: string[]) {
+  return request<{ links: { id: number; url: string }[] }>(
+    `/api/v1/companies/${companyId}/links`,
     accessToken,
-    { method: "POST", body: JSON.stringify({ enabled }) },
+    { method: "POST", body: JSON.stringify({ urls }) },
   );
 }
 

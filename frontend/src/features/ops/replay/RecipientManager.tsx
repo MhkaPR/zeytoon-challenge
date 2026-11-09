@@ -1,11 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Input, Label, TextField, Typography } from "@heroui/react";
+import { UserMinus, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 import type { Recipient } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 export function RecipientManager({
   recipients,
   busy = false,
@@ -17,23 +17,24 @@ export function RecipientManager({
   onAdd: (userId: number, name: string) => void;
   onDeactivate: (recipientId: number) => void;
 }) {
+  const ot = useTranslations();
   const [userId, setUserId] = useState("");
   const [name, setName] = useState("");
 
   return (
     <Card className="flex flex-col gap-[12px] p-[18px]" variant="secondary">
       <Typography className="text-[16px] font-semibold" type="h3">
-        {opsStrings.recipientsTitle}
+        {ot("recipientsTitle")}
       </Typography>
-      <Typography className="text-[12px] text-muted">{opsStrings.inAppOnly}</Typography>
+      <Typography className="text-[12px] text-muted">{ot("inAppOnly")}</Typography>
 
       <div className="grid gap-[8px] sm:grid-cols-2">
         <TextField name="recipient-user" value={userId} onChange={setUserId}>
-          <Label>{opsStrings.recipientUserId}</Label>
+          <Label>{ot("recipientUserId")}</Label>
           <Input inputMode="numeric" />
         </TextField>
         <TextField name="recipient-name" value={name} onChange={setName}>
-          <Label>{opsStrings.recipientName}</Label>
+          <Label>{ot("recipientName")}</Label>
           <Input />
         </TextField>
       </div>
@@ -47,12 +48,13 @@ export function RecipientManager({
         }}
         size="sm"
       >
-        {opsStrings.addRecipient}
+        <UserPlus aria-hidden className="size-4" />
+        {ot("addRecipient")}
       </Button>
 
       {recipients.length === 0 ? (
         <Typography className="text-[12px] text-muted">
-          {opsStrings.noRecipients}
+          {ot("noRecipients")}
         </Typography>
       ) : (
         <ul className="flex flex-col gap-[8px]">
@@ -66,7 +68,7 @@ export function RecipientManager({
                   {recipient.name || `#${recipient.user_id}`}
                 </span>
                 <span className="text-[11px] text-muted" dir="ltr">
-                  {opsStrings.userPhone}: {recipient.user_phone}
+                  {ot("userPhone")}: {recipient.user_phone}
                 </span>
               </div>
               <div className="flex items-center gap-[6px]">
@@ -75,7 +77,7 @@ export function RecipientManager({
                   size="sm"
                   variant="soft"
                 >
-                  {recipient.is_active ? opsStrings.active : opsStrings.inactive}
+                  {recipient.is_active ? ot("active") : ot("inactive")}
                 </Chip>
                 <Button
                   isDisabled={busy || !recipient.is_active}
@@ -83,7 +85,8 @@ export function RecipientManager({
                   size="sm"
                   variant="ghost"
                 >
-                  {opsStrings.deactivate}
+                  <UserMinus aria-hidden className="size-4" />
+                  {ot("deactivate")}
                 </Button>
               </div>
             </li>

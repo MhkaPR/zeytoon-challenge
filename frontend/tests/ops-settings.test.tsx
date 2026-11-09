@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TunablesForm } from "@/src/features/ops/settings/TunablesForm";
 import { TableList } from "@/src/features/ops/tables/TableList";
-import { opsStrings } from "@/src/lib/i18n/strings";
+import { opsStrings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();

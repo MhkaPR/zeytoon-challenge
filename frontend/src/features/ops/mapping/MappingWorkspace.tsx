@@ -1,10 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import "handsontable/styles/handsontable.min.css";
 import "handsontable/styles/ht-theme-main.css";
 
 import { HotTable } from "@handsontable/react-wrapper";
 import { Button, Card, Label, ListBox, Select, Typography } from "@heroui/react";
+import { Save } from "lucide-react";
 import { useMemo, useState } from "react";
 import { registerAllModules } from 'handsontable/registry';
 
@@ -15,8 +17,6 @@ import type {
   Recipe,
   RecipeBinding,
 } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 import { FieldBindingPanel } from "./FieldBindingPanel";
 import { TableSwitcher } from "./TableSwitcher";
 
@@ -43,6 +43,7 @@ export function MappingWorkspace({
   errorText?: string | null;
   onSave: (planType: string, bindings: RecipeBinding[]) => void;
 }) {
+  const ot = useTranslations();
 
   const [planType, setPlanType] = useState(
     initialRecipe?.plan_type ?? planTypes[0]?.key ?? "",
@@ -93,7 +94,7 @@ export function MappingWorkspace({
   if (tables.length === 0) {
     return (
       <Typography className="text-[13px] text-warning" role="status">
-        {opsStrings.noExtractedTables}
+        {ot("noExtractedTables")}
       </Typography>
     );
   }
@@ -108,7 +109,7 @@ export function MappingWorkspace({
             if (typeof key === "string") changePlan(key);
           }}
         >
-          <Label>{opsStrings.planType}</Label>
+          <Label>{ot("opsPlanType")}</Label>
           <Select.Trigger>
             <Select.Value />
             <Select.Indicator />
@@ -131,7 +132,7 @@ export function MappingWorkspace({
         />
       </div>
 
-        <Typography className="text-[12px] text-muted">{opsStrings.gridHint}</Typography>
+        <Typography className="text-[12px] text-muted">{ot("gridHint")}</Typography>
         <div className="overflow-x-auto">
           <HotTable
             className="ht-theme-main"
@@ -156,7 +157,7 @@ export function MappingWorkspace({
 
       {missing.length > 0 && (
         <Typography className="text-[12px] text-warning" role="status">
-          {opsStrings.recipeIncomplete}: {missing.map((field) => field.label).join("، ")}
+          {ot("recipeIncomplete")}: {missing.map((field) => field.label).join("، ")}
         </Typography>
       )}
       {errorText && (
@@ -170,7 +171,8 @@ export function MappingWorkspace({
         isDisabled={busy || missing.length > 0}
         onPress={save}
       >
-        {busy ? opsStrings.saving : opsStrings.saveRecipe}
+        <Save aria-hidden className="size-4" />
+        {busy ? ot("saving") : ot("saveRecipe")}
       </Button>
     </div>
   );

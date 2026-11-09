@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApprovalQueue } from "@/src/features/ops/approvals/ApprovalQueue";
 import { CompanyReviewCard } from "@/src/features/ops/approvals/CompanyReviewCard";
 import type { ApprovalQueueEntry } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
+import { opsStrings } from "./messages";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -16,7 +16,7 @@ const entry: ApprovalQueueEntry = {
   company_name: "Example Hosting",
   representative_name: "Ali Rezaei",
   domain: "example.com",
-  phone_masked: "021***789",
+  phone_number: "02155550000",
   registered_at: "2026-10-01T10:00:00Z",
   duplicate_domain_warning: true,
   duplicate_of: [3],
@@ -38,7 +38,7 @@ describe("approval queue", () => {
     render(<CompanyReviewCard entry={entry} onDecision={onDecision} />);
 
     await user.type(screen.getByLabelText(opsStrings.decisionNote), "checked domain");
-    await user.click(screen.getByRole("button", { name: opsStrings.approve }));
+    await user.click(screen.getByRole("button", { name: opsStrings.opsApprove }));
 
     expect(onDecision).toHaveBeenCalledWith(7, "approved", "checked domain");
   });

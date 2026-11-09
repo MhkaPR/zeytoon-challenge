@@ -1,14 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Chip } from "@heroui/react";
 import { Building2, Check } from "lucide-react";
 import NextLink from "next/link";
 import { buttonVariants } from "@heroui/react";
 
 import type { SwitcherEntry } from "@/src/lib/api/companies";
-import { strings } from "@/src/lib/i18n/strings";
-
-import { verificationColor, verificationLabel } from "./status";
+import { verificationColor, verificationLabelKey } from "./status";
 
 export function CompanySwitcher({
   companies,
@@ -17,10 +16,11 @@ export function CompanySwitcher({
   companies: SwitcherEntry[];
   activeId?: number;
 }) {
+  const ot = useTranslations();
   if (companies.length === 0) return null;
 
   return (
-    <nav aria-label={strings.switchCompany} className="w-full">
+    <nav aria-label={ot("switchCompany")} className="w-full">
       <ul className="flex flex-col gap-[12px] sm:-mx-1 sm:flex-row sm:flex-wrap sm:px-[4px] sm:pb-[4px]">
         {companies.map((entry) => {
           const active = entry.id === activeId;
@@ -61,7 +61,7 @@ export function CompanySwitcher({
                   size="sm"
                   variant="soft"
                 >
-                  {verificationLabel(entry.verification_status)}
+                  {ot(verificationLabelKey(entry.verification_status))}
                 </Chip>
               </NextLink>
             </li>

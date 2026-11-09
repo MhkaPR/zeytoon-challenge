@@ -1,18 +1,17 @@
 "use client";
 
-import { Card, Chip, Separator, Switch, Typography } from "@heroui/react";
+import { useTranslations } from "next-intl";
+import { Button, Card, Chip, Separator, TextArea, Typography } from "@heroui/react";
 import { Building2, Globe, Phone, User } from "lucide-react";
 import { useState } from "react";
 
-import { setCrawlEnabled, type Company } from "@/src/lib/api/companies";
-import { strings } from "@/src/lib/i18n/strings";
+import { addCompanyLinks, type Company } from "@/src/lib/api/companies";
 import { getAccessToken } from "@/src/lib/session";
 
 import { PlanEligibilityNotice } from "./PlanEligibilityNotice";
-import { chargeColor, chargeLabel, verificationColor, verificationLabel } from "./status";
+import { verificationColor, verificationLabelKey } from "./status";
 
-// Full company panel for a verified company: identity, verification and charge status, the
-// crawl switch, and the plan-eligibility gate (FR-024, FR-030, FR-031, FR-035).
+// Company panel: identity, verification, plan eligibility and domain link submission.
 
 function InfoRow({
   icon,
@@ -41,23 +40,26 @@ function InfoRow({
 }
 
 export function CompanyOverview({ company }: { company: Company }) {
-  const charged = company.charge_status === "charged";
-  const [crawlEnabled, setCrawl] = useState(company.crawl_enabled);
-  const [crawlBusy, setCrawlBusy] = useState(false);
-  const [crawlError, setCrawlError] = useState(false);
+  const ot = useTranslations();
+  const [urlsText, setUrlsText] = useState("");
+  const [linksBusy, setLinksBusy] = useState(false);
+  const [linksMessage, setLinksMessage] = useState("");
 
-  async function toggleCrawl(next: boolean) {
+  async function submitLinks() {
     const token = getAccessToken();
     if (!token) return;
-    setCrawlBusy(true);
-    setCrawlError(false);
+    const urls = urlsText.split(/\r?\n/).map((url) => url.trim()).filter(Boolean);
+    if (!urls.length) return;
+    setLinksBusy(true);
+    setLinksMessage("");
     try {
-      const result = await setCrawlEnabled(token, company.id, next);
-      setCrawl(result.crawl_enabled);
+      const result = await addCompanyLinks(token, company.id, urls);
+      setUrlsText("");
+      setLinksMessage(ot("linksAddedCount", { count: result.links.length }));
     } catch {
-      setCrawlError(true);
+      setLinksMessage(ot("genericError"));
     } finally {
-      setCrawlBusy(false);
+      setLinksBusy(false);
     }
   }
 
@@ -84,10 +86,7 @@ export function CompanyOverview({ company }: { company: Company }) {
           </div>
           <div className="flex flex-wrap items-center gap-[8px]">
             <Chip color={verificationColor(company.verification_status)} variant="soft">
-              {verificationLabel(company.verification_status)}
-            </Chip>
-            <Chip color={chargeColor(charged)} variant="soft">
-              {chargeLabel(charged)}
+              {ot(verificationLabelKey(company.verification_status))}
             </Chip>
           </div>
         </div>
@@ -97,12 +96,12 @@ export function CompanyOverview({ company }: { company: Company }) {
         <div className="flex flex-col">
           <InfoRow
             icon={<User className="size-4" />}
-            label={strings.representativeName}
+            label={ot("representativeName")}
             value={company.representative_name}
           />
           <InfoRow
             icon={<Phone className="size-4" />}
-            label={strings.companyPhone}
+            label={ot("companyPhone")}
             ltr
             value={
               company.internal_number
@@ -116,43 +115,25 @@ export function CompanyOverview({ company }: { company: Company }) {
       <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="default">
         <div className="flex flex-col gap-[4px]">
           <Typography className="text-[18px] font-semibold" type="h2">
-            {strings.plansGateTitle}
+            {ot("plansGateTitle")}
           </Typography>
           <Typography className="text-[13px] leading-[1.8]" color="muted">
-            {strings.panelPermissionsHint}
+            {ot("panelPermissionsHint")}
           </Typography>
         </div>
         <PlanEligibilityNotice companyId={company.id} />
       </Card>
 
-      <Card className="flex flex-col gap-[20px] p-[24px] sm:p-[32px]" variant="default">
-        <div className="flex flex-wrap items-center justify-between gap-[16px]">
-          <div className="flex flex-col gap-[4px]">
-            <Typography className="text-[18px] font-semibold" type="h2">
-              {strings.crawlTitle}
-            </Typography>
-            <Typography className="text-[13px] leading-[1.8]" color="muted">
-              {strings.crawlHint}
-            </Typography>
-          </div>
-          <Switch
-            isDisabled={crawlBusy || !charged}
-            isSelected={crawlEnabled}
-            onChange={toggleCrawl}
-          >
-            <Switch.Content>
-              <Switch.Control>
-                <Switch.Thumb />
-              </Switch.Control>
-              {crawlEnabled ? strings.crawlEnabledStatus : strings.crawlDisabledStatus}
-            </Switch.Content>
-          </Switch>
+      <Card className="flex flex-col gap-[16px] p-[24px] sm:p-[32px]" variant="default">
+        <div className="flex flex-col gap-[4px]">
+          <Typography className="text-[18px] font-semibold" type="h2">{ot("serviceLinksTitle")}</Typography>
+          <Typography className="text-[13px] leading-[1.8]" color="muted">{ot("serviceLinksHint")}</Typography>
         </div>
-        {crawlError && (
-          <Typography className="text-[13px] text-danger" role="alert">
-            {strings.genericError}
-          </Typography>
-        )}
+        <TextArea aria-label={ot("serviceLinksAria")} value={urlsText} onChange={(event) => setUrlsText(event.target.value)} placeholder="https://example.com/plans" rows={5} />
+        <div className="flex items-center gap-[12px]">
+          <Button isDisabled={linksBusy} onPress={submitLinks}>{linksBusy ? ot("submittingLinks") : ot("submitLinks")}</Button>
+          {linksMessage && <Typography role="status" type="body-sm">{linksMessage}</Typography>}
+        </div>
       </Card>
     </div>
   );

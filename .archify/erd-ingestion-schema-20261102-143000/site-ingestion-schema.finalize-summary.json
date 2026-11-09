@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "erd",
+  "quality": "standard",
+  "specification": {
+    "path": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/candidate.json",
+    "sha256": "9f9421f83d9553eb5cb116071b00c7d38fac31419e67423f56af65674d47064f",
+    "bytes": 18537
+  },
+  "artifact": {
+    "path": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.html",
+    "sha256": "4bc3fa308c3629b9528ac1ba7dd39e3bf94809363a27c854281cebdb4a9d9209",
+    "bytes": 918235
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/evidence-path-conflict",
+      "severity": "error",
+      "message": "browser-check will not replace the existing unowned evidence path \"/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.browser-check.json\".",
+      "subject": {
+        "artifact": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.html",
+        "evidencePath": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.browser-check.json"
+      },
+      "evidence": {
+        "reason": {
+          "code": "ownership-artifact-mismatch"
+        }
+      },
+      "supportedFixes": [
+        "move the conflicting file aside, or choose a separate --out-dir, then rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.finalize.json",
+    "summaryReceipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.finalize-summary.json",
+    "browserCheckReceipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-02T13:11:45.533Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1211,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  }
+}

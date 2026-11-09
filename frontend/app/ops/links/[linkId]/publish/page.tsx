@@ -1,59 +1,21 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Skeleton, Typography } from "@heroui/react";
+import { EyeOff, RotateCcw, Send } from "lucide-react";
 import { use, useState } from "react";
 
+import { LinkStageNav } from "@/src/features/ops/pipeline/LinkStageNav";
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { getPlans, publishLink, setPlanIgnored } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
-
-function flattenOther(value: unknown, parentKey = "", depth = 0): Array<{ key: string; value: string }> {
-  if (depth > 5 || value == null) return [];
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
-      try {
-        return flattenOther(JSON.parse(trimmed), parentKey, depth + 1);
-      } catch {
-        const pairs = [...trimmed.matchAll(/\{\s*'((?:\\.|[^'])*)'\s*:\s*'((?:\\.|[^'])*)'\s*\}/g)];
-        if (pairs.length) {
-          const decode = (text: string) => text
-            .replace(/\\u([\da-fA-F]{4})/g, (_, code: string) => String.fromCharCode(parseInt(code, 16)))
-            .replace(/\\'/g, "'")
-            .replace(/\\\\/g, "\\");
-          return pairs.flatMap(([, rawKey, rawValue]) =>
-            flattenOther({ [decode(rawKey)]: decode(rawValue) }, parentKey, depth + 1),
-          );
-        }
-      }
-    }
-    return trimmed ? [{ key: parentKey || "سایر مشخصات", value: trimmed }] : [];
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => flattenOther(entry, parentKey, depth + 1));
-  }
-  if (typeof value !== "object") return [];
-
-  const record = value as Record<string, unknown>;
-  if ("key" in record || "value" in record) {
-    const key = String(record.key ?? parentKey ?? "سایر مشخصات");
-    if (key === "values.other") return flattenOther(record.value, "", depth + 1);
-    if (record.value === "" || record.value == null) return [{ key, value: "" }];
-    return flattenOther(record.value, key, depth + 1);
-  }
-  return Object.entries(record).flatMap(([key, nested]) => {
-    if (key === "values.other" || key === "other") return flattenOther(nested, "", depth + 1);
-    if (nested === "" || nested == null) return [{ key, value: "" }];
-    return flattenOther(nested, key, depth + 1);
-  });
-}
 
 export default function OpsPublishPage({
   params,
 }: {
   params: Promise<{ linkId: string }>;
 }) {
+  const ot = useTranslations();
   const { linkId } = use(params);
   const id = Number(linkId);
   const { data, loading, error, reload } = useOpsData(
@@ -73,7 +35,7 @@ export default function OpsPublishPage({
       setAccepted(false);
       reload();
     } catch (issue) {
-      setFailure(opsErrorMessage(issue));
+      setFailure(opsErrorMessage(issue, ot));
     } finally {
       setSavingPlanId(null);
     }
@@ -87,7 +49,7 @@ export default function OpsPublishPage({
       setAccepted(true);
       reload();
     } catch (issue) {
-      setFailure(opsErrorMessage(issue));
+      setFailure(opsErrorMessage(issue, ot));
     } finally {
       setBusy(false);
     }
@@ -97,16 +59,17 @@ export default function OpsPublishPage({
     <main className="flex flex-col gap-[20px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.qualityReviewTitle}
+          {ot("qualityReviewTitle")}
         </Typography>
         <Typography className="text-[13px] text-muted">
-          {opsStrings.qualityReviewIntro}
+          {ot("qualityReviewIntro")}
         </Typography>
+        <LinkStageNav active="publish" linkId={id} />
       </div>
 
       {accepted && (
         <Typography className="text-[13px] text-success" role="status">
-          {opsStrings.qualityAccepted}
+          {ot("qualityAccepted")}
         </Typography>
       )}
       {failure && (
@@ -118,15 +81,15 @@ export default function OpsPublishPage({
       {loading ? (
         <Skeleton className="h-[220px] rounded-[var(--radius)]" />
       ) : error || !data ? (
-        <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+        <Typography role="alert">{error ?? ot("genericError")}</Typography>
       ) : data.plans.length === 0 ? (
         <Typography className="text-[13px] text-muted" role="status">
-          {opsStrings.noPlansForReview}
+          {ot("noPlansForReview")}
         </Typography>
       ) : (
         <>
           <Typography className="text-[13px] text-muted" role="status">
-            {opsStrings.planIgnoreHint}
+            {ot("planIgnoreHint")}
           </Typography>
           <div className="flex flex-col gap-[12px]">
             {data.plans.map((plan) => (
@@ -145,7 +108,7 @@ export default function OpsPublishPage({
                     </Chip>
                     {plan.ignored && (
                       <Chip color="warning" size="sm" variant="soft">
-                        {opsStrings.planIgnored}
+                        {ot("planIgnored")}
                       </Chip>
                     )}
                     <Button
@@ -154,39 +117,27 @@ export default function OpsPublishPage({
                       size="sm"
                       variant={plan.ignored ? "secondary" : "tertiary"}
                     >
+                      {plan.ignored ? (
+                        <RotateCcw aria-hidden className="size-4" />
+                      ) : (
+                        <EyeOff aria-hidden className="size-4" />
+                      )}
                       {savingPlanId === plan.id
-                        ? opsStrings.saving
+                        ? ot("saving")
                         : plan.ignored
-                          ? opsStrings.restorePlan
-                          : opsStrings.ignorePlan}
+                          ? ot("restorePlan")
+                          : ot("ignorePlan")}
                     </Button>
                   </div>
                 </div>
                 <dl className="grid gap-[8px] sm:grid-cols-2">
                   {Object.entries(plan.values).flatMap(([key, value]) => {
-                    if (key === "other" && Array.isArray(value)) {
-                      const details = flattenOther(value);
-                      if (!details.length) return [];
-                      return [
-                        <div className="rounded-[var(--radius)] bg-surface-secondary p-[12px]" key="other">
-                          <dt className="mb-[8px] text-[12px] font-medium text-muted">سایر مشخصات</dt>
-                          <dd>
-                            <ul className="flex flex-col gap-[6px]">
-                              {details.map((item, index) => (
-                                <li className="text-[13px] leading-6" key={`other-${index}`}>
-                                  {item.value ? `${item.key}: ${item.value}` : item.key}
-                                </li>
-                              ))}
-                            </ul>
-                          </dd>
-                        </div>,
-                      ];
-                    }
+                    if (key === "other") return [];
                     const displayValue = Array.isArray(value)
                       ? value.join(", ")
                       : value && typeof value === "object"
                         ? JSON.stringify(value)
-                        : String(value ?? opsStrings.none);
+                        : String(value ?? ot("none"));
                     return [
                       <div className="rounded-[var(--radius)] bg-surface-secondary p-[10px]" key={key}>
                         <dt className="text-[11px] text-muted">{key}</dt>
@@ -203,7 +154,8 @@ export default function OpsPublishPage({
             isDisabled={busy || accepted || data.plans.every((plan) => plan.ignored)}
             onPress={acceptAndPublish}
           >
-            {busy ? opsStrings.publishing : opsStrings.acceptAndPublish}
+            <Send aria-hidden className="size-4" />
+            {busy ? ot("publishing") : ot("acceptAndPublish")}
           </Button>
         </>
       )}

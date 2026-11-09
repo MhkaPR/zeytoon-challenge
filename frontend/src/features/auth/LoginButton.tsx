@@ -1,9 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { buttonVariants } from "@heroui/styles";
 import { Button } from "@heroui/react";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 import { useLoginDialog } from "./LoginDialog";
 
@@ -19,6 +18,7 @@ export function LoginButton({
   variant?: "header" | "menu";
   onPress?: () => void;
 }) {
+  const ot = useTranslations();
   const { open } = useLoginDialog();
 
   if (variant === "menu") {
@@ -31,7 +31,7 @@ export function LoginButton({
         }}
         variant="ghost"
       >
-        {strings.login}
+        {ot("login")}
       </Button>
     );
   }
@@ -44,7 +44,7 @@ export function LoginButton({
         open();
       }}
     >
-      {strings.login}
+      {ot("login")}
     </Button>
   );
 }

@@ -10,7 +10,7 @@ import { CompanyOverview } from "@/src/features/panel/CompanyOverview";
 import { ContinueRegistration } from "@/src/features/company/ContinueRegistration";
 import { CompanySwitcher } from "@/src/features/panel/CompanySwitcher";
 import { EmptyState } from "@/src/features/panel/EmptyState";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 import type { Company } from "@/src/lib/api/companies";
 
 afterEach(() => {
@@ -90,7 +90,7 @@ describe("ContinueRegistration", () => {
 });
 
 describe("CompanyOverview", () => {
-  it("shows the company identity, statuses, and the crawl control", () => {
+  it("shows the company identity, status, and the plan controls", () => {
     render(
       <CompanyOverview
         company={{ ...company, verification_status: "verified", charge_status: "charged", crawl_enabled: false }}
@@ -98,8 +98,8 @@ describe("CompanyOverview", () => {
     );
     expect(screen.getByText("Example Hosting")).toBeInTheDocument();
     expect(screen.getByText(strings.verifiedStatus)).toBeInTheDocument();
-    expect(screen.getByText(strings.chargedStatus)).toBeInTheDocument();
-    expect(screen.getByText(strings.crawlTitle)).toBeInTheDocument();
+    expect(screen.getByText(strings.plansGateTitle)).toBeInTheDocument();
+    expect(screen.getByText(strings.serviceLinksTitle)).toBeInTheDocument();
     expect(screen.getByText(strings.representativeName)).toBeInTheDocument();
   });
 });

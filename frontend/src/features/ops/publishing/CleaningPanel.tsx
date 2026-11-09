@@ -1,11 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Separator, Typography } from "@heroui/react";
 import { Broom, Send } from "lucide-react";
 
 import type { CleaningResult, PublishResult } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 import { StageBadge } from "../pipeline/StageBadge";
 
 export function CleaningPanel({
@@ -25,20 +24,21 @@ export function CleaningPanel({
   onClean: () => void;
   onPublish: () => void;
 }) {
+  const ot = useTranslations();
   return (
     <div className="flex flex-col gap-[16px]">
       <StageBadge stage={published?.pipeline_stage ?? stage} />
 
       {!recipeReady && (
         <Typography className="text-[13px] text-warning" role="status">
-          {opsStrings.mapFirst}
+          {ot("mapFirst")}
         </Typography>
       )}
 
       <div className="flex flex-wrap gap-[8px]">
         <Button isDisabled={busy || !recipeReady} onPress={onClean}>
           <Broom aria-hidden className="size-4" />
-          {busy ? opsStrings.cleaning : opsStrings.runCleaning}
+          {busy ? ot("cleaning") : ot("runCleaning")}
         </Button>
         <Button
           isDisabled={busy || !recipeReady || (!cleaning && !published)}
@@ -46,7 +46,7 @@ export function CleaningPanel({
           variant="secondary"
         >
           <Send aria-hidden className="size-4" />
-          {busy ? opsStrings.publishing : opsStrings.runPublish}
+          {busy ? ot("publishing") : ot("runPublish")}
         </Button>
       </div>
 
@@ -54,31 +54,31 @@ export function CleaningPanel({
         <Card className="flex flex-col gap-[10px] p-[18px]" variant="default">
           <div className="flex flex-wrap items-center gap-[8px]">
             <Chip color="success" size="sm" variant="soft">
-              {opsStrings.cleanedRecords}: {cleaning.cleaned_records}
+              {ot("cleanedRecords")}: {cleaning.cleaned_records}
             </Chip>
             <Chip
               color={cleaning.exception_count > 0 ? "warning" : "default"}
               size="sm"
               variant="soft"
             >
-              {opsStrings.exceptionCount}: {cleaning.exception_count}
+              {ot("exceptionCount")}: {cleaning.exception_count}
             </Chip>
           </div>
 
           <Typography className="text-[13px] font-semibold" type="h3">
-            {opsStrings.exceptions}
+            {ot("exceptions")}
           </Typography>
           {cleaning.exception_count === 0 ? (
             <Typography className="text-[12px] text-success">
-              {opsStrings.noExceptions}
+              {ot("noExceptions")}
             </Typography>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-right text-[12px]">
                 <thead>
                   <tr className="border-b border-[var(--ds-border)] text-muted">
-                    <th className="py-[6px] font-medium">{opsStrings.naturalKey}</th>
-                    <th className="py-[6px] font-medium">{opsStrings.exceptions}</th>
+                    <th className="py-[6px] font-medium">{ot("naturalKey")}</th>
+                    <th className="py-[6px] font-medium">{ot("exceptions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -109,17 +109,17 @@ export function CleaningPanel({
       {published && (
         <Card className="flex flex-col gap-[8px] p-[18px]" variant="secondary">
           <Chip color="success" size="sm" variant="soft">
-            {opsStrings.publishedCount}: {published.published}
+            {ot("publishedCount")}: {published.published}
           </Chip>
           <Typography className="text-[13px] font-semibold" type="h3">
-            {opsStrings.provenance}
+            {ot("provenance")}
           </Typography>
           <Typography className="text-[12px] text-muted">
-            {opsStrings.provenanceHint}
+            {ot("provenanceHint")}
           </Typography>
           <Separator />
           <Typography className="text-[12px] text-muted">
-            {opsStrings.exceptionCount}: {published.exception_count}
+            {ot("exceptionCount")}: {published.exception_count}
           </Typography>
         </Card>
       )}

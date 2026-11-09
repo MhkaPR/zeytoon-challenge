@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "erd",
+  "quality": "standard",
+  "specification": {
+    "path": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/candidate.json",
+    "sha256": "9f9421f83d9553eb5cb116071b00c7d38fac31419e67423f56af65674d47064f",
+    "bytes": 18537
+  },
+  "artifact": {
+    "path": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.html",
+    "sha256": "4bc3fa308c3629b9528ac1ba7dd39e3bf94809363a27c854281cebdb4a9d9209",
+    "bytes": 918235
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/projected-text-readability",
+      "severity": "error",
+      "message": "Projected context text is below the readability floor at 1440x900.",
+      "subject": {
+        "artifact": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/site-ingestion-schema.html",
+        "viewport": {
+          "width": 1440,
+          "height": 900,
+          "theme": "light"
+        }
+      },
+      "evidence": {
+        "text": "PK",
+        "detail": "context",
+        "owner": {
+          "kind": "node",
+          "id": "user"
+        },
+        "minimumProjectedNodeTextPx": 5.439604849573417,
+        "minimumRequiredNodeTextPx": 6
+      },
+      "supportedFixes": [
+        "increase projected node text to at least 6px at 1440x900, then rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/review-1/site-ingestion-schema.finalize.json",
+    "summaryReceipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/review-1/site-ingestion-schema.finalize-summary.json",
+    "browserCheckReceipt": "/home/mhkapr/Documents/personal/projects/torob-challenge/.archify/erd-ingestion-schema-20261102-143000/review-1/site-ingestion-schema.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-02T13:11:45.533Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 5553,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 import { LoginDialogProvider } from "@/src/features/auth/LoginDialog";
 import { SessionProvider } from "@/src/features/auth/SessionProvider";
 import { Header } from "@/src/features/site/Header";
-import { strings } from "@/src/lib/i18n/strings";
+import { strings } from "./messages";
 import { setAccessToken } from "@/src/lib/session";
 
 afterEach(() => {
@@ -76,7 +76,7 @@ describe("login end-to-end", () => {
     await user.click(screen.getByRole("button", { name: strings.loginButton }));
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "0912***6789" })).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: "+989123456789" })).toBeInTheDocument(),
     );
     expect(screen.queryByRole("button", { name: strings.login })).not.toBeInTheDocument();
   });

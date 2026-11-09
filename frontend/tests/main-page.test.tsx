@@ -4,11 +4,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyCard } from "@/src/features/company/CompanyCard";
 import { SearchBox } from "@/src/features/home/SearchBox";
 import { MainBody } from "@/src/features/home/MainBody";
-import { strings } from "@/src/lib/i18n/strings";
+import { DEFAULT_SITE_CONFIG } from "@/src/lib/config/siteConfig";
+import { strings } from "./messages";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => "/",
+}));
+
+vi.mock("@/src/features/home/HomeFooter", () => ({
+  HomeFooter: () => null,
 }));
 
 afterEach(() => {
@@ -17,21 +22,32 @@ afterEach(() => {
 
 describe("MainBody", () => {
   it("renders the hero, service categories, and reference sections", () => {
-    render(<MainBody />);
-    expect(screen.getByRole("search")).toBeInTheDocument();
-    // Four service-type chips, host selected by default. HeroUI renders the single-select
-    // ToggleButtonGroup as a radiogroup, so the active chip is the checked radio.
-    expect(screen.getByRole("radio", { name: strings.serviceHost })).toHaveAttribute(
-      "aria-checked",
-      "true",
+    render(
+      <MainBody
+        plansPage={{
+          plans: [],
+          count: 0,
+          page: 1,
+          pageSize: 8,
+          totalPages: 1,
+          facets: {
+            companies: [],
+            operating_systems: [],
+            locations: [],
+            resources: { ram: [], cpu: [], disk: [], traffic: [] },
+            resource_units: { ram: "GB", cpu: "core", disk: "GB", traffic: "GB" },
+          },
+        }}
+        suggestedPlans={[]}
+        recentCompanies={[]}
+        searchParams={{}}
+        siteConfig={DEFAULT_SITE_CONFIG}
+      />,
     );
-    for (const label of [
-      strings.serviceVirtualServer,
-      strings.serviceDedicatedServer,
-      strings.serviceCdn,
-    ]) {
-      expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();
-    }
+    expect(screen.getByRole("search")).toBeInTheDocument();
+    // The two primary calls to action sit under the search box.
+    expect(screen.getAllByRole("link", { name: strings.ctaViewCompanies }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: strings.ctaViewHosts }).length).toBeGreaterThan(0);
     expect(document.getElementById("pricing")).toBeInTheDocument();
     expect(document.getElementById("providers")).toBeInTheDocument();
     expect(document.getElementById("steps")).toBeInTheDocument();
@@ -46,10 +62,10 @@ describe("SearchBox", () => {
 });
 
 describe("CompanyCard", () => {
-  it("links to the company page and shows the fallback description", () => {
-    render(<CompanyCard name="Example Hosting" domain="example.com" />);
+  it("links to the company page and shows the plan count", () => {
+    render(<CompanyCard name="Example Hosting" domain="example.com" planCount={2} />);
     expect(screen.getByText("Example Hosting")).toBeInTheDocument();
     expect(screen.getByText("example.com")).toBeInTheDocument();
-    expect(screen.getByText(strings.companyCardFallback)).toBeInTheDocument();
+    expect(screen.getByText(strings.viewCompany)).toBeInTheDocument();
   });
 });

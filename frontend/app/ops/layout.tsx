@@ -1,21 +1,19 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Skeleton, Typography } from "@heroui/react";
-import { ClipboardCheck, Globe, RefreshCw, Settings } from "lucide-react";
+import { ClipboardCheck, Globe } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
 import { useSession } from "@/src/features/auth/SessionProvider";
 import { LoginButton } from "@/src/features/auth/LoginButton";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { identityRole, isOperatorRole } from "@/src/lib/session";
 
 const NAV = [
-  { href: "/ops", label: opsStrings.navApprovals, icon: ClipboardCheck },
-  { href: "/ops/sites", label: opsStrings.navSites, icon: Globe },
-  { href: "/ops/replay", label: opsStrings.navReplay, icon: RefreshCw },
-  { href: "/ops/settings", label: opsStrings.navSettings, icon: Settings },
+  { href: "/ops", labelKey: "navApprovals", icon: ClipboardCheck },
+  { href: "/ops/sites", labelKey: "navSites", icon: Globe },
 ] as const;
 
 /**
@@ -38,6 +36,7 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
 }
 
 function OpsShell({ children }: { children: React.ReactNode }) {
+  const ot = useTranslations();
   const { identity } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -62,9 +61,9 @@ function OpsShell({ children }: { children: React.ReactNode }) {
     return (
       <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-[16px] px-[16px] py-[40px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.console}
+          {ot("console")}
         </Typography>
-        <Typography className="text-[14px]">{opsStrings.adminOnly}</Typography>
+        <Typography className="text-[14px]">{ot("adminOnly")}</Typography>
         <div>
           <LoginButton />
         </div>
@@ -75,7 +74,7 @@ function OpsShell({ children }: { children: React.ReactNode }) {
   if (!isOperator) {
     return (
       <main className="mx-auto w-full max-w-[1100px] flex-1 px-[16px] py-[40px]">
-        <Typography role="alert">{opsStrings.adminOnly}</Typography>
+        <Typography role="alert">{ot("adminOnly")}</Typography>
       </main>
     );
   }
@@ -85,11 +84,11 @@ function OpsShell({ children }: { children: React.ReactNode }) {
       <header className="flex flex-col gap-[16px] border-b border-[var(--ds-border)] pb-[16px]">
         <div className="flex flex-col gap-[4px]">
           <Typography className="text-[24px] font-semibold sm:text-[30px]" type="h1">
-            {opsStrings.console}
+            {ot("console")}
           </Typography>
-          <Typography className="text-[13px] text-muted">{opsStrings.consoleSubtitle}</Typography>
+          <Typography className="text-[13px] text-muted">{ot("consoleSubtitle")}</Typography>
         </div>
-        <nav aria-label={opsStrings.console}>
+        <nav aria-label={ot("console")}>
           <ul className="flex flex-wrap gap-[8px]">
             {NAV.map((item) => {
               const Icon = item.icon;
@@ -109,7 +108,7 @@ function OpsShell({ children }: { children: React.ReactNode }) {
                     href={item.href}
                   >
                     <Icon aria-hidden className="size-4" />
-                    {item.label}
+                    {ot(item.labelKey)}
                   </NextLink>
                 </li>
               );

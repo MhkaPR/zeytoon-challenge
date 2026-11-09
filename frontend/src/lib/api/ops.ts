@@ -42,7 +42,7 @@ export interface ApprovalQueueEntry {
   company_name: string;
   representative_name: string;
   domain: string;
-  phone_masked: string;
+  phone_number: string;
   registered_at: string;
   duplicate_domain_warning: boolean;
   duplicate_of: number[];
@@ -244,7 +244,7 @@ export function getSite(token: string | null, siteId: number) {
 }
 
 export function discoverLinks(token: string | null, siteId: number) {
-  return request<{ has_sitemap: boolean; sitemap_url: string; discovered: number }>(
+  return request<{ discovered: number; after_policy: number; candidates: Link[] }>(
     `/api/v1/ops/sites/${siteId}/discover-links`,
     token,
     { method: "POST" },

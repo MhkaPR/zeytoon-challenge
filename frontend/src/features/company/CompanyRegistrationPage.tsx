@@ -1,26 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Chip, Typography } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { strings } from "@/src/lib/i18n/strings";
-
 import { CompanyForm } from "./CompanyForm";
-
-/** The two registration steps, shown below the intro so the owner knows what is coming. */
-const STEPS = [
-  { index: "۱", title: strings.stepCompanyInfo, body: strings.registerStepInfoDesc},
-  { index: "۲", title: strings.stepVerification, body: strings.registerStepVerificationDesc },
-] as const;
-
-/** Explanatory hints shown before the form so the owner knows what to prepare. */
-const HINTS = [
-  strings.companyDomain,
-  strings.companyName,
-  strings.representativeName,
-  strings.companyPhone,
-] as const;
 
 /**
  * The dedicated company-registration page. It explains what company registration is and how
@@ -29,6 +14,12 @@ const HINTS = [
  * page with title, description, hints, steps, and a panel button after submission).
  */
 export function CompanyRegistrationPage() {
+  const ot = useTranslations();
+  const steps = [
+    { index: "۱", title: ot("stepCompanyInfo"), body: ot("registerStepInfoDesc") },
+    { index: "۲", title: ot("stepVerification"), body: ot("registerStepVerificationDesc") },
+  ];
+  const hints = [ot("companyDomain"), ot("companyName"), ot("representativeName"), ot("companyPhone")];
   const router = useRouter();
   const [createdId, setCreatedId] = useState<number | null>(null);
 
@@ -36,22 +27,22 @@ export function CompanyRegistrationPage() {
     <main className="mx-auto flex w-full max-w-[920px] flex-1 flex-col gap-[40px] px-[32px] py-[64px]">
       <header className="flex flex-col gap-[16px]">
         <Typography className="text-[40px] font-semibold" type="h1">
-          {strings.registerCompanyTitle}
+          {ot("registerCompanyTitle")}
         </Typography>
         <Typography className="max-w-[680px] leading-[1.9]" color="muted">
-          {strings.registerCompanyIntro}
+          {ot("registerCompanyIntro")}
         </Typography>
       </header>
 
       <section className="flex flex-col gap-[16px]">
         <Typography className="text-[24px] font-semibold" type="h2">
-          {strings.registerCompanyStepsTitle}
+          {ot("registerCompanyStepsTitle")}
         </Typography>
         <Typography className="leading-[1.8]" color="muted">
-          {strings.registerCompanyStepsIntro}
+          {ot("registerCompanyStepsIntro")}
         </Typography>
         <ol className="grid grid-cols-1 gap-[16px] md:grid-cols-2">
-          {STEPS.map((step) => (
+          {steps.map((step) => (
             <li key={step.index}>
               <Card className="flex h-full flex-col gap-[8px] p-[24px]" variant="default">
                 <div className="flex flex-row items-center gap-[8px]">
@@ -74,11 +65,11 @@ export function CompanyRegistrationPage() {
         <CompanyForm onCreated={setCreatedId} />
       ) : (
         <Card className="flex flex-col items-start gap-[16px] p-[32px]" variant="tertiary">
-          <Card.Title>{strings.registerCompanyCreatedTitle}</Card.Title>
+          <Card.Title>{ot("registerCompanyCreatedTitle")}</Card.Title>
           <Typography className="leading-[1.8]" color="muted">
-            {strings.registerCompanyCreatedBody}
+            {ot("registerCompanyCreatedBody")}
           </Typography>
-          <Button onPress={() => router.push("/panel")}>{strings.goToCompaniesPanel}</Button>
+          <Button onPress={() => router.push("/panel")}>{ot("goToCompaniesPanel")}</Button>
         </Card>
       )}
     </main>

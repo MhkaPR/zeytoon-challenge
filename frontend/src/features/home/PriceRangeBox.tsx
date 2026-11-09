@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Button,
   Description,
@@ -10,8 +11,6 @@ import {
 } from "@heroui/react";
 import { useState } from "react";
 
-import { strings } from "@/src/lib/i18n/strings";
-
 export interface PriceRange {
   from: string;
   to: string;
@@ -20,8 +19,8 @@ export interface PriceRange {
 const EMPTY_PRICE: PriceRange = { from: "", to: "" };
 
 /** Human-readable summary of the active range, or the "any price" placeholder. */
-function summarize(value: PriceRange): string {
-  if (!value.from && !value.to) return strings.priceAny;
+function summarize(value: PriceRange, anyLabel: string): string {
+  if (!value.from && !value.to) return anyLabel;
   const from = value.from ? Number(value.from).toLocaleString("fa-IR") : "۰";
   const to = value.to ? Number(value.to).toLocaleString("fa-IR") : "∞";
   return `${from} – ${to}`;
@@ -40,6 +39,7 @@ export function PriceRangeBox({
   value: PriceRange;
   onChange: (next: PriceRange) => void;
 }) {
+  const ot = useTranslations();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PriceRange>(value);
   const active = Boolean(value.from || value.to);
@@ -64,25 +64,25 @@ export function PriceRangeBox({
   return (
     <div className="flex w-full flex-col gap-[6px] sm:w-[200px]">
       <Typography className="px-[2px]" type="body-xs" color="muted">
-        {strings.priceRangeLabel}
+        {ot("priceRangeLabel")}
       </Typography>
       <Popover isOpen={open} onOpenChange={handleOpenChange}>
         <Button
-          aria-label={strings.priceRangeLabel}
+          aria-label={ot("priceRangeLabel")}
           className="w-full justify-between"
           variant={active ? "primary" : "secondary"}
         >
-          <span className="truncate">{summarize(value)}</span>
+          <span className="truncate">{summarize(value, ot("priceAny"))}</span>
           <span aria-hidden className="shrink-0 text-[10px]">
             {open ? "▲" : "▼"}
           </span>
         </Button>
         <Popover.Content className="w-[300px]" placement="bottom end">
           <Popover.Dialog
-            aria-label={strings.priceRangeLabel}
+            aria-label={ot("priceRangeLabel")}
             className="flex flex-col gap-[16px]"
           >
-            <Popover.Heading>{strings.priceRangeLabel}</Popover.Heading>
+            <Popover.Heading>{ot("priceRangeLabel")}</Popover.Heading>
           <div className="flex flex-row items-end gap-[8px]">
             <NumberField
               className="flex-1"
@@ -91,7 +91,7 @@ export function PriceRangeBox({
               value={draft.from === "" ? undefined : Number(draft.from)}
               onChange={(next) => setDraft((prev) => ({ ...prev, from: Number.isNaN(next) ? "" : String(next) }))}
             >
-              <Label>{strings.priceFrom}</Label>
+              <Label>{ot("priceFrom")}</Label>
               <NumberField.Group>
                 <NumberField.DecrementButton />
                 <NumberField.Input className="w-full" inputMode="numeric" />
@@ -105,7 +105,7 @@ export function PriceRangeBox({
               value={draft.to === "" ? undefined : Number(draft.to)}
               onChange={(next) => setDraft((prev) => ({ ...prev, to: Number.isNaN(next) ? "" : String(next) }))}
             >
-              <Label>{strings.priceTo}</Label>
+              <Label>{ot("priceTo")}</Label>
               <NumberField.Group>
                 <NumberField.DecrementButton />
                 <NumberField.Input className="w-full" inputMode="numeric" />
@@ -115,15 +115,15 @@ export function PriceRangeBox({
           </div>
           <Description className="flex flex-col gap-[4px]">
             <Typography type="body-xs" color="muted">
-              {summarize(draft)}
+              {summarize(draft, ot("priceAny"))}
             </Typography>
           </Description>
           <div className="flex flex-row justify-end gap-[8px]">
             <Button onPress={clear} size="sm" variant="ghost">
-              {strings.priceRangeClear}
+              {ot("priceRangeClear")}
             </Button>
             <Button onPress={apply} size="sm">
-              {strings.priceRangeApply}
+              {ot("priceRangeApply")}
             </Button>
           </div>
         </Popover.Dialog>

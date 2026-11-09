@@ -1,18 +1,18 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Label, SearchField } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 /**
  * Search entry point. Submitting navigates to the search page with the query, where the
  * matching plans and companies are rendered below the (sticky) search field.
  */
-export function SearchBox() {
+export function SearchBox({ initialQuery = "" }: { initialQuery?: string }) {
+  const ot = useTranslations();
   const router = useRouter();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
 
   function submit() {
     const trimmed = query.trim();
@@ -30,15 +30,15 @@ export function SearchBox() {
     >
       <div className="flex-1">
         <SearchField
-          aria-label={strings.searchTitle}
+          aria-label={ot("searchTitle")}
           name="q"
           value={query}
           onChange={setQuery}
         >
-          <Label className="sr-only">{strings.searchTitle}</Label>
+          <Label className="sr-only">{ot("searchTitle")}</Label>
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input placeholder={strings.searchPlaceholder} />
+            <SearchField.Input placeholder={ot("searchPlaceholder")} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>

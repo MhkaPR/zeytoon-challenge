@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Skeleton, Typography } from "@heroui/react";
 import { use, useState } from "react";
 
@@ -8,7 +9,6 @@ import { TableList } from "@/src/features/ops/tables/TableList";
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { AuthApiError } from "@/src/lib/api/auth";
 import { extractTables, getSettings, getTables, labelTables } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsTablesPage({
@@ -16,6 +16,7 @@ export default function OpsTablesPage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
+  const ot = useTranslations();
   const { linkId } = use(params);
   const id = Number(linkId);
   const { data, loading, error, reload } = useOpsData(
@@ -37,9 +38,9 @@ export default function OpsTablesPage({
       reload();
     } catch (err) {
       if (err instanceof AuthApiError && err.code === "labeling_disabled") {
-        setFailure(opsStrings.labelingDisabled);
+        setFailure(ot("labelingDisabled"));
       } else {
-        setFailure(opsErrorMessage(err));
+        setFailure(opsErrorMessage(err, ot));
       }
     } finally {
       setBusy(false);
@@ -50,9 +51,9 @@ export default function OpsTablesPage({
     <main className="flex flex-col gap-[20px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.tablesTitle}
+          {ot("tablesTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.tablesIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("tablesIntro")}</Typography>
         <LinkStageNav active="tables" linkId={id} siteId={data?.site_id} />
       </div>
 
@@ -70,15 +71,15 @@ export default function OpsTablesPage({
       {loading ? (
         <Skeleton className="h-[240px] rounded-[var(--radius)]" />
       ) : error || !data ? (
-        <Typography role="alert">{error ?? opsStrings.genericError}</Typography>
+        <Typography role="alert">{error ?? ot("genericError")}</Typography>
       ) : (
         <TableList
           busy={busy}
           labelingEnabled={Boolean(settings.data?.LABELING_ENABLED)}
           onExtract={() =>
-            run(() => extractTables(getAccessToken(), id), opsStrings.extracting)
+            run(() => extractTables(getAccessToken(), id), ot("extracting"))
           }
-          onLabel={() => run(() => labelTables(getAccessToken(), id), opsStrings.labelingDone)}
+          onLabel={() => run(() => labelTables(getAccessToken(), id), ot("labelingDone"))}
           stage={data.pipeline_stage}
           tables={data.tables}
           traceStored={data.current_trace_id !== null}

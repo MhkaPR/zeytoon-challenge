@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Skeleton, Typography } from "@heroui/react";
 import { use, useState } from "react";
 
@@ -8,7 +9,6 @@ import { LinkStageNav } from "@/src/features/ops/pipeline/LinkStageNav";
 import { opsErrorMessage, useOpsData } from "@/src/features/ops/useOpsData";
 import { AuthApiError } from "@/src/lib/api/auth";
 import { getPlanSchema, getRecipe, saveRecipe, type RecipeBinding } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 export default function OpsMappingPage({
@@ -16,6 +16,7 @@ export default function OpsMappingPage({
 }: {
   params: Promise<{ linkId: string }>;
 }) {
+  const ot = useTranslations();
   const { linkId } = use(params);
   const id = Number(linkId);
   const recipeState = useOpsData((token) => getRecipe(token, id), String(id));
@@ -30,13 +31,13 @@ export default function OpsMappingPage({
     setNotice(null);
     try {
       await saveRecipe(getAccessToken(), id, planType, bindings);
-      setNotice(opsStrings.recipeSaved);
+      setNotice(ot("recipeSaved"));
       recipeState.reload();
     } catch (err) {
       if (err instanceof AuthApiError && err.code === "recipe_incomplete") {
-        setFailure(opsStrings.recipeIncomplete);
+        setFailure(ot("recipeIncomplete"));
       } else {
-        setFailure(opsErrorMessage(err));
+        setFailure(opsErrorMessage(err, ot));
       }
     } finally {
       setBusy(false);
@@ -49,9 +50,9 @@ export default function OpsMappingPage({
     <main className="flex flex-col gap-[20px]">
       <div className="flex flex-col gap-[4px]">
         <Typography className="text-[20px] font-semibold" type="h2">
-          {opsStrings.mappingTitle}
+          {ot("mappingTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">{opsStrings.mappingIntro}</Typography>
+        <Typography className="text-[13px] text-muted">{ot("mappingIntro")}</Typography>
         <LinkStageNav active="mapping" linkId={id} siteId={recipeState.data?.recipe?.site_id} />
       </div>
 
@@ -70,7 +71,7 @@ export default function OpsMappingPage({
         <Skeleton className="h-[320px] rounded-[var(--radius)]" />
       ) : recipeState.error || schemaState.error || !recipeState.data || !schemaState.data ? (
         <Typography role="alert">
-          {recipeState.error ?? schemaState.error ?? opsStrings.genericError}
+          {recipeState.error ?? schemaState.error ?? ot("genericError")}
         </Typography>
       ) : (
         <MappingWorkspace

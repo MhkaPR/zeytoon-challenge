@@ -10,8 +10,8 @@ OpenAPI schema (drf-spectacular) is the machine-readable form.
 - CSRF: state-changing requests MUST include `X-CSRFToken` matching the CSRF cookie.
 - CORS: only the user-frontend origin(s) from the exact allowlist may call these endpoints.
 - Throttling: responses may be `429` with a `Retry-After` header.
-- Masking: no response or log includes a full phone number except where the user's own
-  number is intentionally echoed back as a masked value.
+- Phone numbers: responses echo the user's own number in full; logs record the phone number
+  as an ordinary identifier. One-time codes and tokens are never logged in full.
 
 ### Error shape
 
@@ -115,5 +115,5 @@ This endpoint is the canonical guest-vs-authenticated signal for the frontend (F
   owned by the separate restricted-domain application (FR-012, FR-013).
 - **Rate limiting**: `/otp/request` and `/otp/verify` are throttled per phone and per source,
   plus a global limit to absorb bursts and protect against DoS (FR-019, FR-020).
-- **Logging**: every endpoint emits structured JSON logs with masked identifiers (FR-026,
-  FR-027).
+- **Logging**: every endpoint emits structured JSON logs; one-time codes and tokens are
+  redacted, phone numbers are logged as-is (FR-026, FR-027).

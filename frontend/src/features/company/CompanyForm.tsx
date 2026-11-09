@@ -1,15 +1,16 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Input, Label, TextField, Typography } from "@heroui/react";
 import { useState } from "react";
 
 import { AuthApiError } from "@/src/lib/api/auth";
 import { createCompany } from "@/src/lib/api/companies";
-import { strings } from "@/src/lib/i18n/strings";
 import { getAccessToken } from "@/src/lib/session";
 
 /** Standalone company-information form (step one). Only this step's input is collected. */
 export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void }) {
+  const ot = useTranslations();
   const [fields, setFields] = useState({
     domain: "",
     company_name: "",
@@ -28,7 +29,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
     event.preventDefault();
     const token = getAccessToken();
     if (!token) {
-      setError(strings.pleaseLogin);
+      setError(ot("pleaseLogin"));
       return;
     }
     setBusy(true);
@@ -41,7 +42,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
         const missing = (err.fields as { fields?: string[] }).fields;
         setError(missing?.length ? `${err.message} (${missing.join(", ")})` : err.message);
       } else {
-        setError(strings.genericError);
+        setError(ot("genericError"));
       }
     } finally {
       setBusy(false);
@@ -51,12 +52,12 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
   return (
     <Card className="p-[32px]" variant="tertiary">
       <Card.Header>
-        <Card.Title>{strings.registerNewCompany}</Card.Title>
+        <Card.Title>{ot("registerNewCompany")}</Card.Title>
       </Card.Header>
       <Card.Content className="mt-[16px]">
       <form className="flex flex-col gap-[16px]" onSubmit={submit}>
         <TextField name="domain" value={fields.domain} onChange={(v) => update("domain", v)} isRequired>
-          <Label>{strings.companyDomain}</Label>
+          <Label>{ot("companyDomain")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -65,7 +66,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           onChange={(v) => update("company_name", v)}
           isRequired
         >
-          <Label>{strings.companyName}</Label>
+          <Label>{ot("companyName")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -74,7 +75,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           onChange={(v) => update("representative_name", v)}
           isRequired
         >
-          <Label>{strings.representativeName}</Label>
+          <Label>{ot("representativeName")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -83,7 +84,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           onChange={(v) => update("phone_number", v)}
           isRequired
         >
-          <Label>{strings.companyPhone}</Label>
+          <Label>{ot("companyPhone")}</Label>
           <Input />
         </TextField>
         <TextField
@@ -91,7 +92,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           value={fields.internal_number}
           onChange={(v) => update("internal_number", v)}
         >
-          <Label>{strings.internalNumber}</Label>
+          <Label>{ot("internalNumber")}</Label>
           <Input />
         </TextField>
         {error ? (
@@ -100,7 +101,7 @@ export function CompanyForm({ onCreated }: { onCreated?: (id: number) => void })
           </Typography>
         ) : null}
         <Button className="self-start" isDisabled={busy} type="submit">
-          {strings.submitCompany}
+          {ot("submitCompany")}
         </Button>
       </form>
       </Card.Content>

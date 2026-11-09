@@ -2,7 +2,7 @@
 
 import { Chip } from "@heroui/react";
 
-import { stageLabels } from "@/src/lib/i18n/strings";
+import { useTranslations } from "next-intl";
 
 const COLORS: Record<string, "default" | "success" | "warning" | "danger" | "accent"> = {
   review: "default",
@@ -17,6 +17,12 @@ const COLORS: Record<string, "default" | "success" | "warning" | "danger" | "acc
 };
 
 export function StageBadge({ stage }: { stage: string }) {
+  const ot = useTranslations();
+  const stageLabels: Record<string, string> = {
+    review: ot("stageReview"), capture: ot("stageCapture"), extracted: ot("stageExtracted"),
+    mapped: ot("stageMapped"), cleaned: ot("stageCleaned"), published: ot("stagePublished"),
+    no_plans: ot("stageNoPlans"), flagged: ot("stageFlagged"), failed: ot("stageFailed"),
+  };
   return (
     <Chip color={COLORS[stage] ?? "default"} size="sm" variant="soft">
       {stageLabels[stage] ?? stage}

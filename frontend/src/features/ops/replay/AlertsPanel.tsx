@@ -1,11 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button, Card, Typography } from "@heroui/react";
 import { RefreshCw } from "lucide-react";
 
 import type { FailureAlert } from "@/src/lib/api/ops";
-import { opsStrings } from "@/src/lib/i18n/strings";
-
 import { FailureRateBadge } from "./FailureRateBadge";
 
 export function AlertsPanel({
@@ -19,12 +18,13 @@ export function AlertsPanel({
   busyLinkId?: number | null;
   onRerun: (linkId: number) => void;
 }) {
+  const ot = useTranslations();
   return (
     <div className="flex flex-col gap-[12px]">
-      <Typography className="text-[13px] text-muted">{opsStrings.alertsIntro}</Typography>
+      <Typography className="text-[13px] text-muted">{ot("alertsIntro")}</Typography>
       {alerts.length === 0 ? (
         <Typography className="text-[13px] text-muted" role="status">
-          {opsStrings.noAlerts}
+          {ot("noAlerts")}
         </Typography>
       ) : (
         alerts.map((alert) => (
@@ -36,8 +36,8 @@ export function AlertsPanel({
               <FailureRateBadge rate={alert.failure_rate} threshold={threshold} />
             </div>
             <Typography className="text-[12px] text-muted">
-              {opsStrings.status}: {alert.state} · {opsStrings.lastReplay}:{" "}
-              {alert.raised_at ?? opsStrings.none}
+              {ot("status")}: {alert.state} · {ot("lastReplay")}:{" "}
+              {alert.raised_at ?? ot("none")}
             </Typography>
             <Button
               className="self-start"
@@ -47,7 +47,7 @@ export function AlertsPanel({
               variant="secondary"
             >
               <RefreshCw aria-hidden className="size-4" />
-              {busyLinkId === alert.link_id ? opsStrings.rerunning : opsStrings.rerun}
+              {busyLinkId === alert.link_id ? ot("rerunning") : ot("rerun")}
             </Button>
           </Card>
         ))

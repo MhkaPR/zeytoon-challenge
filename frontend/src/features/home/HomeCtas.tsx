@@ -1,7 +1,7 @@
+import { useTranslations } from "next-intl";
 import { buttonVariants } from "@heroui/styles";
+import { Building2, Server } from "lucide-react";
 import NextLink from "next/link";
-
-import { strings } from "@/src/lib/i18n/strings";
 
 /**
  * The two primary calls to action under the search box: browse the company directory, or
@@ -9,16 +9,19 @@ import { strings } from "@/src/lib/i18n/strings";
  * ``next/link`` so the olive primary/secondary styles apply to real navigation anchors.
  */
 export function HomeCtas() {
+  const ot = useTranslations();
   return (
     <div className="flex flex-row w-full flex-col items-stretch justify-center gap-[12px] sm:flex-row sm:items-center">
       <NextLink className={buttonVariants({ size: "lg" })} href="/companies">
-        {strings.ctaViewCompanies}
+        <Building2 aria-hidden className="size-4" />
+        {ot("ctaViewCompanies")}
       </NextLink>
       <NextLink
         className={buttonVariants({ size: "lg", variant: "secondary" })}
         href="/search"
       >
-        {strings.ctaViewHosts}
+        <Server aria-hidden className="size-4" />
+        {ot("ctaViewHosts")}
       </NextLink>
     </div>
   );

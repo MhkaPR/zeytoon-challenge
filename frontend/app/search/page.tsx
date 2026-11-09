@@ -1,37 +1,70 @@
-"use client";
+import { Typography } from "@heroui/react";
+import { getTranslations } from "next-intl/server";
 
-import { Card, Chip, Typography } from "@heroui/react";
-import { use } from "react";
-
+import { PlanCatalog } from "@/src/features/home/PlanCatalog";
 import { SearchBox } from "@/src/features/home/SearchBox";
-import { strings } from "@/src/lib/i18n/strings";
+import { SearchImpressionBeacon } from "@/src/features/home/planCatalog/SearchImpressionBeacon";
+import { getPlansPage } from "@/src/lib/api/publicCatalog";
+import { visitorId } from "@/src/lib/visitor";
 
-/**
- * Search page: the search box sticks to the top and matching plans and companies render
- * below it (PAGES.yaml search-box desc). Matching is owned by the search feature, so this
- * shows the query and the pending state.
- */
-export default function SearchPage({
+const SEARCH_SORT_OPTIONS = [
+  { id: "relevance" as const, labelKey: "sortRelevance" },
+  { id: "price" as const, labelKey: "sortPriceAsc" },
+  { id: "expensive" as const, labelKey: "sortPriceDesc" },
+];
+
+/** Search results, rendered on the server from the public catalog API. */
+export default async function SearchPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const raw = use(searchParams).q;
+  const params = await searchParams;
+  const raw = params.q;
   const query = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
+  const vid = await visitorId();
+  const [ot, plansPage] = await Promise.all([
+    getTranslations(),
+    getPlansPage(
+      { ...(query ? { q: query } : {}), sort: "relevance", page_size: "12" },
+      { visitorId: vid },
+    ),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-[960px] flex-1 flex-col gap-[24px] px-[32px] py-[64px]">
-      <Typography className="text-[32px] font-semibold" type="h1">
-        {strings.searchTitle}
-      </Typography>
-      <SearchBox />
-      {query && <Chip variant="soft">{query}</Chip>}
-      <Card variant="secondary">
-        <Card.Header>
-          <Card.Title>{strings.resultsEmptyTitle}</Card.Title>
-          <Card.Description>{strings.resultsPending}</Card.Description>
-        </Card.Header>
-      </Card>
+      <Typography className="text-[32px] font-semibold" type="h1">{ot("searchTitle")}</Typography>
+      <SearchBox initialQuery={query} />
+      {query && <Typography color="muted">{ot("searchResultsFor", { query })}</Typography>}
+      <SearchImpressionBeacon
+        planIds={plansPage.plans.map((plan) => plan.id)}
+        query={query}
+        visitorId={vid}
+      />
+      <PlanCatalog
+        ariaLabel={ot("searchTitle")}
+        baseParams={query ? { q: query } : {}}
+        defaultSort="relevance"
+        description={null}
+        emptyState={
+          <div className="rounded-[var(--radius)] border border-[var(--separator)] p-[24px]">
+            <Typography className="font-semibold" type="h2">
+              {query ? ot("searchNoPlansTitle") : ot("resultsEmptyTitle")}
+            </Typography>
+            <Typography color="muted">
+              {query ? ot("searchNoPlansBody") : ot("searchEmptyHint")}
+            </Typography>
+          </div>
+        }
+        headerAction={null}
+        key={query}
+        plansPage={plansPage}
+        visitorId={vid}
+        searchParams={params}
+        showServiceTabs={false}
+        sortOptions={SEARCH_SORT_OPTIONS}
+        title={null}
+      />
     </main>
   );
 }
