@@ -27,8 +27,8 @@ class RecommendationsInterface:
         )
 
     @staticmethod
-    def suggest_with_reasons(records, visitor_id=None, user=None, limit=20):
-        return RankingService().suggest_with_reasons(
+    def suggest_with_explanations(records, visitor_id=None, user=None, limit=20):
+        return RankingService().suggest_with_explanations(
             records,
             visitor_id=visitor_id,
             user=user,

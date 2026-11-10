@@ -7,10 +7,8 @@ import { useState } from "react";
 
 import {ensureHttps, PublicPlan} from "@/src/lib/api/publicCatalog";
 import { sendSignal } from "@/src/lib/api/signals";
-import type { Reason } from "@/src/lib/api/explanations";
 import { fieldValue, formatPrice, priceOf } from "../planCatalogUtils";
 import { PlanDetailsModal } from "./PlanDetailsModal";
-import { WhyRecommended } from "./WhyRecommended";
 
 /** Company icon with a neutral local fallback when the domain has no favicon. */
 function CompanyFavicon({ domain }: { domain: string }) {
@@ -41,11 +39,9 @@ function CompanyFavicon({ domain }: { domain: string }) {
 /** One published service plan. Plan name is the primary heading; provider is secondary. */
 export function PlanCard({
   plan,
-  explanation,
   visitorId,
 }: {
   plan: PublicPlan;
-  explanation?: Reason[];
   visitorId?: string;
 }) {
   const ot = useTranslations();
@@ -104,7 +100,6 @@ export function PlanCard({
             <dd>{location == null ? "—" : String(location)}</dd>
           </div>
         </dl>
-        {explanation?.length ? <WhyRecommended reasons={explanation} /> : null}
         <div className="flex justify-center gap-2 w-full">
         <Button
           className="w-full"

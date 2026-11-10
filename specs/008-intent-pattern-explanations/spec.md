@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Replace feature-based recommendation explanations with intent-pattern explanations. For each interest cluster, build the top-K nearest plans and score pre-declared intent patterns against that candidate set using Lift, Fisher Exact, and MCC gates. Determine one intent per cluster, then display only the most relevant intent in the UI by counting how often each intent appears across clusters. Remove the separate explanation endpoint and persisted explanation model."
+**Input**: User description: "Replace feature-based recommendation explanations with intent-pattern explanations. For each interest cluster, build the top-K nearest plans and score pre-declared intent patterns against that candidate set using Lift, Fisher Exact, and MCC gates. Return one intent per cluster and display every cluster's explanation as its own section in the UI. Remove the separate explanation endpoint and persisted explanation model."
 
 ## Context
 
@@ -28,55 +28,53 @@ Only patterns that pass sample-size, statistical-significance, effect-size, and
 signal-corroboration checks may be reported. When no real pattern qualifies, the viewer
 receives a neutral "exploring" message.
 
-Intent detection still happens per cluster, so the system never averages cluster
-positions. The user interface, however, shows only one primary intent: the intent that
-appears most often across the viewer's clusters. This keeps the message short and avoids
-showing several competing explanations at once.
+Intent detection happens per cluster, so the system never averages cluster positions. The
+API returns every cluster's explanation, and the user interface renders one row per
+cluster. Repeated intents are not collapsed: two value clusters and one cheap cluster
+produce three rows.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - The viewer sees an intent explanation, not an attribute range (Priority: P1)
+### User Story 1 - Each cluster shows its own intent explanation (Priority: P1)
 
-A viewer with one or more interest clusters sees one short sentence that describes the
-most relevant intent behind the recommended plans, such as seeking value for money or high
-resources, instead of a numeric attribute range. The system still determines an intent for
-each cluster internally, but the interface presents a single primary intent.
+A viewer with one or more interest clusters sees one short intent sentence for each
+cluster, such as seeking value for money or high resources, instead of a numeric attribute
+range.
 
 **Why this priority**: This is the core product change. Without it the feature delivers no
 user-visible improvement.
 
 **Independent Test**: Seed a viewer whose interactions favor value-for-money plans, load
-the suggested plans, and confirm the displayed explanation names the value intent and
-contains no attribute range.
+the suggested plans, and confirm the cluster's section names the value intent and contains
+no attribute range.
 
 **Acceptance Scenarios**:
 
-1. **Given** a viewer with one or more interest clusters whose candidate plans match real intent patterns, **When** suggested plans load, **Then** the interface displays exactly one primary intent message.
+1. **Given** a viewer with one or more interest clusters, **When** suggested plans load, **Then** the interface displays one intent row per cluster.
 2. **Given** any reported explanation, **When** its message is inspected, **Then** it contains no numeric range derived from a feature bin center.
 3. **Given** a value-driven viewer, **When** the explanation is produced, **Then** the reported intent is `value`, not a RAM or price attribute description.
 
 ---
 
-### User Story 2 - The primary intent reflects the most frequent cluster intent (Priority: P1)
+### User Story 2 - Every cluster keeps its own intent, even when intents repeat (Priority: P1)
 
-A viewer with several distinct interests may have different intents detected in different
-clusters. The interface shows the intent that occurs in the largest number of clusters, so
-the viewer gets one coherent message instead of several competing or contradictory ones.
+A viewer with several interests may have different intents detected in different clusters.
+Each cluster is displayed separately, including repeated intents, so the viewer can see
+that two interests are both value-driven and a third is cheap-driven.
 
 **Why this priority**: Multi-cluster coherence is the main reason the attribute-based
-approach fails. Per-cluster detection must remain correct, while the visible message must
-stay singular and understandable.
+approach fails. Per-cluster detection must remain correct and visible.
 
 **Independent Test**: Seed a viewer with three clusters whose detected intents are `value`,
-`value`, and `cheap`, load the suggested plans, and confirm the interface shows `value`
-with an occurrence count of two.
+`value`, and `cheap`, load the suggested plans, and confirm the interface shows three
+sections: two value and one cheap.
 
 **Acceptance Scenarios**:
 
-1. **Given** three clusters whose detected intents are `value`, `value`, and `cheap`, **When** the suggested plans load, **Then** the primary intent is `value` and its occurrence count is two.
-2. **Given** two or more intents with the same occurrence count, **When** the primary intent is chosen, **Then** the tie is resolved deterministically by confidence and the fixed intent order.
+1. **Given** three clusters whose detected intents are `value`, `value`, and `cheap`, **When** the suggested plans load, **Then** the API returns three explanations and the interface renders three rows.
+2. **Given** repeated intents across clusters, **When** the interface renders, **Then** each occurrence gets its own row rather than being collapsed into one.
 3. **Given** multiple clusters, **When** intents are detected, **Then** each cluster is evaluated independently and cluster positions are never averaged together.
-4. **Given** a cheap cluster and a premium cluster, **When** the primary intent is shown, **Then** the message is not an attribute range and does not combine contradictory attribute bands.
+4. **Given** a cheap cluster and a premium cluster, **When** both sections are shown, **Then** neither message is an attribute range and the two messages do not combine contradictory attribute bands.
 
 ---
 
@@ -94,9 +92,9 @@ values.
 
 **Acceptance Scenarios**:
 
-1. **Given** no cluster has a real intent pattern that passes all gates and corroboration, **When** the primary intent is produced, **Then** the intent is `exploring`, the direction is absent, the confidence is absent, and the fixed exploring message is returned.
-2. **Given** at least one cluster has a real intent pattern that passes all gates and corroboration, **When** the primary intent is produced, **Then** the response reports that real pattern and never `exploring`.
-3. **Given** a cold-start profile, **When** suggested plans load, **Then** the primary intent is `exploring` and the plan ordering is unchanged from the existing cold-start behavior.
+1. **Given** no real intent pattern passes all gates and corroboration for a cluster, **When** that cluster's explanation is produced, **Then** the intent is `exploring`, the direction is absent, the confidence is absent, and the fixed exploring message is returned.
+2. **Given** at least one real intent pattern passes all gates and corroboration for a cluster, **When** that cluster's explanation is produced, **Then** the response reports that real pattern and never `exploring` for that cluster.
+3. **Given** a cold-start profile, **When** suggested plans load, **Then** each cluster's explanation is `exploring` and the plan ordering is unchanged from the existing cold-start behavior.
 
 ---
 
@@ -148,8 +146,8 @@ outcome follows the new value.
 - A pattern with a strong association but no directional signal is never reported.
 - A pattern that passes every numeric gate but contradicts the viewer's click history is rejected.
 - A real pattern that qualifies must win over `exploring`; `exploring` is never scored as a competitor.
-- Clusters whose detected intent is `exploring` do not outvote clusters that have a real intent; `exploring` is shown only when every cluster is exploring.
-- When two intents have the same cluster count, the tie is resolved by summed confidence and then by a fixed intent order so the result is deterministic.
+- Repeated intents across clusters are each rendered in their own row.
+- The interface row count always equals the number of cluster explanations returned.
 - A cluster with an empty or unusably small candidate set falls back to `exploring`.
 - A catalog smaller than the configured candidate size still produces a deterministic explanation or the `exploring` fallback.
 - A viewer with fewer than the configured minimum number of outbound clicks fails corroboration for every real pattern and receives `exploring`.
@@ -196,8 +194,8 @@ outcome follows the new value.
 
 - **FR-021**: Each interest cluster in the suggested-plans response MUST carry exactly one explanation object containing intent, direction, message, and confidence.
 - **FR-022**: A real-pattern explanation MUST report the pattern key as intent, the direction derived from MCC, a confidence object containing Lift, p-value, and MCC, and the Persian message for that pattern and direction.
-- **FR-023**: The Persian messages for positive real patterns MUST be: `cheap` — «دنبال گزینه‌های اقتصادی با قیمت پایین هستی»; `value` — «دنبال بهترین نسبت امکانات به قیمت هستی»; `spec_heavy` — «دنبال منابع بالا (رم/CPU/دیسک) هستی»; `premium` — «دنبال گزینه‌های پرقدرت و حرفه‌ای هستی».
-- **FR-024**: When no real pattern qualifies, the explanation MUST report intent `exploring`, no direction, no confidence, and the message «در حال کاوش گزینه‌های مختلف هستی».
+- **FR-023**: Intent messages MUST be stored in runtime configuration (django-constance), not in backend service code. Positive messages MUST be phrased as questions: `cheap` — «دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟»; `value` — «دنبال بهترین نسبت امکانات به قیمت هستی؟»; `spec_heavy` — «دنبال منابع بالا (رم/CPU/دیسک) هستی؟»; `premium` — «دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟».
+- **FR-024**: When no real pattern qualifies, the explanation MUST report intent `exploring`, no direction, no confidence, and the configurable question message «در حال کاوش گزینه‌های مختلف هستی؟».
 - **FR-025**: No explanation message may contain a numeric range tied to a feature bin center. Naming a resource category as part of an intent sentence is permitted only without a range.
 - **FR-026**: `exploring` MUST NOT be returned when at least one real pattern passes all gates and corroboration.
 
@@ -208,19 +206,20 @@ outcome follows the new value.
 - **FR-029**: The persisted explanation model and any persisted explanation results MUST be removed.
 - **FR-030**: The feature MUST NOT introduce a new persisted model or a database migration.
 - **FR-031**: Explanation computation MUST be deterministic for the same profile and catalog version.
-- **FR-032**: The candidate size, minimum pattern size, significance threshold, minimum Lift, minimum MCC, and minimum click count MUST be runtime-configurable with the defaults `20`, `30`, `0.05`, `2.0`, `0.20`, and `3` respectively.
+- **FR-032**: The candidate size, minimum pattern size, significance threshold, minimum Lift, minimum MCC, minimum click count, message catalog, and negative-intent flag MUST be runtime-configurable with the defaults `20`, `30`, `0.05`, `2.0`, `0.20`, `3`, the question-form message catalog, and negative intents enabled.
+- **FR-042**: When the negative-intent flag is disabled, patterns whose MCC is negative MUST be rejected and MUST NOT appear in any explanation.
 
-**Primary intent for the interface**
+**Per-cluster explanations for the interface**
 
-- **FR-033**: The system MUST determine one intent per interest cluster before producing the interface explanation.
-- **FR-034**: The system MUST count how many clusters produced each real intent and MUST select the intent with the highest count as the primary intent.
-- **FR-035**: Clusters whose intent is `exploring` MUST NOT contribute to the count of a real intent; `exploring` MUST become the primary intent only when every cluster is `exploring`.
-- **FR-036**: When two or more real intents share the highest count, the system MUST break the tie first by the highest summed confidence score of the clusters carrying that intent, where confidence score is Lift multiplied by absolute MCC, and then by the fixed order `cheap`, `value`, `spec_heavy`, `premium`.
-- **FR-037**: The primary explanation MUST carry the intent, direction, message, and confidence of the highest-scoring cluster that produced the winning intent.
-- **FR-038**: The primary explanation MUST include the number of clusters that produced the winning intent and the total number of clusters evaluated.
-- **FR-039**: The suggested-plans response MUST include the primary explanation alongside the per-cluster explanations.
-- **FR-040**: The interface MUST render only the primary intent message once, not one message per cluster.
-- **FR-041**: Primary-intent selection MUST be deterministic for the same profile and catalog version.
+- **FR-033**: The system MUST determine one intent per interest cluster.
+- **FR-034**: The suggested-plans response MUST return every cluster explanation in cluster order.
+- **FR-035**: The interface MUST render one row per cluster explanation.
+- **FR-036**: Repeated intents across clusters MUST each be rendered separately and MUST NOT be collapsed or counted into a single message.
+- **FR-037**: The system MUST NOT aggregate cluster intents into a primary or most-frequent intent.
+- **FR-038**: Each explanation MUST carry its own intent, direction, message, confidence, and the list of plans belonging to that cluster.
+- **FR-039**: Cluster explanation order MUST be deterministic for the same profile and catalog version.
+- **FR-040**: The interface MUST NOT display `exploring` explanations or the plans belonging to an exploring cluster. When every cluster is `exploring`, the suggested section is hidden entirely.
+- **FR-041**: Each plan list MUST be horizontally scrollable with a hidden scrollbar and MUST provide previous/next controls for moving across the list.
 
 ### Key Entities
 
@@ -228,7 +227,6 @@ outcome follows the new value.
 - **Candidate set**: The configured number of catalog plans nearest to one interest cluster; the set against which every real pattern is scored.
 - **Contingency table**: The counts of pattern members inside and outside the candidate set, and candidate-set members inside and outside the pattern, used by all three statistical gates.
 - **Intent explanation**: The per-cluster result containing the selected intent, direction, confidence values, and message.
-- **Primary intent summary**: The single interface-facing result chosen by counting per-cluster intents, carrying the winning intent's message and confidence plus its occurrence count and the total cluster count.
 - **Corroborating click**: A viewer interaction associated with a cluster and used to confirm that the statistically detected intent matches the viewer's actual behavior.
 
 ## Success Criteria *(mandatory)*
@@ -236,7 +234,7 @@ outcome follows the new value.
 ### Measurable Outcomes
 
 - **SC-001**: For a seeded value-driven viewer, 100% of suggested-plan loads report `value` as the cluster explanation and 0% report an attribute range.
-- **SC-002**: For a viewer with two distinct intents, 100% of loads show exactly one primary intent message and 0% show contradictory attribute ranges.
+- **SC-002**: For a viewer with two distinct intents, 100% of loads show one intent section per cluster and 0% show contradictory attribute ranges.
 - **SC-003**: 0% of explanation messages contain a numeric range tied to a feature bin center.
 - **SC-004**: 0% of reported patterns have fewer than the configured minimum catalog membership.
 - **SC-005**: 0% of reported patterns have a p-value above the configured significance threshold, even when Lift exceeds 3.
@@ -248,20 +246,21 @@ outcome follows the new value.
 - **SC-011**: Repeating the same profile and catalog version produces byte-identical explanations in 100% of observed cases.
 - **SC-012**: 100% of feature-005 and feature-006 regression tests still pass.
 - **SC-013**: The pattern registry contains exactly the five approved keys and 0 keyword-based patterns.
-- **SC-014**: When one real intent appears in more clusters than any other, 100% of loads select that intent as the primary intent.
-- **SC-015**: When at least one cluster has a real intent, 0% of loads show `exploring` as the primary intent.
-- **SC-016**: When intents tie on cluster count, 100% of loads resolve the tie deterministically using confidence and then the fixed intent order.
-- **SC-017**: The interface renders exactly one primary intent message per suggested-plans view and 0 per-cluster messages.
+- **SC-014**: 100% of clusters produce exactly one explanation in the API response.
+- **SC-015**: When two clusters produce `value` and one produces `cheap`, 100% of loads render three rows: two value and one cheap.
+- **SC-016**: The number of rendered explanation rows equals the number of cluster explanations in 100% of loads.
+- **SC-017**: 0% of loads collapse repeated intents into a single aggregated message.
+- **SC-018**: 100% of real explanations include the plan list for their own cluster.
+- **SC-019**: 0% of loads display the `exploring` reason text or the plans of an exploring cluster.
+- **SC-020**: 100% of plan rows hide the native scrollbar and expose previous/next controls.
 
 ## Assumptions
 
 - "Outbound click" refers to the existing destination-visit interaction, which is the strongest signal for a viewer leaving the catalog toward a provider. No new signal kind is introduced.
 - Each corroborating click is attributed to the interest cluster nearest to the clicked plan in the recommendation space, because individual signals are stored against plans rather than clusters.
-- Negative-direction explanations use an "avoiding" phrasing for the same intent pattern. The exact Persian copy for negative direction is finalized during planning; the positive copy is fixed by this specification.
+- Negative-direction explanations use question-form "avoiding" phrasing stored in the configurable message catalog. Operators can disable negative-direction explanations entirely.
 - The suggested-plans response keeps its existing plan payload and gains one explanation object per interest cluster. If the current response is flat, cluster grouping is introduced only as far as required to associate each explanation with its cluster.
-- The primary-intent count is unweighted: each cluster contributes one vote for its detected intent, regardless of the cluster's confidence or size.
-- The primary intent's confidence and message come from the highest-scoring cluster carrying that intent, so the displayed confidence is a real cluster result rather than an average.
-- The fixed tie-break order is `cheap`, `value`, `spec_heavy`, `premium`, matching the order in which the real patterns are declared.
+- Each cluster's explanation is rendered as its own row; repeated intents are not deduplicated.
 - The catalog population for contingency tables is the full set of plans available to the recommendation space in the same request.
 - A cluster with no usable candidate set or no corroborating clicks falls back to `exploring` rather than omitting the explanation.
 - The existing space version, profile rebuild behavior, and ranking order remain unchanged.
@@ -282,4 +281,4 @@ outcome follows the new value.
 - Changes to the clustering algorithm or cluster count.
 - Changes to the feature-005 or feature-006 recommendation space, ranking basis, or signal capture.
 - Online A/B measurement of intent-detection quality.
-- Frontend redesign beyond rendering the single primary intent message.
+- Frontend redesign beyond rendering one row per cluster explanation.

@@ -1,7 +1,7 @@
 import { apiBaseUrl } from "@/src/lib/api/base";
 import { createQueryString } from "@/src/lib/api/utils";
 import type { ResourceKey } from "@/src/lib/config/siteConfig";
-import type { ClusterExplanation } from "@/src/lib/api/explanations";
+import type { ClusterIntentExplanation } from "@/src/lib/api/intentExplanations";
 
 export interface PublicPlan {
   id: number;
@@ -129,7 +129,7 @@ export async function getPublishedPlans(
 
 export interface SuggestedPlansResult {
   plans: PublicPlan[];
-  explanations: ClusterExplanation[];
+  explanations: ClusterIntentExplanation[];
 }
 
 export async function getSuggestedPlans(
@@ -146,7 +146,7 @@ export async function getSuggestedPlans(
     if (!response.ok) return { plans: [], explanations: [] };
     const payload = (await response.json()) as {
       data?: PublicPlan[];
-      explanations?: ClusterExplanation[];
+      explanations?: ClusterIntentExplanation[];
     };
     return {
       plans: payload.data ?? [],

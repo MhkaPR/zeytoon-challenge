@@ -49,9 +49,14 @@ Confirm:
 
 - `data` contains the suggested plans.
 - `explanations` has one entry per cluster.
-- `primary_explanation` is present and contains `occurrence_count` and `cluster_count`.
+- `explanations` contains one entry per cluster, including repeated intents.
+- Each explanation contains `plan_ids` for its own plan list.
 - No message contains a numeric range.
 - A cold-start viewer receives `intent: "exploring"` and `confidence: null`.
+- Every message is a question and comes from the constance message catalog.
+- Disabling `RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED` removes all negative-direction explanations.
+- `exploring` explanations and their plans are not rendered at all.
+- Plan rows hide the native scrollbar and provide previous/next controls.
 
 Confirm the removed endpoint no longer responds:
 
@@ -72,7 +77,7 @@ yarn build
 
 Expected outcomes:
 
-- The suggested-plans surface renders exactly one primary intent message.
+- The suggested-plans surface renders one row per cluster explanation.
 - No per-cluster messages or numeric attribute ranges are rendered.
 - The production build succeeds with no TypeScript or ESLint errors.
 

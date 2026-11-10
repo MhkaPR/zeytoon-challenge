@@ -33,28 +33,22 @@ explanation endpoint. No new HTTP route is added.
     {
       "cluster_id": 0,
       "representative_plan_id": 395,
+      "plan_ids": [395, 401],
       "intent": "value",
       "direction": "positive",
-      "message": "دنبال بهترین نسبت امکانات به قیمت هستی",
+      "message": "دنبال بهترین نسبت امکانات به قیمت هستی؟",
       "confidence": { "lift": 4.2, "p": 0.001, "mcc": 0.62 }
     },
     {
       "cluster_id": 1,
       "representative_plan_id": 210,
+      "plan_ids": [210],
       "intent": "exploring",
       "direction": null,
-      "message": "در حال کاوش گزینه‌های مختلف هستی",
+      "message": "در حال کاوش گزینه‌های مختلف هستی؟",
       "confidence": null
     }
-  ],
-  "primary_explanation": {
-    "intent": "value",
-    "direction": "positive",
-    "message": "دنبال بهترین نسبت امکانات به قیمت هستی",
-    "confidence": { "lift": 4.2, "p": 0.001, "mcc": 0.62 },
-    "occurrence_count": 1,
-    "cluster_count": 2
-  }
+  ]
 }
 ```
 
@@ -66,25 +60,23 @@ explanation endpoint. No new HTTP route is added.
 | `explanations` | array | One entry per interest cluster, in cluster order. |
 | `explanations[].cluster_id` | int | Cluster index. |
 | `explanations[].representative_plan_id` | int or null | Closest plan in the candidate set; null only when no candidate exists. |
+| `explanations[].plan_ids` | array[int] | Suggested plans assigned to this cluster; rendered as the cluster's plan list. |
 | `explanations[].intent` | enum | `cheap`, `value`, `spec_heavy`, `premium`, or `exploring`. |
 | `explanations[].direction` | enum or null | `positive`, `negative`, or null for `exploring`. |
 | `explanations[].message` | string | Persian intent sentence; never contains a numeric range. |
 | `explanations[].confidence` | object or null | `{lift, p, mcc}` for real intents; null for `exploring`. |
-| `primary_explanation` | object | The single intent the UI renders. |
-| `primary_explanation.occurrence_count` | int | Number of clusters that produced the winning intent. |
-| `primary_explanation.cluster_count` | int | Total clusters evaluated. |
+| `explanations` order | array | Cluster order; repeated intents remain separate entries. |
 
 ## Guarantees
 
 - **Per-cluster independence**: cluster positions are never averaged.
-- **Exploring is fallback-only**: it is never scored as a competitor and never becomes the
-  primary intent when any real intent exists.
+- **Exploring is fallback-only**: it is never scored as a competitor.
 - **Deterministic**: identical profile, space version, and configuration produce
   byte-identical explanations.
 - **No attribute leakage**: messages describe intent and contain no numeric range tied to a
   feature bin center.
-- **Bounded**: at most the configured maximum number of clusters; at most one explanation
-  per cluster; exactly one primary explanation.
+- **Bounded**: at most the configured maximum number of clusters; exactly one explanation
+  per cluster.
 - **Degrades safely**: cold-start, random-click, empty-catalog, and stale-profile requests
   return `exploring` or an empty explanation list without a 5xx.
 
@@ -96,7 +88,6 @@ response.
 
 ## Frontend contract
 
-`frontend/src/lib/api/intentExplanations.ts` exposes typed shapes for
-`ClusterIntentExplanation` and `PrimaryIntentExplanation`. `SuggestedPlans` renders exactly
-one primary intent message. It does not render one message per cluster and does not build
-numeric attribute ranges.
+`frontend/src/lib/api/intentExplanations.ts` exposes the typed
+`ClusterIntentExplanation` shape. `SuggestedPlans` renders one row per explanation,
+including repeated intents, and does not build numeric attribute ranges.

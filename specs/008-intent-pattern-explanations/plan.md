@@ -9,11 +9,10 @@
 Replace the feature-attribution explanation layer with intent-pattern detection. For each
 interest cluster, build the same top-K nearest candidate set used by suggested plans,
 score four pre-declared real intent patterns with Fisher Exact, Lift, and MCC gates, and
-corroborate the winner against the viewer's outbound clicks. Return one intent explanation
-per cluster and one aggregated primary intent for the UI, chosen by cluster-occurrence
-count with deterministic tie-breaking. Remove the separate explanation endpoint, the
-feature-reason serializers/services, and the persisted explanation model. No new persisted
-model or migration is introduced.
+corroborate the winner against the viewer's outbound clicks. Return every cluster's intent
+explanation and render one UI row per cluster, including repeated intents. Remove the
+separate explanation endpoint, the feature-reason serializers/services, and the persisted
+explanation model. No new persisted model or migration is introduced.
 
 ## Technical Context
 
@@ -31,7 +30,7 @@ model or migration is introduced.
 
 **Performance Goals**: Preserve the 100 RPS read-heavy target. Pattern membership is computed once per request in vectorized form; each request performs at most four Fisher tests per cluster (maximum four clusters) and adds one signal-history query.
 
-**Constraints**: No new migrations; deterministic output for the same profile and space version; per-cluster evaluation only; maximum four interest clusters; candidate set size defaults to 20; no attribute ranges in output.
+**Constraints**: No new migrations; deterministic output for the same profile and space version; per-cluster evaluation only; maximum four interest clusters; candidate set size defaults to 20; no attribute ranges in output; no Persian strings in backend service code; messages and the negative-intent flag are constance-backed.
 
 **Scale/Scope**: Four real intent patterns plus one fallback, up to four clusters, catalog sizes in the hundreds to low thousands, and one suggested-plans response per page load.
 
@@ -84,12 +83,12 @@ backend/src/apps/recommendations/
 ├── models/
 │   └── __init__.py                          # no explanation model re-export
 ├── serializers/v1/
-│   ├── intent_explanations.py               # NEW: per-cluster + primary serializers
+│   ├── intent_explanations.py               # NEW: per-cluster serializers
 │   └── reasons.py                           # DELETE
 ├── services/v1/
 │   ├── intent_patterns.py                   # NEW: registry, predicates, messages
 │   ├── intent_scoring.py                    # NEW: contingency table, gates, MCC, Lift
-│   ├── explanation.py                       # NEW: per-cluster orchestration + primary intent
+│   ├── explanation.py                       # NEW: per-cluster orchestration
 │   ├── ranking.py                           # call explanation from suggest
 │   └── reasons.py                           # DELETE
 └── tests/
@@ -110,7 +109,8 @@ frontend/src/lib/api/
 └── publicCatalog.ts                         # parse primary explanation
 
 frontend/src/features/home/
-├── SuggestedPlans.tsx                       # render one primary intent message
+├── SuggestedPlans.tsx                       # render one row per cluster explanation
+├── planCatalog/PlanRow.tsx                  # hidden-scrollbar row with prev/next controls
 ├── explanationText.ts                       # DELETE
 └── planCatalog/WhyRecommended.tsx           # DELETE or replace with primary badge
 

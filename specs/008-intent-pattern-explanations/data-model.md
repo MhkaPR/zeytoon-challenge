@@ -61,13 +61,14 @@ Rules:
 | `key` | string | One of `cheap`, `value`, `spec_heavy`, `premium`, `exploring` |
 | `matches` | callable | Predicate over `PlanIntentFeatures` |
 | `fallback` | bool | True only for `exploring` |
-| `messages` | mapping | Direction (`positive`/`negative`) to Persian copy |
+| `messages` | mapping | Direction (`positive`/`negative`) to configured question copy |
 
 Registry rules:
 
 - Exactly five keys.
 - `exploring` is never scored.
 - No `text_specific` or keyword pattern.
+- No Persian strings live in the registry; messages resolve from constance.
 - Adding a pattern requires only a new registry entry.
 
 ### ContingencyTable
@@ -105,27 +106,14 @@ Validation:
 |-------|------|---------|
 | `cluster_id` | int | Cluster index |
 | `representative_plan_id` | int or null | Closest plan in the cluster's candidate set |
+| `plan_ids` | list[int] | Suggested plans assigned to this cluster |
 | `intent` | string | Winning real pattern or `exploring` |
 | `direction` | string or null | `positive`, `negative`, or null for `exploring` |
 | `message` | string | Persian explanation |
 | `confidence` | object or null | `{lift, p, mcc}` for real intents; null for `exploring` |
 
-### PrimaryIntentExplanation
-
-| Field | Type | Meaning |
-|-------|------|---------|
-| `intent` | string | Most frequent real intent, or `exploring` |
-| `direction` | string or null | Direction from the highest-scoring winning cluster |
-| `message` | string | Persian explanation |
-| `confidence` | object or null | Confidence from the highest-scoring winning cluster |
-| `occurrence_count` | int | Number of clusters that produced the winning intent |
-| `cluster_count` | int | Total clusters evaluated |
-
-Rules:
-
-- `exploring` clusters do not vote unless every cluster is `exploring`.
-- Ties break by summed confidence score, then fixed pattern order.
-- The primary explanation is deterministic for the same profile and space version.
+The API returns the full `ClusterIntentExplanation` list in cluster order. Repeated
+intents are not deduplicated and there is no primary or aggregate explanation.
 
 ## State transitions
 

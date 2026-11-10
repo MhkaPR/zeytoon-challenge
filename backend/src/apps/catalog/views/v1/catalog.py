@@ -20,7 +20,9 @@ from apps.catalog.filters import (
 from apps.catalog.models import PublishedRecord
 from apps.catalog.interfaces import CatalogInterface
 from apps.recommendations.interfaces import RecommendationsInterface
-from apps.recommendations.serializers.v1.reasons import ClusterExplanationSerializer
+from apps.recommendations.serializers.v1.intent_explanations import (
+    ClusterIntentExplanationSerializer,
+)
 from apps.catalog.serializers.v1.catalog import (
     PublicCompanySerializer,
     PublicPlanSerializer,
@@ -101,7 +103,7 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
     @action(detail=False, methods=["get"], url_path="suggested")
     def suggested(self, request):
         """Top plans ranked by distance, each cluster's best match explained."""
-        result = RecommendationsInterface.suggest_with_reasons(
+        result = RecommendationsInterface.suggest_with_explanations(
             CatalogInterface.published_plan_records(),
             visitor_id=self._visitor_id(request),
             user=request.user if request.user.is_authenticated else None,
@@ -111,7 +113,7 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
         instances = [
             records_by_id[plan_id] for plan_id in plan_ids if plan_id in records_by_id
         ]
-        explanations = ClusterExplanationSerializer(
+        explanations = ClusterIntentExplanationSerializer(
             result["explanations"], many=True
         ).data
         return Response(

@@ -27,10 +27,13 @@ DEFAULTS = {
     "RECOMMENDATION_MAX_INTEREST_CLUSTERS": 4,
     "RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD": 0.2,
     "RECOMMENDATION_EXPLAIN_K": 20,
-    "RECOMMENDATION_EXPLAIN_PERCENTILE_LO": 5,
-    "RECOMMENDATION_EXPLAIN_PERCENTILE_HI": 95,
-    "RECOMMENDATION_EXPLAIN_F1_THRESHOLD": 0.3,
-    "RECOMMENDATION_EXPLAIN_TOP_N": 3,
+    "RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE": 30,
+    "RECOMMENDATION_EXPLAIN_ALPHA": 0.05,
+    "RECOMMENDATION_EXPLAIN_MIN_LIFT": 2.0,
+    "RECOMMENDATION_EXPLAIN_MIN_MCC": 0.20,
+    "RECOMMENDATION_EXPLAIN_MIN_CLICKS": 3,
+    "RECOMMENDATION_EXPLAIN_MESSAGES": {},
+    "RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED": True,
 }
 
 
@@ -113,17 +116,29 @@ def explain_k():
     return int(_value("RECOMMENDATION_EXPLAIN_K"))
 
 
-def explain_percentile_lo():
-    return float(_value("RECOMMENDATION_EXPLAIN_PERCENTILE_LO"))
+def explain_min_pattern_size():
+    return int(_value("RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE"))
 
 
-def explain_percentile_hi():
-    return float(_value("RECOMMENDATION_EXPLAIN_PERCENTILE_HI"))
+def explain_alpha():
+    return float(_value("RECOMMENDATION_EXPLAIN_ALPHA"))
 
 
-def explain_f1_threshold():
-    return float(_value("RECOMMENDATION_EXPLAIN_F1_THRESHOLD"))
+def explain_min_lift():
+    return float(_value("RECOMMENDATION_EXPLAIN_MIN_LIFT"))
 
 
-def explain_top_n():
-    return int(_value("RECOMMENDATION_EXPLAIN_TOP_N"))
+def explain_min_mcc():
+    return float(_value("RECOMMENDATION_EXPLAIN_MIN_MCC"))
+
+
+def explain_min_clicks():
+    return int(_value("RECOMMENDATION_EXPLAIN_MIN_CLICKS"))
+
+
+def explain_messages():
+    return dict(_value("RECOMMENDATION_EXPLAIN_MESSAGES") or {})
+
+
+def explain_negative_enabled():
+    return bool(_value("RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED"))

@@ -510,26 +510,58 @@ CONSTANCE_CONFIG = {
         0.2,
         "Distance above which a signal starts a new interest cluster.",
     ),
-    # Recommendation explanations (spec 007).
+    # Recommendation intent explanations (spec 008).
     "RECOMMENDATION_EXPLAIN_K": (
         20,
-        "Candidate set size used to reconstruct each interest cluster's reasons.",
+        "Candidate set size used to detect each interest cluster's intent.",
     ),
-    "RECOMMENDATION_EXPLAIN_PERCENTILE_LO": (
-        5,
-        "Lower percentile bound of a feature's reconstruction band.",
+    "RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE": (
+        30,
+        "Minimum catalog membership for an intent pattern to be scored.",
     ),
-    "RECOMMENDATION_EXPLAIN_PERCENTILE_HI": (
-        95,
-        "Upper percentile bound of a feature's reconstruction band.",
+    "RECOMMENDATION_EXPLAIN_ALPHA": (
+        0.05,
+        "Maximum two-sided Fisher Exact p-value for an intent pattern.",
     ),
-    "RECOMMENDATION_EXPLAIN_F1_THRESHOLD": (
-        0.3,
-        "Minimum F1 for a feature to be named in an explanation.",
+    "RECOMMENDATION_EXPLAIN_MIN_LIFT": (
+        2.0,
+        "Minimum Lift for an intent pattern to be reported.",
     ),
-    "RECOMMENDATION_EXPLAIN_TOP_N": (
+    "RECOMMENDATION_EXPLAIN_MIN_MCC": (
+        0.20,
+        "Minimum absolute Matthews Correlation Coefficient for an intent pattern.",
+    ),
+    "RECOMMENDATION_EXPLAIN_MIN_CLICKS": (
         3,
-        "Maximum number of features named per interest cluster.",
+        "Minimum corroborating destination-visit clicks per interest cluster.",
+    ),
+    "RECOMMENDATION_EXPLAIN_MESSAGES": (
+        {
+            "cheap": {
+                "positive": "دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟",
+                "negative": "از گزینه‌های اقتصادی با قیمت پایین دوری می‌کنی؟",
+            },
+            "value": {
+                "positive": "دنبال بهترین نسبت امکانات به قیمت هستی؟",
+                "negative": "از بهترین نسبت امکانات به قیمت دوری می‌کنی؟",
+            },
+            "spec_heavy": {
+                "positive": "دنبال منابع بالا (رم/CPU/دیسک) هستی؟",
+                "negative": "از منابع بالا (رم/CPU/دیسک) دوری می‌کنی؟",
+            },
+            "premium": {
+                "positive": "دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟",
+                "negative": "از گزینه‌های پرقدرت و حرفه‌ای دوری می‌کنی؟",
+            },
+            "exploring": {
+                "positive": "در حال کاوش گزینه‌های مختلف هستی؟",
+            },
+        },
+        "Question-form Persian messages keyed by intent and direction.",
+    ),
+    "RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED": (
+        True,
+        "Whether negative-direction intent explanations may be reported.",
     ),
 }
 

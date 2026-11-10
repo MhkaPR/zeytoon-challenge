@@ -86,46 +86,40 @@ scope and frontend capture); corroborating against all clicks regardless of clus
 
 **Decision**: Report `direction = "positive"` when MCC is positive and `"negative"` when
 MCC is negative. Corroboration always checks the pattern's positive behavioral signature,
-as specified. Negative-direction copy uses an "avoiding" phrasing for the same intent; the
-exact Persian strings are finalized in the pattern registry during implementation.
+as specified. Add `RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED`; when false, reject every
+negative-direction pattern. Negative copy uses question-form "avoiding" phrasing from the
+configurable message catalog.
 
-**Rationale**: The specification defines direction from MCC but only defines positive
-corroboration thresholds. Keeping corroboration positive avoids inventing inverse
-thresholds that are not in scope.
+**Rationale**: The product owner wants an operational switch for negative intents. Keeping
+corroboration positive avoids inventing inverse thresholds that are not in scope.
 
 **Alternatives considered**: Inverting corroboration for negative MCC (adds unspecified
 thresholds and changes acceptance behavior).
 
-## R7 — Primary-intent aggregation
+## R7 — Per-cluster display
 
-**Decision**: Count per-cluster real intents, excluding `exploring`. Select the highest
-count. Break ties by the sum of the winning clusters' `Lift × |MCC|` scores, then by the
-fixed order `cheap`, `value`, `spec_heavy`, `premium`. The primary explanation takes its
-direction, message, and confidence from the highest-scoring cluster carrying the winning
-intent and includes `occurrence_count` and `cluster_count`. If every cluster is
-`exploring`, or there are no clusters, the primary explanation is `exploring` with null
-confidence and zero counts as applicable.
+**Decision**: Return every cluster explanation in cluster order and render one UI section
+per explanation. Do not count, rank, or aggregate intents across clusters. Repeated
+intents remain separate sections.
 
-**Rationale**: One visible message avoids competing explanations while preserving
-per-cluster detection. The tie-break is deterministic and auditable.
+**Rationale**: The viewer should see each detected interest independently. Collapsing
+`value, value, cheap` into one message would hide two of the three detected intents.
 
-**Alternatives considered**: Weighted voting by confidence only (a single high-confidence
-cluster could override the majority); showing every cluster message (the behavior being
-removed).
+**Alternatives considered**: Primary-intent counting (rejected by the product owner);
+deduplicating repeated intents (hides distinct clusters).
 
 ## R8 — Where copy lives
 
-**Decision**: The backend returns a ready-to-render Persian `message` per explanation, as
-required by the API contract. The frontend renders the primary explanation's `message`
-directly and does not hardcode new user-facing copy. Old feature-range i18n keys are
-removed.
+**Decision**: Store every question-form message in the django-constance message catalog.
+Backend service modules contain no Persian strings. The API returns the configured
+`message` per explanation, and the frontend renders each section's message as response
+data.
 
-**Rationale**: Intent copy is domain content defined alongside the pattern registry; the
-API contract requires it. The frontend still avoids hardcoded strings because the string
-arrives as response data.
+**Rationale**: Operators can change copy without a deploy, and service code stays
+language-neutral. The API contract still provides ready-to-render text.
 
-**Alternatives considered**: Backend returns only intent keys and the frontend maps them
-through next-intl (duplicates the copy and diverges from the required response contract).
+**Alternatives considered**: Hardcoded Persian in the registry (violates the product
+owner's instruction); frontend-only copy (diverges from the required API message).
 
 ## R9 — Removal of feature-based explanations
 

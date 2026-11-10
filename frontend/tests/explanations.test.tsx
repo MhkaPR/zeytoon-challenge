@@ -1,12 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { explanationText, reasonSentence } from "@/src/features/home/explanationText";
 import { SuggestedPlans } from "@/src/features/home/SuggestedPlans";
-import type { ClusterExplanation, Reason } from "@/src/lib/api/explanations";
+import type { ClusterIntentExplanation } from "@/src/lib/api/intentExplanations";
 import type { PublicPlan } from "@/src/lib/api/publicCatalog";
-import { strings } from "./messages";
 
 function plan(id: number, name: string): PublicPlan {
   return {
@@ -19,77 +16,86 @@ function plan(id: number, name: string): PublicPlan {
   };
 }
 
-const t = Object.assign((key: string) => strings[key] ?? key, {
-  raw: (key: string) => strings[key] ?? key,
-});
+const explanations: ClusterIntentExplanation[] = [
+  {
+    cluster_id: 0,
+    representative_plan_id: 1,
+    plan_ids: [1],
+    intent: "value",
+    direction: "positive",
+    message: "دنبال بهترین نسبت امکانات به قیمت هستی؟",
+    confidence: { lift: 4.2, p: 0.001, mcc: 0.62 },
+  },
+  {
+    cluster_id: 1,
+    representative_plan_id: 2,
+    plan_ids: [2],
+    intent: "value",
+    direction: "positive",
+    message: "دنبال بهترین نسبت امکانات به قیمت هستی؟",
+    confidence: { lift: 3.1, p: 0.002, mcc: 0.51 },
+  },
+  {
+    cluster_id: 2,
+    representative_plan_id: 3,
+    plan_ids: [3],
+    intent: "cheap",
+    direction: "positive",
+    message: "دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟",
+    confidence: { lift: 2.5, p: 0.01, mcc: 0.4 },
+  },
+];
 
-describe("explanationText", () => {
-  it("describes a textual match as a product category", () => {
-    const text = reasonSentence(
-      { feature: "textual_category", type: "textual", f1: 0.6 },
-      t,
-    );
-    expect(text).toBe(strings.explainTextual);
-    expect(/\d/.test(text)).toBe(false);
-  });
-
-  it("quotes a real-unit range for a numeric match", () => {
-    const text = reasonSentence(
-      { feature: "cpu", type: "numeric", f1: 0.8, real_range: [2, 4] },
-      t,
-    );
-    expect(text).toContain("۲");
-    expect(text).toContain("۴");
-  });
-
-  it("names a category for a categorical match", () => {
-    const text = reasonSentence(
-      { feature: "os", type: "categorical", f1: 0.7, label: "Linux" },
-      t,
-    );
-    expect(text).toContain("Linux");
-  });
-});
-
-describe("SuggestedPlans explanations", () => {
-  const explanations: ClusterExplanation[] = [
-    {
-      cluster_id: 0,
-      representative_plan_id: 1,
-      reasons: [{ feature: "textual_category", type: "textual", f1: 0.6 }],
-    },
-  ];
-
-  it("opens the reason modal from the badge", async () => {
-    const user = userEvent.setup();
+describe("SuggestedPlans intent explanations", () => {
+  it("renders one row per explanation with its own plan list", () => {
     render(
       <SuggestedPlans
         explanations={explanations}
-        plans={[plan(1, "Cloud plan"), plan(2, "WordPress plan")]}
+        plans={[
+          plan(1, "Value One"),
+          plan(2, "Value Two"),
+          plan(3, "Cheap One"),
+        ]}
       />,
     );
-    const badge = screen.getByRole("button", { name: strings.explainReasonLabel });
-    expect(badge).toBeInTheDocument();
-    await user.click(badge);
-    expect(screen.getByText(strings.explainTextual)).toBeInTheDocument();
-  });
 
-  it("renders no reason when explanations are absent", () => {
-    render(<SuggestedPlans plans={[plan(2, "WordPress plan")]} />);
     expect(
-      screen.queryByRole("button", { name: strings.explainReasonLabel }),
-    ).not.toBeInTheDocument();
+      screen.getAllByText("دنبال بهترین نسبت امکانات به قیمت هستی؟"),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText("دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Value One")).toBeInTheDocument();
+    expect(screen.getByText("Value Two")).toBeInTheDocument();
+    expect(screen.getByText("Cheap One")).toBeInTheDocument();
   });
-});
 
-describe("explanationText join", () => {
-  it("joins multiple reasons into one explanation", () => {
-    const reasons: Reason[] = [
-      { feature: "textual_category", type: "textual", f1: 0.6 },
-      { feature: "ram", type: "numeric", f1: 0.8, real_range: [8, 16] },
-    ];
-    const text = explanationText(reasons, t);
-    expect(text).toContain(strings.explainTextual);
-    expect(text.length).toBeGreaterThan(strings.explainTextual.length);
+  it("falls back to the flat plan list when explanations are absent", () => {
+    render(<SuggestedPlans plans={[plan(4, "Fallback Plan")]} />);
+    expect(screen.getByText("Fallback Plan")).toBeInTheDocument();
+  });
+
+  it("does not display exploring explanations or their plans", () => {
+    render(
+      <SuggestedPlans
+        explanations={[
+          {
+            cluster_id: 3,
+            representative_plan_id: 5,
+            plan_ids: [5],
+            intent: "exploring",
+            direction: null,
+            message: "در حال کاوش گزینه‌های مختلف هستی؟",
+            confidence: null,
+          },
+        ]}
+        plans={[plan(5, "Exploring Plan")]}
+      />,
+    );
+
+    expect(
+      screen.queryByText("در حال کاوش گزینه‌های مختلف هستی؟"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Exploring Plan")).not.toBeInTheDocument();
   });
 });

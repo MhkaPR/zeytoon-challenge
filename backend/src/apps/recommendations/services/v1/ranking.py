@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from apps.recommendations.models import InterestProfile
-from apps.recommendations.services.v1.reasons import FeatureReasoner
+from apps.recommendations.models import InterestProfile, InterestSignal
+from apps.recommendations.services.v1.explanation import IntentExplainer
 from apps.recommendations.services.v1.recommender import Recommender
 from apps.recommendations.services.v1.state import InterestClusters
 from apps.recommendations.services.v1.store import PlanSpaceProvider
@@ -50,10 +50,10 @@ class RankingService:
         clusters = InterestClusters.from_profile(profile, bundle)
         return self._select(bundle, clusters, limit)
 
-    def suggest_with_reasons(self, records, visitor_id=None, user=None, limit=20):
-        """Return the suggested plan ids plus one explanation per interest cluster.
+    def suggest_with_explanations(self, records, visitor_id=None, user=None, limit=20):
+        """Return the suggested plan ids plus one intent explanation per cluster.
 
-        Reasons are computed here, in the same pass that ranks the plans, so the
+        Explanations are computed here, in the same pass that ranks the plans, so the
         plan shown in a card and the plan an explanation describes can never
         drift to different versions or profiles.
         """
@@ -61,13 +61,20 @@ class RankingService:
         profile = self._profile(visitor_id, user)
         clusters = InterestClusters.from_profile(profile, bundle)
         plan_ids = self._select(bundle, clusters, limit)
-        has_state = (
+        signals = []
+        if (
             profile is not None
             and profile.signal_count > 0
             and profile.space_version == bundle["version"]
-        )
-        explanations = (
-            FeatureReasoner(bundle).explain_all(clusters) if has_state else []
+        ):
+            signals = list(
+                InterestSignal.objects.filter(
+                    profile=profile,
+                    kind=InterestSignal.Kind.DESTINATION_VISIT,
+                )
+            )
+        explanations = IntentExplainer(bundle).explain_all(
+            clusters, signals, plan_ids
         )
         return {"plan_ids": plan_ids, "explanations": explanations}
 

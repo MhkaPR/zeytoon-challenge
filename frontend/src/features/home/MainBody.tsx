@@ -15,7 +15,7 @@ import type {
   PublicPlan,
   RecentPublicCompany,
 } from "@/src/lib/api/publicCatalog";
-import type { ClusterExplanation } from "@/src/lib/api/explanations";
+import type { ClusterIntentExplanation } from "@/src/lib/api/intentExplanations";
 import {SiteConfig} from "@/src/lib/config/siteConfig";
 
 /**
@@ -38,7 +38,7 @@ export function MainBody({
   brandLogo?: ReactNode;
   plansPage: PlansPage;
   suggestedPlans: PublicPlan[];
-  explanations?: ClusterExplanation[];
+  explanations?: ClusterIntentExplanation[];
   visitorId?: string;
   recentCompanies: RecentPublicCompany[];
   loading?: boolean;
