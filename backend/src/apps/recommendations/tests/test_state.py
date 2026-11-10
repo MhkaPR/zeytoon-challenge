@@ -73,3 +73,31 @@ def test_inactive_cluster_fades_after_repeated_new_interest(monkeypatch):
     active = clusters.active_states()
     assert len(active) == 1
     assert np.allclose(active[0].x, [0.0, 0.0])
+
+
+def test_low_activity_clusters_stay_visible_relative_to_top():
+    clusters = InterestClusters(
+        [[0.0, 0.0], [1.0, 1.0], [0.5, 0.5]],
+        activities=[0.0038166509464209555, 4.99537955116124, 0.0007918252709265627],
+        max_clusters=4,
+        threshold=0.2,
+    )
+
+    active = clusters.active_states()
+
+    assert len(active) == 3
+    assert active[0].activity > active[1].activity > active[2].activity
+
+
+def test_fully_stale_clusters_are_dropped_relative_to_top():
+    clusters = InterestClusters(
+        [[0.0, 0.0], [1.0, 1.0], [0.5, 0.5]],
+        activities=[0.00001, 5.0, 0.00002],
+        max_clusters=4,
+        threshold=0.2,
+    )
+
+    active = clusters.active_states()
+
+    assert len(active) == 1
+    assert active[0].activity == 5.0

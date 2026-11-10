@@ -144,8 +144,19 @@ class InterestClusters:
         return [float(state.activity) for state in self.states]
 
     def active_states(self):
-        minimum = conf.cluster_min_activity()
-        return [state for state in self.states if state.activity >= minimum]
+        if not self.states:
+            return []
+        ordered = sorted(
+            self.states, key=lambda state: state.activity, reverse=True
+        )
+        floor = max(
+            conf.cluster_min_activity(),
+            ordered[0].activity * conf.cluster_min_activity_ratio(),
+        )
+        limit = max(conf.suggestion_cluster_limit(), 1)
+        return [
+            state for state in ordered if state.activity >= floor
+        ][:limit]
 
     def nearest(self, values, masks):
         if not self.states:

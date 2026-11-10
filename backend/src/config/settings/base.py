@@ -515,8 +515,16 @@ CONSTANCE_CONFIG = {
         "Per-signal decay applied to interest clusters that were not updated.",
     ),
     "RECOMMENDATION_CLUSTER_MIN_ACTIVITY": (
-        0.5,
-        "Minimum decayed activity for a cluster to be used in suggestions.",
+        0.0,
+        "Absolute minimum decayed activity for a cluster to be used in suggestions.",
+    ),
+    "RECOMMENDATION_CLUSTER_MIN_ACTIVITY_RATIO": (
+        0.0001,
+        "Relative activity floor: cluster activity must be at least this fraction of the top cluster.",
+    ),
+    "RECOMMENDATION_SUGGESTION_CLUSTER_LIMIT": (
+        3,
+        "Maximum number of interest clusters used in suggested plans.",
     ),
     "RECOMMENDATION_MIN_RESOURCE_DIMENSIONS": (
         1,

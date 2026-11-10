@@ -114,3 +114,23 @@ configuration or signal weights.
 - `RECOMMENDATION_CLUSTER_ACTIVITY_DECAY`
 - `RECOMMENDATION_CLUSTER_MIN_ACTIVITY`
 - `RECOMMENDATION_MIN_RESOURCE_DIMENSIONS`
+
+## 8. Simulate a viewer
+
+Replay configurable synthetic signals against the real catalog and print the stored
+profile, cluster activities, selected plans, and explanations:
+
+```bash
+cd backend/src && python manage.py simulate_recommendations \
+  --kind destination_visit \
+  --plan-type dedicated_server \
+  --min-ram 32 \
+  --count 20 \
+  --keep
+```
+
+Useful flags: `--kind` (`destination_visit`, `details_view`, `search_impression`),
+`--count`, `--limit`, `--query`, `--plan-type`, `--min-price`, `--max-price`,
+`--min-ram`, `--min-cpu`, `--min-disk`, `--top`, `--reset`, `--keep`, and `--json`.
+The command uses a fresh visitor UUID by default and hard-deletes the simulated profile
+unless `--keep` is passed.
