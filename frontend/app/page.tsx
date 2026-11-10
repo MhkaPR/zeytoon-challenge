@@ -37,7 +37,7 @@ async function MainContent({
     ? params.page_size[0]
     : params.page_size;
   const vid = await visitorId();
-  const [plansPage, suggestedPlans, recentCompanies] = await Promise.all([
+  const [plansPage, suggested, recentCompanies] = await Promise.all([
     getPlansPage({
       ...params,
       page_size: requestedPageSize ?? String(siteConfig.catalog.defaultPageSize),
@@ -50,7 +50,8 @@ async function MainContent({
   return (
     <MainBody
       plansPage={plansPage}
-      suggestedPlans={suggestedPlans}
+      suggestedPlans={suggested.plans}
+      explanations={suggested.explanations}
       visitorId={vid}
       recentCompanies={recentCompanies}
       searchParams={params}

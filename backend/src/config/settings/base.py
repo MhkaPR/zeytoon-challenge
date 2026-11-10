@@ -510,6 +510,27 @@ CONSTANCE_CONFIG = {
         0.2,
         "Distance above which a signal starts a new interest cluster.",
     ),
+    # Recommendation explanations (spec 007).
+    "RECOMMENDATION_EXPLAIN_K": (
+        20,
+        "Candidate set size used to reconstruct each interest cluster's reasons.",
+    ),
+    "RECOMMENDATION_EXPLAIN_PERCENTILE_LO": (
+        5,
+        "Lower percentile bound of a feature's reconstruction band.",
+    ),
+    "RECOMMENDATION_EXPLAIN_PERCENTILE_HI": (
+        95,
+        "Upper percentile bound of a feature's reconstruction band.",
+    ),
+    "RECOMMENDATION_EXPLAIN_F1_THRESHOLD": (
+        0.3,
+        "Minimum F1 for a feature to be named in an explanation.",
+    ),
+    "RECOMMENDATION_EXPLAIN_TOP_N": (
+        3,
+        "Maximum number of features named per interest cluster.",
+    ),
 }
 
 

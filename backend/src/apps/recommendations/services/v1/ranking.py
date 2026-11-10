@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from apps.recommendations.models import InterestProfile
+from apps.recommendations.services.v1.reasons import FeatureReasoner
 from apps.recommendations.services.v1.recommender import Recommender
 from apps.recommendations.services.v1.state import InterestClusters
 from apps.recommendations.services.v1.store import PlanSpaceProvider
@@ -37,15 +38,72 @@ class RankingService:
         return ordered
 
     def suggest(self, records, visitor_id=None, user=None, limit=20):
-        """Return the top ranked plans, using the cold-start prior when new."""
+        """Return ranked plans with one closest plan per interest cluster first.
+
+        Ranking purely by the minimum distance across clusters lets a single
+        strong interest fill the whole list. Instead we seed the result with the
+        closest plan from each cluster (one each), then fill the remaining slots
+        by the overall minimum-distance order.
+        """
         bundle = self.provider.load(records)
         profile = self._profile(visitor_id, user)
         clusters = InterestClusters.from_profile(profile, bundle)
+        return self._select(bundle, clusters, limit)
+
+    def suggest_with_reasons(self, records, visitor_id=None, user=None, limit=20):
+        """Return the suggested plan ids plus one explanation per interest cluster.
+
+        Reasons are computed here, in the same pass that ranks the plans, so the
+        plan shown in a card and the plan an explanation describes can never
+        drift to different versions or profiles.
+        """
+        bundle = self.provider.load(records)
+        profile = self._profile(visitor_id, user)
+        clusters = InterestClusters.from_profile(profile, bundle)
+        plan_ids = self._select(bundle, clusters, limit)
+        has_state = (
+            profile is not None
+            and profile.signal_count > 0
+            and profile.space_version == bundle["version"]
+        )
+        explanations = (
+            FeatureReasoner(bundle).explain_all(clusters) if has_state else []
+        )
+        return {"plan_ids": plan_ids, "explanations": explanations}
+
+    def _select(self, bundle, clusters, limit):
+        limit = max(int(limit), 0)
+        if limit == 0:
+            return []
+
+        selected: list[int] = []
+        seen: set[int] = set()
+        for state in clusters.states:
+            distances = self.recommender.distances(
+                bundle["values"], bundle["masks"], state.x
+            )
+            ordered = self.recommender.order(
+                bundle["ids"], distances, bundle["published_at"]
+            )
+            for plan_id in ordered:
+                if plan_id not in seen:
+                    selected.append(plan_id)
+                    seen.add(plan_id)
+                    break
+            if len(selected) >= limit:
+                return selected[:limit]
+
         distances = clusters.distances(bundle["values"], bundle["masks"])
         ordered = self.recommender.order(
             bundle["ids"], distances, bundle["published_at"]
         )
-        return ordered[: max(int(limit), 0)]
+        for plan_id in ordered:
+            if len(selected) >= limit:
+                break
+            if plan_id not in seen:
+                selected.append(plan_id)
+                seen.add(plan_id)
+        return selected[:limit]
 
     @staticmethod
     def _profile(visitor_id, user):

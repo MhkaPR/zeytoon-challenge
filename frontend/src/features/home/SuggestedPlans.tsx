@@ -4,6 +4,7 @@ import { Card, Skeleton, Typography } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
 import type { PublicPlan } from "@/src/lib/api/publicCatalog";
+import type { ClusterExplanation } from "@/src/lib/api/explanations";
 
 import { PlanCard } from "./planCatalog/PlanCard";
 
@@ -13,14 +14,34 @@ import { PlanCard } from "./planCatalog/PlanCard";
  */
 export function SuggestedPlans({
   plans,
+  explanations = [],
   visitorId,
   loading = false,
 }: {
   plans: PublicPlan[];
+  explanations?: ClusterExplanation[];
   visitorId?: string;
   loading?: boolean;
 }) {
   const ot = useTranslations();
+  const reasonByPlan = new Map(
+    explanations
+      .filter((item) => item.representative_plan_id != null)
+      .map((item) => [item.representative_plan_id as number, item.reasons]),
+  );
+  const rankByPlan = new Map(
+    explanations
+      .filter((item) => item.representative_plan_id != null)
+      .map((item, index) => [item.representative_plan_id as number, index]),
+  );
+  const orderedPlans = [...plans].sort((a, b) => {
+    const rankA = rankByPlan.get(a.id);
+    const rankB = rankByPlan.get(b.id);
+    if (rankA != null && rankB != null) return rankA - rankB;
+    if (rankA != null) return -1;
+    if (rankB != null) return 1;
+    return 0;
+  });
   if (loading) {
     return (
       <section className="flex flex-col gap-[18px]" id="suggested">
@@ -62,12 +83,16 @@ export function SuggestedPlans({
         aria-label={ot("suggestedTitle")}
         className="-mx-[24px] flex snap-x snap-mandatory gap-[16px] overflow-x-auto px-[24px] pb-[6px] sm:mx-0 sm:px-0"
       >
-        {plans.map((plan) => (
+        {orderedPlans.map((plan) => (
           <li
             className="shrink-0 snap-start list-none"
             key={plan.id}
           >
-            <PlanCard plan={plan} visitorId={visitorId} />
+            <PlanCard
+              explanation={reasonByPlan.get(plan.id)}
+              plan={plan}
+              visitorId={visitorId}
+            />
           </li>
         ))}
       </ul>

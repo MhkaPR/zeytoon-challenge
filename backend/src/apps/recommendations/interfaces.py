@@ -27,6 +27,15 @@ class RecommendationsInterface:
         )
 
     @staticmethod
+    def suggest_with_reasons(records, visitor_id=None, user=None, limit=20):
+        return RankingService().suggest_with_reasons(
+            records,
+            visitor_id=visitor_id,
+            user=user,
+            limit=limit,
+        )
+
+    @staticmethod
     def record_signals(records, kind, plan_ids, query="", visitor_id=None, user=None):
         return SignalRecorder().record(
             records,
@@ -44,6 +53,5 @@ class RecommendationsInterface:
     @staticmethod
     def clear_visitor(visitor_id):
         return StateMerger.clear_visitor(visitor_id)
-
 
 __all__ = ["RecommendationsInterface"]

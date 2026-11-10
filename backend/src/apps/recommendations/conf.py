@@ -26,6 +26,11 @@ DEFAULTS = {
     "RECOMMENDATION_SEMANTIC_RANDOM_STATE": 0,
     "RECOMMENDATION_MAX_INTEREST_CLUSTERS": 4,
     "RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD": 0.2,
+    "RECOMMENDATION_EXPLAIN_K": 20,
+    "RECOMMENDATION_EXPLAIN_PERCENTILE_LO": 5,
+    "RECOMMENDATION_EXPLAIN_PERCENTILE_HI": 95,
+    "RECOMMENDATION_EXPLAIN_F1_THRESHOLD": 0.3,
+    "RECOMMENDATION_EXPLAIN_TOP_N": 3,
 }
 
 
@@ -102,3 +107,23 @@ def max_interest_clusters():
 
 def cluster_distance_threshold():
     return float(_value("RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD"))
+
+
+def explain_k():
+    return int(_value("RECOMMENDATION_EXPLAIN_K"))
+
+
+def explain_percentile_lo():
+    return float(_value("RECOMMENDATION_EXPLAIN_PERCENTILE_LO"))
+
+
+def explain_percentile_hi():
+    return float(_value("RECOMMENDATION_EXPLAIN_PERCENTILE_HI"))
+
+
+def explain_f1_threshold():
+    return float(_value("RECOMMENDATION_EXPLAIN_F1_THRESHOLD"))
+
+
+def explain_top_n():
+    return int(_value("RECOMMENDATION_EXPLAIN_TOP_N"))

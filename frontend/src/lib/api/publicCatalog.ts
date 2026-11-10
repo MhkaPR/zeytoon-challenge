@@ -1,6 +1,7 @@
 import { apiBaseUrl } from "@/src/lib/api/base";
 import { createQueryString } from "@/src/lib/api/utils";
 import type { ResourceKey } from "@/src/lib/config/siteConfig";
+import type { ClusterExplanation } from "@/src/lib/api/explanations";
 
 export interface PublicPlan {
   id: number;
@@ -126,9 +127,14 @@ export async function getPublishedPlans(
   return [first, ...remaining].flatMap((page) => page.plans);
 }
 
+export interface SuggestedPlansResult {
+  plans: PublicPlan[];
+  explanations: ClusterExplanation[];
+}
+
 export async function getSuggestedPlans(
   options: { visitorId?: string } = {},
-): Promise<PublicPlan[]> {
+): Promise<SuggestedPlansResult> {
   try {
     const headers: Record<string, string> = {};
     if (options.visitorId) headers["X-Visitor-Id"] = options.visitorId;
@@ -137,11 +143,17 @@ export async function getSuggestedPlans(
       credentials: "include",
       headers,
     });
-    if (!response.ok) return [];
-    const payload = (await response.json()) as { data?: PublicPlan[] };
-    return payload.data ?? [];
+    if (!response.ok) return { plans: [], explanations: [] };
+    const payload = (await response.json()) as {
+      data?: PublicPlan[];
+      explanations?: ClusterExplanation[];
+    };
+    return {
+      plans: payload.data ?? [],
+      explanations: payload.explanations ?? [],
+    };
   } catch {
-    return [];
+    return { plans: [], explanations: [] };
   }
 }
 

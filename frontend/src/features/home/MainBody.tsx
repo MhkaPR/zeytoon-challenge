@@ -15,6 +15,7 @@ import type {
   PublicPlan,
   RecentPublicCompany,
 } from "@/src/lib/api/publicCatalog";
+import type { ClusterExplanation } from "@/src/lib/api/explanations";
 import {SiteConfig} from "@/src/lib/config/siteConfig";
 
 /**
@@ -27,6 +28,7 @@ export function MainBody({
   brandLogo,
   plansPage,
   suggestedPlans,
+  explanations,
   visitorId,
   recentCompanies,
   loading = false,
@@ -36,6 +38,7 @@ export function MainBody({
   brandLogo?: ReactNode;
   plansPage: PlansPage;
   suggestedPlans: PublicPlan[];
+  explanations?: ClusterExplanation[];
   visitorId?: string;
   recentCompanies: RecentPublicCompany[];
   loading?: boolean;
@@ -75,6 +78,7 @@ export function MainBody({
 
         <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
           <SuggestedPlans
+            explanations={explanations}
             loading={loading}
             plans={suggestedPlans}
             visitorId={visitorId}
