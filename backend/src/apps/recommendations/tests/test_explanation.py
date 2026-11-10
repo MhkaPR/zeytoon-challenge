@@ -5,6 +5,7 @@ import numpy as np
 from apps.recommendations import conf
 from apps.recommendations.services.v1.explanation import IntentExplainer
 from apps.recommendations.services.v1.intent_scoring import IntentScore
+from apps.recommendations.services.v1.state import InterestClusters
 
 
 NAMES = ["price", "has_cpu", "cpu", "has_ram", "ram", "has_disk", "disk"]
@@ -38,9 +39,7 @@ def _value_position():
 
 
 def _clusters(*positions):
-    return SimpleNamespace(
-        states=[SimpleNamespace(x=list(position)) for position in positions]
-    )
+    return InterestClusters([list(position) for position in positions])
 
 
 def _allow_all(monkeypatch):
@@ -143,3 +142,14 @@ def test_corroboration_requires_minimum_clicks(monkeypatch):
     assert explainer._aligns("cheap", []) is False
     assert explainer._aligns("cheap", [0, 1]) is False
     assert explainer._aligns("cheap", [0, 1, 2]) is True
+
+
+def test_search_impressions_count_as_corroboration():
+    explainer = IntentExplainer(_bundle())
+    signal = SimpleNamespace(kind="search_impression", plan_ids=[1, 2])
+
+    grouped = explainer._click_rows_by_cluster(
+        [signal], [_value_position()]
+    )
+
+    assert grouped[0] == [0, 1]

@@ -43,7 +43,7 @@ class IntentExplainer:
         }
 
     def explain_all(self, clusters, signals=None, selected_plan_ids=None):
-        states = list(clusters.states)
+        states = list(clusters.active_states())
         if not states:
             return []
         positions = [state.x for state in states]
@@ -134,7 +134,11 @@ class IntentExplainer:
         row_of = {plan_id: index for index, plan_id in enumerate(self.ids)}
         clicked_rows: list[int] = []
         for signal in signals:
-            if getattr(signal, "kind", None) != "destination_visit":
+            if getattr(signal, "kind", None) not in {
+                "destination_visit",
+                "details_view",
+                "search_impression",
+            }:
                 continue
             for plan_id in getattr(signal, "plan_ids", []) or []:
                 row = row_of.get(plan_id)

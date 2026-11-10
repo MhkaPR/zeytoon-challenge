@@ -114,8 +114,8 @@ clusters, and confirm the top catalogue results include all three themes.
 
 ### Implementation for User Story 3
 
-- [X] T023 [US3] Add `RECOMMENDATION_MAX_INTEREST_CLUSTERS` (4) and `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD` (0.2) to `backend/src/config/settings/base.py` and getters to `backend/src/apps/recommendations/conf.py`
-- [X] T024 [US3] Implement `InterestClusters` in `backend/src/apps/recommendations/services/v1/state.py`: parse flat or nested positions, update the nearest cluster, create a cluster beyond the threshold, evict the least confident cluster at the cap, and expose positions/uncertainties
+- [X] T023 [US3] Add `RECOMMENDATION_MAX_INTEREST_CLUSTERS` (4), `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD` (0.2), `RECOMMENDATION_CLUSTER_ACTIVITY_DECAY` (0.8), and `RECOMMENDATION_CLUSTER_MIN_ACTIVITY` (0.5) to `backend/src/config/settings/base.py` and getters to `backend/src/apps/recommendations/conf.py`
+- [X] T024 [US3] Implement `InterestClusters` in `backend/src/apps/recommendations/services/v1/state.py`: parse flat or nested positions, update the nearest cluster, create a cluster beyond the threshold, decay inactive clusters, evict the least active cluster at the cap, and expose positions/uncertainties/activities
 - [X] T025 [US3] Update `backend/src/apps/recommendations/services/v1/ranking.py` to build `InterestClusters` from the profile and rank by the minimum distance across clusters
 - [X] T026 [US3] Update `backend/src/apps/recommendations/services/v1/signals.py` to save nested cluster positions and uncertainties while keeping the signal cap and search-centroid behaviour
 - [X] T027 [US3] Run `uv run pytest backend/src/apps/recommendations/tests backend/src/apps/catalog/tests -q` and fix failures

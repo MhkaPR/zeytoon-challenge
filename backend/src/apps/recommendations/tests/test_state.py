@@ -56,3 +56,20 @@ def test_cluster_cap_evicts_least_confident():
     )
     clusters.update(np.array([0.5, 0.5]), np.array([1.0, 1.0]), noise=0.8)
     assert len(clusters.states) == 2
+
+
+def test_inactive_cluster_fades_after_repeated_new_interest(monkeypatch):
+    from apps.recommendations import conf
+
+    monkeypatch.setattr(conf, "cluster_activity_decay", lambda: 0.5)
+    monkeypatch.setattr(conf, "cluster_min_activity", lambda: 0.5)
+    clusters = InterestClusters(
+        [[0.0, 0.0], [1.0, 1.0]], max_clusters=4, threshold=0.2
+    )
+
+    for _ in range(3):
+        clusters.update(np.array([0.0, 0.0]), np.array([1.0, 1.0]), noise=0.8)
+
+    active = clusters.active_states()
+    assert len(active) == 1
+    assert np.allclose(active[0].x, [0.0, 0.0])

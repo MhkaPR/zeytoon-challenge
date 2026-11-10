@@ -8,7 +8,7 @@ from apps.recommendations.models import InterestProfile, InterestSignal
 from apps.recommendations.services.v1.eligibility import eligible_rows
 from apps.recommendations.services.v1.explanation import IntentExplainer
 from apps.recommendations.services.v1.recommender import Recommender
-from apps.recommendations.services.v1.state import InterestClusters
+from apps.recommendations.services.v1.state import InterestClusters, UserState
 from apps.recommendations.services.v1.store import PlanSpaceProvider
 
 
@@ -73,7 +73,11 @@ class RankingService:
             signals = list(
                 InterestSignal.objects.filter(
                     profile=profile,
-                    kind=InterestSignal.Kind.DESTINATION_VISIT,
+                    kind__in=(
+                        InterestSignal.Kind.DESTINATION_VISIT,
+                        InterestSignal.Kind.DETAILS_VIEW,
+                        InterestSignal.Kind.SEARCH_IMPRESSION,
+                    ),
                 )
             )
         explanations = IntentExplainer(bundle).explain_all(
@@ -92,9 +96,13 @@ class RankingService:
             for plan_id, is_eligible in zip(bundle["ids"], eligible)
             if is_eligible
         }
+        states = clusters.active_states()
+        if not states:
+            prior = bundle["space"].prior(bundle["values"], bundle["masks"])
+            states = [UserState(prior)]
         selected: list[int] = []
         seen: set[int] = set()
-        for state in clusters.states:
+        for state in states:
             distances = self.recommender.distances(
                 bundle["values"], bundle["masks"], state.x
             )
@@ -112,7 +120,14 @@ class RankingService:
             if len(selected) >= limit:
                 return selected[:limit]
 
-        distances = clusters.distances(bundle["values"], bundle["masks"])
+        distances = np.full(bundle["values"].shape[0], np.inf)
+        for state in states:
+            distances = np.minimum(
+                distances,
+                self.recommender.distances(
+                    bundle["values"], bundle["masks"], state.x
+                ),
+            )
         distances = np.where(eligible, distances, np.inf)
         ordered = self.recommender.order(
             bundle["ids"], distances, bundle["published_at"]

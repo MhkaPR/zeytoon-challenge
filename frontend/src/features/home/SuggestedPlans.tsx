@@ -68,7 +68,7 @@ export function SuggestedPlans({
   const planById = new Map(plans.map((plan) => [plan.id, plan]));
   const mergedExplanations = mergeRepeatedIntents(explanations);
   const visibleExplanations = mergedExplanations.filter(
-    (explanation) => explanation.intent !== "exploring",
+    (explanation) => explanation.plan_ids.length > 0,
   );
   const hasExplanations = mergedExplanations.length > 0;
   if (loading) {
@@ -97,7 +97,6 @@ export function SuggestedPlans({
   }
 
   if (!plans.length) return null;
-  if (hasExplanations && !visibleExplanations.length) return null;
 
   return (
     <section className="flex flex-col gap-[18px]" id="suggested">
@@ -109,7 +108,7 @@ export function SuggestedPlans({
           {ot("suggestedIntro")}
         </Typography>
       </div>
-      {visibleExplanations.length ? (
+      {hasExplanations && visibleExplanations.length ? (
         <div className="flex flex-col gap-[24px]">
           {visibleExplanations.map((explanation) => {
             const clusterPlans = explanation.plan_ids

@@ -26,6 +26,8 @@ DEFAULTS = {
     "RECOMMENDATION_SEMANTIC_RANDOM_STATE": 0,
     "RECOMMENDATION_MAX_INTEREST_CLUSTERS": 4,
     "RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD": 0.2,
+    "RECOMMENDATION_CLUSTER_ACTIVITY_DECAY": 0.8,
+    "RECOMMENDATION_CLUSTER_MIN_ACTIVITY": 0.5,
     "RECOMMENDATION_MIN_RESOURCE_DIMENSIONS": 1,
     "RECOMMENDATION_EXPLAIN_K": 20,
     "RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE": 30,
@@ -111,6 +113,14 @@ def max_interest_clusters():
 
 def cluster_distance_threshold():
     return float(_value("RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD"))
+
+
+def cluster_activity_decay():
+    return float(_value("RECOMMENDATION_CLUSTER_ACTIVITY_DECAY"))
+
+
+def cluster_min_activity():
+    return float(_value("RECOMMENDATION_CLUSTER_MIN_ACTIVITY"))
 
 
 def min_resource_dimensions():

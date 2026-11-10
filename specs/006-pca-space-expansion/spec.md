@@ -83,7 +83,8 @@ three themes.
 - Empty or missing title: neutral semantic values, not a penalty.
 - Duplicate titles: identical semantic values, still distinguished by other attributes.
 - Cache cleared: the space is rebuilt on the next read.
-- More distinct themes than the cluster cap: the least confident cluster is replaced.
+- More distinct themes than the cluster cap: the least active cluster is replaced.
+- A cluster that stops receiving signals: its activity decays and it is excluded from suggestions once below the configured minimum.
 - A flat legacy profile: treated as one cluster without a migration.
 
 ## Requirements *(mandatory)*

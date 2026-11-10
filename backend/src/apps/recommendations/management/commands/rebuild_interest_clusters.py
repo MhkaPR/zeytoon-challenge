@@ -55,11 +55,13 @@ class Command(BaseCommand):
             if not options["dry_run"]:
                 profile.position = clusters.positions
                 profile.uncertainty = clusters.uncertainties
+                profile.activity_profile = clusters.activities
                 profile.space_version = bundle["version"]
                 profile.save(
                     update_fields=(
                         "position",
                         "uncertainty",
+                        "activity_profile",
                         "space_version",
                         "updated_at",
                     )

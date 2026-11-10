@@ -510,6 +510,14 @@ CONSTANCE_CONFIG = {
         0.2,
         "Distance above which a signal starts a new interest cluster.",
     ),
+    "RECOMMENDATION_CLUSTER_ACTIVITY_DECAY": (
+        0.8,
+        "Per-signal decay applied to interest clusters that were not updated.",
+    ),
+    "RECOMMENDATION_CLUSTER_MIN_ACTIVITY": (
+        0.5,
+        "Minimum decayed activity for a cluster to be used in suggestions.",
+    ),
     "RECOMMENDATION_MIN_RESOURCE_DIMENSIONS": (
         1,
         "Minimum number of declared CPU/RAM/disk/traffic resources a plan needs to be suggested.",

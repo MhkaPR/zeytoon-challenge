@@ -68,14 +68,14 @@
 
 ## Phase 5: User Story 3 - An honest fallback is used when no intent qualifies (Priority: P1)
 
-**Goal**: Return `exploring` per cluster when no real pattern qualifies, but hide it entirely in the UI.
+**Goal**: Return `exploring` per cluster when no real pattern qualifies and show its neutral message with the cluster's plans.
 
-**Independent Test**: Cold-start clusters return `exploring` with null confidence and no visible exploring question.
+**Independent Test**: Cold-start clusters return `exploring` with null confidence and the neutral question is visible with its plans.
 
 - [X] T025 [P] [US3] Test fallback and null confidence in `backend/src/apps/recommendations/tests/test_explanation.py`.
 - [X] T026 [US3] Implement the per-cluster `exploring` fallback in `backend/src/apps/recommendations/services/v1/explanation.py`.
-- [X] T027 [US3] Hide `exploring` explanations and their plans in `frontend/src/features/home/SuggestedPlans.tsx`.
-- [X] T028 [US3] Test that exploring explanations and plans are hidden in `frontend/tests/explanations.test.tsx`.
+- [X] T027 [US3] Display `exploring` explanations and their plans in `frontend/src/features/home/SuggestedPlans.tsx`.
+- [X] T028 [US3] Test that exploring explanations and plans are visible in `frontend/tests/explanations.test.tsx`.
 
 ---
 
@@ -129,6 +129,6 @@
 
 - No persisted explanation model or migration is introduced.
 - No Persian strings live in backend service code; messages are constance-backed questions.
-- `exploring` is fallback-only and its reason text is hidden in the UI.
+- `exploring` is fallback-only and its neutral reason text is shown with the cluster's plans.
 - Repeated intents are merged into one row; plans never repeat across rows.
 - Each explanation owns its plan list.

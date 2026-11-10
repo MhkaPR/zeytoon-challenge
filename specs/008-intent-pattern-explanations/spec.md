@@ -149,7 +149,7 @@ outcome follows the new value.
 - The interface row count always equals the number of cluster explanations returned.
 - A cluster with an empty or unusably small candidate set falls back to `exploring`.
 - A catalog smaller than the configured candidate size still produces a deterministic explanation or the `exploring` fallback.
-- A viewer with fewer than the configured minimum number of outbound clicks fails corroboration for every real pattern and receives `exploring`.
+- A viewer with fewer than the configured minimum number of corroborating signals fails corroboration for every real pattern and receives `exploring`.
 - A stale profile or space version does not crash the request; the existing rebuild behavior is preserved.
 - A pattern whose member set exactly equals the candidate set or exactly excludes it must not divide by zero in scoring.
 
@@ -217,7 +217,7 @@ outcome follows the new value.
 - **FR-037**: The system MUST NOT aggregate cluster intents into a primary or most-frequent intent.
 - **FR-038**: Each explanation MUST carry its own intent, direction, message, confidence, and the list of plans belonging to that cluster.
 - **FR-039**: Cluster explanation order MUST be deterministic for the same profile and catalog version.
-- **FR-040**: The interface MUST NOT display `exploring` explanations or the plans belonging to an exploring cluster. When every cluster is `exploring`, the suggested section is hidden entirely.
+- **FR-040**: The interface MUST display `exploring` explanations with the plans belonging to that cluster. When an explanation has no plans, the section falls back to the flat plan list.
 - **FR-041**: Each plan list MUST be horizontally scrollable with a hidden scrollbar and MUST provide previous/next controls for moving across the list.
 
 ### Key Entities
@@ -250,7 +250,7 @@ outcome follows the new value.
 - **SC-016**: The number of rendered explanation rows equals the number of distinct intents in 100% of loads.
 - **SC-017**: 0% of loads render the same intent message more than once or repeat a plan across rows.
 - **SC-018**: 100% of real explanations include the plan list for their own cluster.
-- **SC-019**: 0% of loads display the `exploring` reason text or the plans of an exploring cluster.
+- **SC-019**: 100% of active `exploring` clusters display their neutral message and plans.
 - **SC-020**: 100% of plan rows hide the native scrollbar and expose previous/next controls.
 
 ## Assumptions

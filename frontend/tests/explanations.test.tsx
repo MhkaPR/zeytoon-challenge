@@ -75,7 +75,7 @@ describe("SuggestedPlans intent explanations", () => {
     expect(screen.getByText("Fallback Plan")).toBeInTheDocument();
   });
 
-  it("does not display exploring explanations or their plans", () => {
+  it("displays exploring explanations with their plans", () => {
     render(
       <SuggestedPlans
         explanations={[
@@ -94,8 +94,8 @@ describe("SuggestedPlans intent explanations", () => {
     );
 
     expect(
-      screen.queryByText("در حال کاوش گزینه‌های مختلف هستی؟"),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Exploring Plan")).not.toBeInTheDocument();
+      screen.getByText("در حال کاوش گزینه‌های مختلف هستی؟"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Exploring Plan")).toBeInTheDocument();
   });
 });
