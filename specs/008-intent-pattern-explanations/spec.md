@@ -29,9 +29,8 @@ signal-corroboration checks may be reported. When no real pattern qualifies, the
 receives a neutral "exploring" message.
 
 Intent detection happens per cluster, so the system never averages cluster positions. The
-API returns every cluster's explanation, and the user interface renders one row per
-cluster. Repeated intents are not collapsed: two value clusters and one cheap cluster
-produce three rows.
+API returns one explanation per distinct intent, merging repeated intents and keeping
+their plan lists disjoint. Two value clusters and one cheap cluster produce two rows.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -56,23 +55,23 @@ no attribute range.
 
 ---
 
-### User Story 2 - Every cluster keeps its own intent, even when intents repeat (Priority: P1)
+### User Story 2 - Repeated intents are merged into one row (Priority: P1)
 
 A viewer with several interests may have different intents detected in different clusters.
-Each cluster is displayed separately, including repeated intents, so the viewer can see
-that two interests are both value-driven and a third is cheap-driven.
+The interface shows one row per distinct intent, so the viewer never sees the same reason
+twice and no plan appears in more than one row.
 
 **Why this priority**: Multi-cluster coherence is the main reason the attribute-based
 approach fails. Per-cluster detection must remain correct and visible.
 
 **Independent Test**: Seed a viewer with three clusters whose detected intents are `value`,
-`value`, and `cheap`, load the suggested plans, and confirm the interface shows three
-sections: two value and one cheap.
+`value`, and `cheap`, load the suggested plans, and confirm the interface shows two
+sections: one merged value row and one cheap row.
 
 **Acceptance Scenarios**:
 
-1. **Given** three clusters whose detected intents are `value`, `value`, and `cheap`, **When** the suggested plans load, **Then** the API returns three explanations and the interface renders three rows.
-2. **Given** repeated intents across clusters, **When** the interface renders, **Then** each occurrence gets its own row rather than being collapsed into one.
+1. **Given** three clusters whose detected intents are `value`, `value`, and `cheap`, **When** the suggested plans load, **Then** the API returns two explanations and the interface renders two rows.
+2. **Given** repeated intents across clusters, **When** the interface renders, **Then** the repeated intents are merged into one row and their plan lists are combined without duplicates.
 3. **Given** multiple clusters, **When** intents are detected, **Then** each cluster is evaluated independently and cluster positions are never averaged together.
 4. **Given** a cheap cluster and a premium cluster, **When** both sections are shown, **Then** neither message is an attribute range and the two messages do not combine contradictory attribute bands.
 
@@ -212,9 +211,9 @@ outcome follows the new value.
 **Per-cluster explanations for the interface**
 
 - **FR-033**: The system MUST determine one intent per interest cluster.
-- **FR-034**: The suggested-plans response MUST return every cluster explanation in cluster order.
-- **FR-035**: The interface MUST render one row per cluster explanation.
-- **FR-036**: Repeated intents across clusters MUST each be rendered separately and MUST NOT be collapsed or counted into a single message.
+- **FR-034**: The suggested-plans response MUST return one explanation per distinct intent in first-seen cluster order.
+- **FR-035**: The interface MUST render one row per distinct intent explanation.
+- **FR-036**: Repeated intents across clusters MUST be merged into one row, and a plan MUST NOT appear in more than one row.
 - **FR-037**: The system MUST NOT aggregate cluster intents into a primary or most-frequent intent.
 - **FR-038**: Each explanation MUST carry its own intent, direction, message, confidence, and the list of plans belonging to that cluster.
 - **FR-039**: Cluster explanation order MUST be deterministic for the same profile and catalog version.
@@ -247,9 +246,9 @@ outcome follows the new value.
 - **SC-012**: 100% of feature-005 and feature-006 regression tests still pass.
 - **SC-013**: The pattern registry contains exactly the five approved keys and 0 keyword-based patterns.
 - **SC-014**: 100% of clusters produce exactly one explanation in the API response.
-- **SC-015**: When two clusters produce `value` and one produces `cheap`, 100% of loads render three rows: two value and one cheap.
-- **SC-016**: The number of rendered explanation rows equals the number of cluster explanations in 100% of loads.
-- **SC-017**: 0% of loads collapse repeated intents into a single aggregated message.
+- **SC-015**: When two clusters produce `value` and one produces `cheap`, 100% of loads render two rows: one merged value and one cheap.
+- **SC-016**: The number of rendered explanation rows equals the number of distinct intents in 100% of loads.
+- **SC-017**: 0% of loads render the same intent message more than once or repeat a plan across rows.
 - **SC-018**: 100% of real explanations include the plan list for their own cluster.
 - **SC-019**: 0% of loads display the `exploring` reason text or the plans of an exploring cluster.
 - **SC-020**: 100% of plan rows hide the native scrollbar and expose previous/next controls.
@@ -260,7 +259,7 @@ outcome follows the new value.
 - Each corroborating click is attributed to the interest cluster nearest to the clicked plan in the recommendation space, because individual signals are stored against plans rather than clusters.
 - Negative-direction explanations use question-form "avoiding" phrasing stored in the configurable message catalog. Operators can disable negative-direction explanations entirely.
 - The suggested-plans response keeps its existing plan payload and gains one explanation object per interest cluster. If the current response is flat, cluster grouping is introduced only as far as required to associate each explanation with its cluster.
-- Each cluster's explanation is rendered as its own row; repeated intents are not deduplicated.
+- Each distinct intent is rendered as its own row; repeated intents are merged and plans are not repeated across rows.
 - The catalog population for contingency tables is the full set of plans available to the recommendation space in the same request.
 - A cluster with no usable candidate set or no corroborating clicks falls back to `exploring` rather than omitting the explanation.
 - The existing space version, profile rebuild behavior, and ranking order remain unchanged.

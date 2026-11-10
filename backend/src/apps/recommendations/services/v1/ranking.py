@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 from apps.recommendations.models import InterestProfile, InterestSignal
+from apps.recommendations.services.v1.eligibility import eligible_rows
 from apps.recommendations.services.v1.explanation import IntentExplainer
 from apps.recommendations.services.v1.recommender import Recommender
 from apps.recommendations.services.v1.state import InterestClusters
@@ -83,16 +86,25 @@ class RankingService:
         if limit == 0:
             return []
 
+        eligible = eligible_rows(bundle)
+        eligible_ids = {
+            plan_id
+            for plan_id, is_eligible in zip(bundle["ids"], eligible)
+            if is_eligible
+        }
         selected: list[int] = []
         seen: set[int] = set()
         for state in clusters.states:
             distances = self.recommender.distances(
                 bundle["values"], bundle["masks"], state.x
             )
+            distances = np.where(eligible, distances, np.inf)
             ordered = self.recommender.order(
                 bundle["ids"], distances, bundle["published_at"]
             )
             for plan_id in ordered:
+                if plan_id not in eligible_ids:
+                    continue
                 if plan_id not in seen:
                     selected.append(plan_id)
                     seen.add(plan_id)
@@ -101,12 +113,15 @@ class RankingService:
                 return selected[:limit]
 
         distances = clusters.distances(bundle["values"], bundle["masks"])
+        distances = np.where(eligible, distances, np.inf)
         ordered = self.recommender.order(
             bundle["ids"], distances, bundle["published_at"]
         )
         for plan_id in ordered:
             if len(selected) >= limit:
                 break
+            if plan_id not in eligible_ids:
+                continue
             if plan_id not in seen:
                 selected.append(plan_id)
                 seen.add(plan_id)

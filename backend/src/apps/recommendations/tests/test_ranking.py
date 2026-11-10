@@ -116,7 +116,13 @@ def test_multiple_themes_are_kept_and_ranked():
 def test_suggest_returns_twenty_ranked_plans():
     records = catalog(
         *[
-            {"price_amount": 10 + index, "plan_name": f"plan {index}"}
+            {
+                "price_amount": 10 + index,
+                "cpu": 2 + index,
+                "ram": 4 + index,
+                "disk": 20 + index,
+                "plan_name": f"plan {index}",
+            }
             for index in range(25)
         ]
     )
@@ -125,6 +131,26 @@ def test_suggest_returns_twenty_ranked_plans():
     assert len(suggested) == 20
     assert len(set(suggested)) == 20
     assert set(suggested).issubset({record.pk for record in records})
+
+
+@pytest.mark.django_db
+def test_suggest_skips_plans_without_declared_resources():
+    records = catalog(
+        {"price_amount": 10, "plan_name": "cheap license"},
+        {
+            "price_amount": 20,
+            "cpu": 4,
+            "ram": 8,
+            "disk": 50,
+            "plan_name": "vps",
+        },
+    )
+    plan_records = CatalogInterface.published_plan_records()
+
+    suggested = RankingService().suggest(plan_records, limit=20)
+
+    assert records[1].pk in suggested
+    assert records[0].pk not in suggested
 
 
 @pytest.mark.django_db

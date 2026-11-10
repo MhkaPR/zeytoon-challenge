@@ -99,14 +99,14 @@ thresholds and changes acceptance behavior).
 ## R7 — Per-cluster display
 
 **Decision**: Return every cluster explanation in cluster order and render one UI section
-per explanation. Do not count, rank, or aggregate intents across clusters. Repeated
-intents remain separate sections.
+per explanation. Do not count or rank intents across clusters. Repeated intents are
+merged into one section so the same reason is not shown twice.
 
-**Rationale**: The viewer should see each detected interest independently. Collapsing
-`value, value, cheap` into one message would hide two of the three detected intents.
+**Rationale**: The viewer should see each distinct reason once. Showing `value` twice
+makes the suggestion strip look repetitive and pushes other reasons out of view.
 
 **Alternatives considered**: Primary-intent counting (rejected by the product owner);
-deduplicating repeated intents (hides distinct clusters).
+keeping repeated intents as separate sections (rejected as repetitive).
 
 ## R8 — Where copy lives
 

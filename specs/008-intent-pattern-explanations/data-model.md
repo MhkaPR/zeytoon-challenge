@@ -112,8 +112,9 @@ Validation:
 | `message` | string | Persian explanation |
 | `confidence` | object or null | `{lift, p, mcc}` for real intents; null for `exploring` |
 
-The API returns the full `ClusterIntentExplanation` list in cluster order. Repeated
-intents are not deduplicated and there is no primary or aggregate explanation.
+The API returns one `ClusterIntentExplanation` per distinct intent in first-seen cluster
+order. Repeated intents are merged and their plan lists are disjoint; there is no primary
+or aggregate explanation.
 
 ## State transitions
 

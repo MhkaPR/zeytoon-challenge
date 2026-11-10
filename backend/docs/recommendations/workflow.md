@@ -44,6 +44,11 @@ RankingService.rank(records, candidate_ids, visitor_id, user)
 
 The deterministic tie-break prevents duplicate or skipped items across pages.
 
+The suggested-plans surface additionally excludes plans with fewer than
+`RECOMMENDATION_MIN_RESOURCE_DIMENSIONS` declared CPU/RAM/disk/traffic resources, so
+price-only catalogue entries (licenses, domains, add-ons) are not recommended. Repeated
+intent explanations are merged into one row and plan lists stay disjoint.
+
 ## 3. Merge on login
 
 Called from OTP verification:
@@ -106,3 +111,4 @@ configuration or signal weights.
 - `RECOMMENDATION_SEMANTIC_*`
 - `RECOMMENDATION_MAX_INTEREST_CLUSTERS`
 - `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`
+- `RECOMMENDATION_MIN_RESOURCE_DIMENSIONS`

@@ -8,6 +8,34 @@ import type { ClusterIntentExplanation } from "@/src/lib/api/intentExplanations"
 
 import { PlanRow } from "./planCatalog/PlanRow";
 
+function mergeRepeatedIntents(
+  explanations: ClusterIntentExplanation[],
+): ClusterIntentExplanation[] {
+  const merged: ClusterIntentExplanation[] = [];
+  const indexByKey = new Map<string, number>();
+  const usedPlanIds = new Set<number>();
+
+  for (const explanation of explanations) {
+    const key = `${explanation.intent}:${explanation.direction ?? ""}`;
+    const planIds = explanation.plan_ids.filter(
+      (planId) => !usedPlanIds.has(planId),
+    );
+    planIds.forEach((planId) => usedPlanIds.add(planId));
+    const existingIndex = indexByKey.get(key);
+    if (existingIndex == null) {
+      indexByKey.set(key, merged.length);
+      merged.push({ ...explanation, plan_ids: planIds });
+    } else {
+      merged[existingIndex] = {
+        ...merged[existingIndex],
+        plan_ids: [...merged[existingIndex].plan_ids, ...planIds],
+      };
+    }
+  }
+
+  return merged;
+}
+
 /**
  * Horizontally scrolling strip of the most relevant plans, drawn from the viewer's
  * interest clusters and ordered by recent activity on each cluster.
@@ -38,10 +66,11 @@ export function SuggestedPlans({
     return 0;
   });
   const planById = new Map(plans.map((plan) => [plan.id, plan]));
-  const visibleExplanations = explanations.filter(
+  const mergedExplanations = mergeRepeatedIntents(explanations);
+  const visibleExplanations = mergedExplanations.filter(
     (explanation) => explanation.intent !== "exploring",
   );
-  const hasExplanations = explanations.length > 0;
+  const hasExplanations = mergedExplanations.length > 0;
   if (loading) {
     return (
       <section className="flex flex-col gap-[18px]" id="suggested">

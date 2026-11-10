@@ -61,7 +61,7 @@
 - [X] T020 [P] [US2] Test repeated intents and cluster-order output in `backend/src/apps/recommendations/tests/test_explanation.py`.
 - [X] T021 [US2] Ensure the API returns every explanation without aggregation in `backend/src/apps/recommendations/services/v1/explanation.py`.
 - [X] T022 [US2] Ensure the catalog response returns the full explanations array in `backend/src/apps/catalog/views/v1/catalog.py`.
-- [X] T023 [US2] Render all explanation sections without deduplication in `frontend/src/features/home/SuggestedPlans.tsx`.
+- [X] T023 [US2] Merge repeated intents and keep plan lists disjoint in `frontend/src/features/home/SuggestedPlans.tsx`.
 - [X] T024 [US2] Test two value sections and one cheap section in `frontend/tests/explanations.test.tsx`.
 
 ---
@@ -130,5 +130,5 @@
 - No persisted explanation model or migration is introduced.
 - No Persian strings live in backend service code; messages are constance-backed questions.
 - `exploring` is fallback-only and its reason text is hidden in the UI.
-- Repeated intents are never collapsed.
+- Repeated intents are merged into one row; plans never repeat across rows.
 - Each explanation owns its plan list.

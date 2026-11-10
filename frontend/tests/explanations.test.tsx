@@ -47,7 +47,7 @@ const explanations: ClusterIntentExplanation[] = [
 ];
 
 describe("SuggestedPlans intent explanations", () => {
-  it("renders one row per explanation with its own plan list", () => {
+  it("merges repeated intents into one row without repeating plans", () => {
     render(
       <SuggestedPlans
         explanations={explanations}
@@ -61,7 +61,7 @@ describe("SuggestedPlans intent explanations", () => {
 
     expect(
       screen.getAllByText("دنبال بهترین نسبت امکانات به قیمت هستی؟"),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(
       screen.getByText("دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟"),
     ).toBeInTheDocument();

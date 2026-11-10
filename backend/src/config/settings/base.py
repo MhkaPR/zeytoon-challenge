@@ -510,6 +510,10 @@ CONSTANCE_CONFIG = {
         0.2,
         "Distance above which a signal starts a new interest cluster.",
     ),
+    "RECOMMENDATION_MIN_RESOURCE_DIMENSIONS": (
+        1,
+        "Minimum number of declared CPU/RAM/disk/traffic resources a plan needs to be suggested.",
+    ),
     # Recommendation intent explanations (spec 008).
     "RECOMMENDATION_EXPLAIN_K": (
         20,

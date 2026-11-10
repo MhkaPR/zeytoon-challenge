@@ -52,7 +52,7 @@ def _allow_all(monkeypatch):
     monkeypatch.setattr(conf, "explain_negative_enabled", lambda: True)
 
 
-def test_each_cluster_gets_its_own_explanation(monkeypatch):
+def test_repeated_intents_are_merged_into_one_row(monkeypatch):
     _allow_all(monkeypatch)
     monkeypatch.setattr(IntentExplainer, "_aligns", lambda self, key, rows: True)
 
@@ -60,10 +60,48 @@ def test_each_cluster_gets_its_own_explanation(monkeypatch):
         _clusters(_value_position(), _value_position())
     )
 
-    assert len(explanations) == 2
-    assert [item["cluster_id"] for item in explanations] == [0, 1]
-    assert [item["intent"] for item in explanations] == ["value", "value"]
+    assert len(explanations) == 1
+    assert [item["cluster_id"] for item in explanations] == [0]
+    assert [item["intent"] for item in explanations] == ["value"]
     assert all(item["message"].endswith("؟") for item in explanations)
+
+
+def test_merged_rows_do_not_repeat_plans():
+    explanations = IntentExplainer._merge_repeated_intents(
+        [
+            {
+                "cluster_id": 0,
+                "representative_plan_id": 1,
+                "plan_ids": [1, 2],
+                "intent": "value",
+                "direction": "positive",
+                "message": "value",
+                "confidence": None,
+            },
+            {
+                "cluster_id": 1,
+                "representative_plan_id": 3,
+                "plan_ids": [2, 3],
+                "intent": "value",
+                "direction": "positive",
+                "message": "value",
+                "confidence": None,
+            },
+            {
+                "cluster_id": 2,
+                "representative_plan_id": 2,
+                "plan_ids": [2],
+                "intent": "cheap",
+                "direction": "positive",
+                "message": "cheap",
+                "confidence": None,
+            },
+        ]
+    )
+
+    assert [item["intent"] for item in explanations] == ["value", "cheap"]
+    assert explanations[0]["plan_ids"] == [1, 2, 3]
+    assert explanations[1]["plan_ids"] == []
 
 
 def test_no_qualifying_pattern_returns_exploring(monkeypatch):

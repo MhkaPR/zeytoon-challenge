@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from apps.recommendations import conf
+from apps.recommendations.services.v1.eligibility import eligible_rows
 from apps.recommendations.services.v1.intent_patterns import (
     FALLBACK_KEY,
     REAL_PATTERN_KEYS,
@@ -30,6 +31,7 @@ class IntentExplainer:
         self.ids = bundle["ids"]
         self.published_at = bundle["published_at"]
         self.total = self.values.shape[0]
+        self.eligible = eligible_rows(bundle)
         self.features = build_intent_features(bundle)
         self.pattern_rows = {
             key: {
@@ -49,7 +51,7 @@ class IntentExplainer:
         plans_by_cluster = self._plans_by_cluster(
             selected_plan_ids or [], positions
         )
-        return [
+        explanations = [
             self.explain_cluster(
                 state.x,
                 cluster_id,
@@ -58,13 +60,19 @@ class IntentExplainer:
             )
             for cluster_id, state in enumerate(states)
         ]
+        return self._merge_repeated_intents(explanations)
 
     def explain_cluster(self, position, cluster_id, click_rows, plan_ids=None):
         distances = Recommender.distances(self.values, self.masks, position)
+        distances = np.where(self.eligible, distances, np.inf)
         ordered = Recommender.order(self.ids, distances, self.published_at)
         row_of = {plan_id: index for index, plan_id in enumerate(self.ids)}
         limit = max(conf.explain_k(), 1)
-        candidate_ids = ordered[:limit]
+        candidate_ids = [
+            plan_id
+            for plan_id in ordered
+            if self.eligible[row_of[plan_id]]
+        ][:limit]
         candidate_rows = {
             row_of[plan_id] for plan_id in candidate_ids if plan_id in row_of
         }
@@ -82,6 +90,27 @@ class IntentExplainer:
         if winner is None:
             return self._exploring(cluster_id, representative, plan_ids)
         return self._serialize(cluster_id, representative, winner, plan_ids)
+
+    @staticmethod
+    def _merge_repeated_intents(explanations):
+        """Keep one row per intent and never repeat a plan across rows."""
+        merged = {}
+        order = []
+        used_plans = set()
+        for explanation in explanations:
+            key = (explanation["intent"], explanation["direction"])
+            plan_ids = [
+                plan_id
+                for plan_id in explanation.get("plan_ids") or []
+                if plan_id not in used_plans
+            ]
+            used_plans.update(plan_ids)
+            if key not in merged:
+                merged[key] = {**explanation, "plan_ids": plan_ids}
+                order.append(key)
+            else:
+                merged[key]["plan_ids"].extend(plan_ids)
+        return [merged[key] for key in order]
 
     def _plans_by_cluster(self, plan_ids, positions):
         row_of = {plan_id: index for index, plan_id in enumerate(self.ids)}
