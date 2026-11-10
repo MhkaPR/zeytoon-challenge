@@ -33,7 +33,10 @@ function mergeRepeatedIntents(
     }
   }
 
-  return merged;
+  return merged.map((explanation, clusterId) => ({
+    ...explanation,
+    cluster_id: clusterId,
+  }));
 }
 
 /**

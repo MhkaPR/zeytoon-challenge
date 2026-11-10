@@ -93,7 +93,13 @@ class IntentExplainer:
 
     @staticmethod
     def _merge_repeated_intents(explanations):
-        """Keep one row per intent and never repeat a plan across rows."""
+        """Keep one row per intent and never repeat a plan across rows.
+
+        Cluster ids are renumbered after merging so the response never exposes a
+        gap (for example 0 and 2) when two clusters resolved to the same intent.
+        The UI treats ``cluster_id`` as a stable row key, and a gap looks like a
+        missing section even though the plans were merged on purpose.
+        """
         merged = {}
         order = []
         used_plans = set()
@@ -110,7 +116,10 @@ class IntentExplainer:
                 order.append(key)
             else:
                 merged[key]["plan_ids"].extend(plan_ids)
-        return [merged[key] for key in order]
+        return [
+            {**merged[key], "cluster_id": index}
+            for index, key in enumerate(order)
+        ]
 
     def _plans_by_cluster(self, plan_ids, positions):
         row_of = {plan_id: index for index, plan_id in enumerate(self.ids)}

@@ -103,6 +103,45 @@ def test_merged_rows_do_not_repeat_plans():
     assert explanations[1]["plan_ids"] == []
 
 
+def test_merged_rows_renumber_cluster_ids_without_gaps():
+    explanations = IntentExplainer._merge_repeated_intents(
+        [
+            {
+                "cluster_id": 0,
+                "representative_plan_id": 1,
+                "plan_ids": [1],
+                "intent": "exploring",
+                "direction": None,
+                "message": "exploring",
+                "confidence": None,
+            },
+            {
+                "cluster_id": 1,
+                "representative_plan_id": 2,
+                "plan_ids": [2],
+                "intent": "exploring",
+                "direction": None,
+                "message": "exploring",
+                "confidence": None,
+            },
+            {
+                "cluster_id": 2,
+                "representative_plan_id": 3,
+                "plan_ids": [3],
+                "intent": "value",
+                "direction": "positive",
+                "message": "value",
+                "confidence": None,
+            },
+        ]
+    )
+
+    assert [item["cluster_id"] for item in explanations] == [0, 1]
+    assert [item["intent"] for item in explanations] == ["exploring", "value"]
+    assert explanations[0]["plan_ids"] == [1, 2]
+    assert explanations[1]["plan_ids"] == [3]
+
+
 def test_no_qualifying_pattern_returns_exploring(monkeypatch):
     _allow_all(monkeypatch)
     monkeypatch.setattr(IntentExplainer, "_aligns", lambda self, key, rows: False)

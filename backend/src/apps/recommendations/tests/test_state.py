@@ -32,6 +32,18 @@ def test_flat_position_is_one_cluster():
     assert np.allclose(clusters.states[0].x, [0.1, 0.2])
 
 
+def test_numpy_positions_are_distinguished_from_a_flat_vector():
+    single = InterestClusters(np.array([0.1, 0.2]))
+    assert len(single.states) == 1
+    assert np.allclose(single.states[0].x, [0.1, 0.2])
+
+    multiple = InterestClusters(
+        [np.array([0.0, 0.0]), np.array([1.0, 1.0])]
+    )
+    assert len(multiple.states) == 2
+    assert np.allclose(multiple.states[1].x, [1.0, 1.0])
+
+
 def test_near_signal_updates_nearest_cluster():
     clusters = InterestClusters(
         [[0.0, 0.0], [1.0, 1.0]], max_clusters=3, threshold=0.2

@@ -81,7 +81,12 @@ class InterestClusters:
 
     @staticmethod
     def _is_flat(positions):
-        return bool(positions) and not isinstance(positions[0], (list, tuple))
+        if isinstance(positions, np.ndarray):
+            return positions.ndim == 1
+        if len(positions) == 0:
+            return False
+        first = positions[0]
+        return isinstance(first, (int, float, np.number))
 
     def _parse(self, positions, uncertainties, activities=None):
         positions = list(positions) if positions is not None else []

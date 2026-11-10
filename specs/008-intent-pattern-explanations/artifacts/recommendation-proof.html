@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>گواه عملکرد سیستم پیشنهاد</title>
+<style>
+  :root {
+    --bg: #0b1020; --panel: #121a30; --panel2: #0f1730; --text: #e8ecf7;
+    --muted: #93a0bd; --line: #223052; --ok: #1f8a5b; --fail: #b03030;
+    --accent: #7aa2ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: radial-gradient(1200px 600px at 80% -10%, #1b2a52 0%, var(--bg) 60%);
+    color: var(--text); font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+    line-height: 1.8; padding: 32px 18px 80px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .hero {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px; margin: 18px 0 28px;
+  }
+  .stat {
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px;
+  }
+  .stat .k { color: var(--muted); font-size: 13px; }
+  .stat .v { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .stat .v.ok { color: #4ade80; }
+  .grid { display: grid; gap: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: right; padding: 10px 8px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  th { color: var(--muted); font-weight: 600; }
+  code { background: #0a1226; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .badge.ok { background: rgba(31,138,91,.18); color: #4ade80; border: 1px solid rgba(74,222,128,.35); }
+  .badge.fail { background: rgba(176,48,48,.18); color: #f87171; border: 1px solid rgba(248,113,113,.35); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .card summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: center; padding: 14px 16px; }
+  .card summary::-webkit-details-marker { display: none; }
+  .card .num { width: 28px; height: 28px; border-radius: 8px; background: #0a1226; border: 1px solid var(--line); display: grid; place-items: center; font-size: 13px; color: var(--accent); }
+  .card .title { flex: 1; font-weight: 600; }
+  .card .body { padding: 0 16px 16px; border-top: 1px solid var(--line); }
+  .card .body p { margin: 10px 0; }
+  .inner { margin: 10px 0; background: #0a1226; border: 1px solid var(--line); border-radius: 10px; }
+  .inner th, .inner td { padding: 8px; }
+  .raw summary { color: var(--accent); cursor: pointer; margin-top: 10px; }
+  pre { background: #070d1c; border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow: auto; direction: ltr; text-align: left; font-size: 12px; }
+  .muted { color: var(--muted); }
+  .note { background: rgba(122,162,255,.08); border: 1px solid rgba(122,162,255,.25); border-radius: 12px; padding: 14px 16px; margin: 24px 0; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 30px; }
+  @media print { body { background: #fff; color: #000; } .card, .stat, table, pre { border-color: #ccc; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>گواه عملکرد سیستم پیشنهاد</h1>
+  <p class="sub">خروجی واقعی سیستم در یک دیتابیس ایزوله‌ی درون‌حافظه‌ای؛ بدون داده‌ی ساختگی در assertionها.</p>
+
+  <div class="hero">
+    <div class="stat"><div class="k">سناریوهای موفق</div><div class="v ok">22 / 22</div></div>
+    <div class="stat"><div class="k">کامیت</div><div class="v" style="font-size:18px">2a741a8</div></div>
+    <div class="stat"><div class="k">زمان تولید</div><div class="v" style="font-size:15px">2026-11-10T11:43:45.909550+00:00</div></div>
+    <div class="stat"><div class="k">محیط</div><div class="v" style="font-size:15px">Python 3.14.7 · Django 6.1.2</div></div>
+  </div>
+
+  <div class="note">
+    این فایل با اجرای مسیر کامل <code>signals → state → clusters → ranking → explanation</code>
+    روی یک کاتالوگ چهارباندی ساخته شده است. آستانه‌های آماری همان مقادیر پیش‌فرض تولید هستند
+    و هیچ آستانه‌ای برای عبور تست شل نشده است.
+  </div>
+
+  <h2>خلاصه‌ی سناریوها</h2>
+  <table>
+    <thead><tr><th>#</th><th>سناریو</th><th>انتظار</th><th>intent دیده‌شده</th><th>نتیجه</th></tr></thead>
+    <tbody><tr><td>1</td><td>بازدیدکننده بدون سابقه</td><td>[&#x27;exploring&#x27;]</td><td><code>exploring</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>2</td><td>کلیک روی پلن‌های پرقدرت</td><td>[&#x27;premium&#x27;]</td><td><code>premium</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>3</td><td>کلیک روی پلن‌های اقتصادی</td><td>[&#x27;cheap&#x27;]</td><td><code>cheap</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>4</td><td>کلیک روی پلن‌های با نسبت امکانات به قیمت بالا</td><td>[&#x27;value&#x27;]</td><td><code>value</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>5</td><td>پلن گران و ضعیف نباید «ارزش» شود</td><td>exploring و بدون value</td><td><code>exploring</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>6</td><td>تشخیص علاقه فقط از نتایج جست‌وجو</td><td>[&#x27;premium&#x27;]</td><td><code>premium</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>7</td><td>تشخیص اقتصادی از جست‌وجو</td><td>[&#x27;cheap&#x27;]</td><td><code>cheap</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>8</td><td>تشخیص علاقه فقط از مشاهده جزئیات</td><td>[&#x27;premium&#x27;]</td><td><code>premium</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>9</td><td>دو علاقه‌ی هم‌زمان</td><td>[&#x27;cheap&#x27;, &#x27;premium&#x27;]</td><td><code>premium, cheap</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>10</td><td>ادغام علاقه‌ی تکراری در یک ردیف</td><td>یک ردیف premium</td><td><code>premium</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>11</td><td>هیچ پلنی بین ردیف‌های توضیح تکرار نمی‌شود</td><td>plan_ids یکتا</td><td><code>cheap, premium</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>12</td><td>علاقه‌ی تازه بر علاقه‌ی قدیمی غالب می‌شود</td><td>cheap در توضیح‌ها و فعالیت غیریکنواخت</td><td><code>cheap, premium</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>13</td><td>پروفایل دو بازدیدکننده قاطی نمی‌شود</td><td>cheap برای اولی و premium برای دومی</td><td><code>cheap</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>14</td><td>بازدیدکننده‌ی دوم مستقل است</td><td>[&#x27;premium&#x27;]</td><td><code>premium</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>15</td><td>پلن بدون منبع از پیشنهاد حذف می‌شود</td><td>پلن بدون منبع در خروجی نیست</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>16</td><td>پلن تک‌منبعی با تنظیم پیش‌فرض واجد شرایط است</td><td>پلن RAM-only در خروجی هست</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>17</td><td>حداقل ابعاد منبع قابل تنظیم است</td><td>پلن تک‌منبعی حذف و پلن کامل حفظ شود</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>18</td><td>پاسخ API عمومی: پلن + توضیح با هم</td><td>status=200، data و explanations پر</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>19</td><td>شناسه‌ی نامعتبر به cold start برمی‌گردد</td><td>status=200 و پلن پیشنهادی</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>20</td><td>خروجی در اجرای دوباره یکسان است</td><td>نتیجه‌ی کاملاً برابر</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>21</td><td>محدودیت نرخ سیگنال اعمال می‌شود</td><td>فقط ۲ سیگنال پذیرفته شود</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr><tr><td>22</td><td>دستور دموی زنده intent را گزارش می‌کند</td><td>خروجی شامل suggested plans و premium</td><td><code>—</code></td><td><span class="badge ok">PASS</span></td></tr></tbody>
+  </table>
+
+  <h2 style="margin-top:30px">جزئیات و شواهد</h2>
+  <div class="grid"><details class="card" ><summary><span class="num">1</span><span class="title">بازدیدکننده بدون سابقه</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> هیچ سیگنالی ثبت نشده است</p><p><strong>انتظار:</strong> [&#x27;exploring&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>exploring</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>exploring</code></td><td>در حال کاوش گزینه‌های مختلف هستی؟</td><td>20</td><td>—</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;cold_start&quot;,
+  &quot;title&quot;: &quot;بازدیدکننده بدون سابقه&quot;,
+  &quot;given&quot;: &quot;هیچ سیگنالی ثبت نشده است&quot;,
+  &quot;expected&quot;: [
+    &quot;exploring&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [],
+    &quot;intents&quot;: [
+      &quot;exploring&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      64,
+      70,
+      72,
+      84,
+      62,
+      61,
+      74,
+      81,
+      82,
+      73,
+      90,
+      42,
+      83,
+      44,
+      85,
+      68,
+      71,
+      86,
+      69,
+      63
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;exploring&quot;,
+        &quot;direction&quot;: null,
+        &quot;message&quot;: &quot;در حال کاوش گزینه‌های مختلف هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          64,
+          70,
+          72,
+          84,
+          62,
+          61,
+          74,
+          81,
+          82,
+          73,
+          90,
+          42,
+          83,
+          44,
+          85,
+          68,
+          71,
+          86,
+          69,
+          63
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: null
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">2</span><span class="title">کلیک روی پلن‌های پرقدرت</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ کلیک روی پلن‌های dedicated_server</p><p><strong>انتظار:</strong> [&#x27;premium&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;premium_clicks&quot;,
+  &quot;title&quot;: &quot;کلیک روی پلن‌های پرقدرت&quot;,
+  &quot;given&quot;: &quot;۵ کلیک روی پلن‌های dedicated_server&quot;,
+  &quot;expected&quot;: [
+    &quot;premium&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      94,
+      95,
+      100,
+      91,
+      92,
+      93,
+      96,
+      97,
+      99,
+      98,
+      110,
+      105,
+      115,
+      104,
+      102,
+      120,
+      114,
+      106,
+      108,
+      101
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          94,
+          95,
+          100,
+          91,
+          92,
+          93,
+          96,
+          97,
+          99,
+          98,
+          110,
+          105,
+          115,
+          104,
+          102,
+          120,
+          114,
+          106,
+          108,
+          101
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">3</span><span class="title">کلیک روی پلن‌های اقتصادی</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ کلیک روی پلن‌های ارزان</p><p><strong>انتظار:</strong> [&#x27;cheap&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>cheap</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>cheap</code></td><td>دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;cheap_clicks&quot;,
+  &quot;title&quot;: &quot;کلیک روی پلن‌های اقتصادی&quot;,
+  &quot;given&quot;: &quot;۵ کلیک روی پلن‌های ارزان&quot;,
+  &quot;expected&quot;: [
+    &quot;cheap&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;cheap&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      25,
+      24,
+      1,
+      30,
+      10,
+      5,
+      2,
+      8,
+      22,
+      20,
+      21,
+      15,
+      14,
+      4,
+      13,
+      3,
+      28,
+      23,
+      9,
+      7
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;cheap&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          25,
+          24,
+          1,
+          30,
+          10,
+          5,
+          2,
+          8,
+          22,
+          20,
+          21,
+          15,
+          14,
+          4,
+          13,
+          3,
+          28,
+          23,
+          9,
+          7
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">4</span><span class="title">کلیک روی پلن‌های با نسبت امکانات به قیمت بالا</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ کلیک روی پلن‌های مشخصات‌بالا با قیمت پایین</p><p><strong>انتظار:</strong> [&#x27;value&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>value</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>value</code></td><td>دنبال بهترین نسبت امکانات به قیمت هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;value_clicks&quot;,
+  &quot;title&quot;: &quot;کلیک روی پلن‌های با نسبت امکانات به قیمت بالا&quot;,
+  &quot;given&quot;: &quot;۵ کلیک روی پلن‌های مشخصات‌بالا با قیمت پایین&quot;,
+  &quot;expected&quot;: [
+    &quot;value&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;value&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      34,
+      35,
+      40,
+      32,
+      31,
+      38,
+      33,
+      44,
+      36,
+      37,
+      39,
+      42,
+      41,
+      54,
+      50,
+      55,
+      43,
+      60,
+      51,
+      53
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;value&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال بهترین نسبت امکانات به قیمت هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          34,
+          35,
+          40,
+          32,
+          31,
+          38,
+          33,
+          44,
+          36,
+          37,
+          39,
+          42,
+          41,
+          54,
+          50,
+          55,
+          43,
+          60,
+          51,
+          53
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">5</span><span class="title">پلن گران و ضعیف نباید «ارزش» شود</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ کلیک روی پلن‌های گران با مشخصات ضعیف</p><p><strong>انتظار:</strong> exploring و بدون value</p><p><strong>intentهای دیده‌شده:</strong> <code>exploring</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>exploring</code></td><td>در حال کاوش گزینه‌های مختلف هستی؟</td><td>20</td><td>—</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;overpriced_decoy&quot;,
+  &quot;title&quot;: &quot;پلن گران و ضعیف نباید «ارزش» شود&quot;,
+  &quot;given&quot;: &quot;۵ کلیک روی پلن‌های گران با مشخصات ضعیف&quot;,
+  &quot;expected&quot;: &quot;exploring و بدون value&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;exploring&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      64,
+      85,
+      65,
+      70,
+      61,
+      74,
+      75,
+      72,
+      62,
+      84,
+      73,
+      77,
+      83,
+      68,
+      81,
+      90,
+      63,
+      86,
+      71,
+      82
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;exploring&quot;,
+        &quot;direction&quot;: null,
+        &quot;message&quot;: &quot;در حال کاوش گزینه‌های مختلف هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          64,
+          85,
+          65,
+          70,
+          61,
+          74,
+          75,
+          72,
+          62,
+          84,
+          73,
+          77,
+          83,
+          68,
+          81,
+          90,
+          63,
+          86,
+          71,
+          82
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: null
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">6</span><span class="title">تشخیص علاقه فقط از نتایج جست‌وجو</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۱۰ نمایش نتیجه جست‌وجو بدون کلیک خروجی</p><p><strong>انتظار:</strong> [&#x27;premium&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[1.0]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;search_only&quot;,
+  &quot;title&quot;: &quot;تشخیص علاقه فقط از نتایج جست‌وجو&quot;,
+  &quot;given&quot;: &quot;۱۰ نمایش نتیجه جست‌وجو بدون کلیک خروجی&quot;,
+  &quot;expected&quot;: [
+    &quot;premium&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      1.0
+    ],
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      94,
+      100,
+      92,
+      91,
+      95,
+      93,
+      96,
+      99,
+      97,
+      98,
+      110,
+      102,
+      104,
+      120,
+      114,
+      106,
+      105,
+      115,
+      101,
+      103
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          94,
+          100,
+          92,
+          91,
+          95,
+          93,
+          96,
+          99,
+          97,
+          98,
+          110,
+          102,
+          104,
+          120,
+          114,
+          106,
+          105,
+          115,
+          101,
+          103
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">7</span><span class="title">تشخیص اقتصادی از جست‌وجو</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۱۰ نمایش نتیجه‌ی جست‌وجوی ارزان</p><p><strong>انتظار:</strong> [&#x27;cheap&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>cheap</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[1.0]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>cheap</code></td><td>دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;search_only_cheap&quot;,
+  &quot;title&quot;: &quot;تشخیص اقتصادی از جست‌وجو&quot;,
+  &quot;given&quot;: &quot;۱۰ نمایش نتیجه‌ی جست‌وجوی ارزان&quot;,
+  &quot;expected&quot;: [
+    &quot;cheap&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      1.0
+    ],
+    &quot;intents&quot;: [
+      &quot;cheap&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      24,
+      1,
+      22,
+      30,
+      25,
+      2,
+      10,
+      21,
+      8,
+      20,
+      9,
+      14,
+      3,
+      29,
+      4,
+      13,
+      23,
+      7,
+      6,
+      28
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;cheap&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          24,
+          1,
+          22,
+          30,
+          25,
+          2,
+          10,
+          21,
+          8,
+          20,
+          9,
+          14,
+          3,
+          29,
+          4,
+          13,
+          23,
+          7,
+          6,
+          28
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">8</span><span class="title">تشخیص علاقه فقط از مشاهده جزئیات</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ بار مشاهده جزئیات پلن پرقدرت</p><p><strong>انتظار:</strong> [&#x27;premium&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;details_only&quot;,
+  &quot;title&quot;: &quot;تشخیص علاقه فقط از مشاهده جزئیات&quot;,
+  &quot;given&quot;: &quot;۵ بار مشاهده جزئیات پلن پرقدرت&quot;,
+  &quot;expected&quot;: [
+    &quot;premium&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      94,
+      91,
+      100,
+      92,
+      95,
+      93,
+      96,
+      99,
+      97,
+      98,
+      110,
+      102,
+      104,
+      105,
+      120,
+      115,
+      106,
+      114,
+      101,
+      103
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          94,
+          91,
+          100,
+          92,
+          95,
+          93,
+          96,
+          99,
+          97,
+          98,
+          110,
+          102,
+          104,
+          105,
+          120,
+          115,
+          106,
+          114,
+          101,
+          103
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">9</span><span class="title">دو علاقه‌ی هم‌زمان</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ کلیک ارزان + ۵ کلیک پرقدرت</p><p><strong>انتظار:</strong> [&#x27;cheap&#x27;, &#x27;premium&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>premium, cheap</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[1.1015290880000004, 3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>10</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr><tr><td>1</td><td><code>cheap</code></td><td>دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟</td><td>10</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;two_interests&quot;,
+  &quot;title&quot;: &quot;دو علاقه‌ی هم‌زمان&quot;,
+  &quot;given&quot;: &quot;۵ کلیک ارزان + ۵ کلیک پرقدرت&quot;,
+  &quot;expected&quot;: [
+    &quot;cheap&quot;,
+    &quot;premium&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      1.1015290880000004,
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;premium&quot;,
+      &quot;cheap&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      94,
+      25,
+      95,
+      100,
+      91,
+      92,
+      24,
+      1,
+      93,
+      96,
+      30,
+      10,
+      5,
+      2,
+      8,
+      97,
+      99,
+      22,
+      98,
+      20
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          94,
+          95,
+          100,
+          91,
+          92,
+          93,
+          96,
+          97,
+          99,
+          98
+        ],
+        &quot;plan_count&quot;: 10,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      },
+      {
+        &quot;cluster_id&quot;: 1,
+        &quot;intent&quot;: &quot;cheap&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          25,
+          24,
+          1,
+          30,
+          10,
+          5,
+          2,
+          8,
+          22,
+          20
+        ],
+        &quot;plan_count&quot;: 10,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">10</span><span class="title">ادغام علاقه‌ی تکراری در یک ردیف</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> دو موج کلیک روی پلن‌های پرقدرت</p><p><strong>انتظار:</strong> یک ردیف premium</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[4.4631290880000005]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;repeated_intent&quot;,
+  &quot;title&quot;: &quot;ادغام علاقه‌ی تکراری در یک ردیف&quot;,
+  &quot;given&quot;: &quot;دو موج کلیک روی پلن‌های پرقدرت&quot;,
+  &quot;expected&quot;: &quot;یک ردیف premium&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      4.4631290880000005
+    ],
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      100,
+      92,
+      94,
+      91,
+      99,
+      95,
+      93,
+      96,
+      98,
+      97,
+      110,
+      102,
+      120,
+      104,
+      114,
+      105,
+      101,
+      119,
+      108,
+      115
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          100,
+          92,
+          94,
+          91,
+          99,
+          95,
+          93,
+          96,
+          98,
+          97,
+          110,
+          102,
+          120,
+          104,
+          114,
+          105,
+          101,
+          119,
+          108,
+          115
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">11</span><span class="title">هیچ پلنی بین ردیف‌های توضیح تکرار نمی‌شود</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> کلیک ارزان + پرقدرت</p><p><strong>انتظار:</strong> plan_ids یکتا</p><p><strong>intentهای دیده‌شده:</strong> <code>cheap, premium</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[1.1015290880000004, 3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>cheap</code></td><td>دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟</td><td>10</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr><tr><td>1</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>10</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;no_duplicate_plans&quot;,
+  &quot;title&quot;: &quot;هیچ پلنی بین ردیف‌های توضیح تکرار نمی‌شود&quot;,
+  &quot;given&quot;: &quot;کلیک ارزان + پرقدرت&quot;,
+  &quot;expected&quot;: &quot;plan_ids یکتا&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      1.1015290880000004,
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;cheap&quot;,
+      &quot;premium&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      25,
+      94,
+      95,
+      100,
+      91,
+      92,
+      24,
+      1,
+      93,
+      96,
+      30,
+      10,
+      5,
+      2,
+      8,
+      97,
+      99,
+      22,
+      98,
+      20
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;cheap&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          25,
+          24,
+          1,
+          30,
+          10,
+          5,
+          2,
+          8,
+          22,
+          20
+        ],
+        &quot;plan_count&quot;: 10,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      },
+      {
+        &quot;cluster_id&quot;: 1,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          94,
+          95,
+          100,
+          91,
+          92,
+          93,
+          96,
+          97,
+          99,
+          98
+        ],
+        &quot;plan_count&quot;: 10,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">12</span><span class="title">علاقه‌ی تازه بر علاقه‌ی قدیمی غالب می‌شود</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ کلیک پرقدرت، سپس ۱۲ کلیک ارزان</p><p><strong>انتظار:</strong> cheap در توضیح‌ها و فعالیت غیریکنواخت</p><p><strong>intentهای دیده‌شده:</strong> <code>cheap, premium</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[0.23100739299573775, 4.656402616320001]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>cheap</code></td><td>دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟</td><td>11</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr><tr><td>1</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>9</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;decay&quot;,
+  &quot;title&quot;: &quot;علاقه‌ی تازه بر علاقه‌ی قدیمی غالب می‌شود&quot;,
+  &quot;given&quot;: &quot;۵ کلیک پرقدرت، سپس ۱۲ کلیک ارزان&quot;,
+  &quot;expected&quot;: &quot;cheap در توضیح‌ها و فعالیت غیریکنواخت&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      0.23100739299573775,
+      4.656402616320001
+    ],
+    &quot;intents&quot;: [
+      &quot;cheap&quot;,
+      &quot;premium&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      1,
+      94,
+      30,
+      95,
+      100,
+      22,
+      21,
+      91,
+      92,
+      24,
+      10,
+      2,
+      93,
+      96,
+      25,
+      3,
+      20,
+      97,
+      99,
+      23
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;cheap&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          1,
+          30,
+          22,
+          21,
+          24,
+          10,
+          2,
+          25,
+          3,
+          20,
+          23
+        ],
+        &quot;plan_count&quot;: 11,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      },
+      {
+        &quot;cluster_id&quot;: 1,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          94,
+          95,
+          100,
+          91,
+          92,
+          93,
+          96,
+          97,
+          99
+        ],
+        &quot;plan_count&quot;: 9,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">13</span><span class="title">پروفایل دو بازدیدکننده قاطی نمی‌شود</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> یک بازدیدکننده ارزان، یکی پرقدرت</p><p><strong>انتظار:</strong> cheap برای اولی و premium برای دومی</p><p><strong>intentهای دیده‌شده:</strong> <code>cheap</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>cheap</code></td><td>دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;visitor_isolation&quot;,
+  &quot;title&quot;: &quot;پروفایل دو بازدیدکننده قاطی نمی‌شود&quot;,
+  &quot;given&quot;: &quot;یک بازدیدکننده ارزان، یکی پرقدرت&quot;,
+  &quot;expected&quot;: &quot;cheap برای اولی و premium برای دومی&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;cheap&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      25,
+      24,
+      1,
+      30,
+      10,
+      5,
+      2,
+      8,
+      22,
+      20,
+      21,
+      15,
+      14,
+      4,
+      13,
+      3,
+      28,
+      23,
+      9,
+      7
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;cheap&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          25,
+          24,
+          1,
+          30,
+          10,
+          5,
+          2,
+          8,
+          22,
+          20,
+          21,
+          15,
+          14,
+          4,
+          13,
+          3,
+          28,
+          23,
+          9,
+          7
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">14</span><span class="title">بازدیدکننده‌ی دوم مستقل است</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> بازدیدکننده‌ی pرقدرت</p><p><strong>انتظار:</strong> [&#x27;premium&#x27;]</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><p><strong>فعالیت کلاسترها:</strong> <code>[3.3616000000000006]</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>20</td><td>lift=4.0 · p=0.0 · mcc=0.774597</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;visitor_isolation_premium&quot;,
+  &quot;title&quot;: &quot;بازدیدکننده‌ی دوم مستقل است&quot;,
+  &quot;given&quot;: &quot;بازدیدکننده‌ی pرقدرت&quot;,
+  &quot;expected&quot;: [
+    &quot;premium&quot;
+  ],
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;activities&quot;: [
+      3.3616000000000006
+    ],
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;suggested_plan_ids&quot;: [
+      94,
+      95,
+      100,
+      91,
+      92,
+      93,
+      96,
+      97,
+      99,
+      98,
+      110,
+      105,
+      115,
+      104,
+      102,
+      120,
+      114,
+      106,
+      108,
+      101
+    ],
+    &quot;suggested_plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;direction&quot;: &quot;positive&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_ids&quot;: [
+          94,
+          95,
+          100,
+          91,
+          92,
+          93,
+          96,
+          97,
+          99,
+          98,
+          110,
+          105,
+          115,
+          104,
+          102,
+          120,
+          114,
+          106,
+          108,
+          101
+        ],
+        &quot;plan_count&quot;: 20,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 4.0,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.774597
+        }
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">15</span><span class="title">پلن بدون منبع از پیشنهاد حذف می‌شود</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> پلن فقط قیمت + پلن با CPU/RAM/Disk</p><p><strong>انتظار:</strong> پلن بدون منبع در خروجی نیست</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><p class="muted">خروجی explanation برای این سناریو ساختار متفاوتی دارد.</p><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;missing_resources&quot;,
+  &quot;title&quot;: &quot;پلن بدون منبع از پیشنهاد حذف می‌شود&quot;,
+  &quot;given&quot;: &quot;پلن فقط قیمت + پلن با CPU/RAM/Disk&quot;,
+  &quot;expected&quot;: &quot;پلن بدون منبع در خروجی نیست&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;suggested_plan_ids&quot;: [
+      122
+    ],
+    &quot;full_plan_id&quot;: 122,
+    &quot;no_resource_plan_id&quot;: 121
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">16</span><span class="title">پلن تک‌منبعی با تنظیم پیش‌فرض واجد شرایط است</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> پلن فقط RAM + پلن کامل</p><p><strong>انتظار:</strong> پلن RAM-only در خروجی هست</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><p class="muted">خروجی explanation برای این سناریو ساختار متفاوتی دارد.</p><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;partial_resources&quot;,
+  &quot;title&quot;: &quot;پلن تک‌منبعی با تنظیم پیش‌فرض واجد شرایط است&quot;,
+  &quot;given&quot;: &quot;پلن فقط RAM + پلن کامل&quot;,
+  &quot;expected&quot;: &quot;پلن RAM-only در خروجی هست&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;suggested_plan_ids&quot;: [
+      124,
+      123
+    ],
+    &quot;ram_only_plan_id&quot;: 123
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">17</span><span class="title">حداقل ابعاد منبع قابل تنظیم است</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> مینیمم ۲ منبع؛ پلن RAM-only + پلن کامل</p><p><strong>انتظار:</strong> پلن تک‌منبعی حذف و پلن کامل حفظ شود</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><p class="muted">خروجی explanation برای این سناریو ساختار متفاوتی دارد.</p><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;min_resource_dimensions&quot;,
+  &quot;title&quot;: &quot;حداقل ابعاد منبع قابل تنظیم است&quot;,
+  &quot;given&quot;: &quot;مینیمم ۲ منبع؛ پلن RAM-only + پلن کامل&quot;,
+  &quot;expected&quot;: &quot;پلن تک‌منبعی حذف و پلن کامل حفظ شود&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;suggested_plan_ids&quot;: [
+      126,
+      125
+    ],
+    &quot;ram_only_plan_id&quot;: 125,
+    &quot;full_plan_id&quot;: 126
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">18</span><span class="title">پاسخ API عمومی: پلن + توضیح با هم</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> درخواست GET /api/v1/catalog/plans/suggested</p><p><strong>انتظار:</strong> status=200، data و explanations پر</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>تعداد پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>20</td><td>—</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;api_contract&quot;,
+  &quot;title&quot;: &quot;پاسخ API عمومی: پلن + توضیح با هم&quot;,
+  &quot;given&quot;: &quot;درخواست GET /api/v1/catalog/plans/suggested&quot;,
+  &quot;expected&quot;: &quot;status=200، data و explanations پر&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;status&quot;: 200,
+    &quot;plan_count&quot;: 20,
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_count&quot;: 20
+      }
+    ]
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">19</span><span class="title">شناسه‌ی نامعتبر به cold start برمی‌گردد</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> X-Visitor-Id = not-a-uuid</p><p><strong>انتظار:</strong> status=200 و پلن پیشنهادی</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><p class="muted">خروجی explanation برای این سناریو ساختار متفاوتی دارد.</p><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;invalid_visitor&quot;,
+  &quot;title&quot;: &quot;شناسه‌ی نامعتبر به cold start برمی‌گردد&quot;,
+  &quot;given&quot;: &quot;X-Visitor-Id = not-a-uuid&quot;,
+  &quot;expected&quot;: &quot;status=200 و پلن پیشنهادی&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;status&quot;: 200,
+    &quot;plan_count&quot;: 20
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">20</span><span class="title">خروجی در اجرای دوباره یکسان است</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> دو بار محاسبه با پروفایل ثابت</p><p><strong>انتظار:</strong> نتیجه‌ی کاملاً برابر</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><p class="muted">خروجی explanation برای این سناریو ساختار متفاوتی دارد.</p><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;deterministic&quot;,
+  &quot;title&quot;: &quot;خروجی در اجرای دوباره یکسان است&quot;,
+  &quot;given&quot;: &quot;دو بار محاسبه با پروفایل ثابت&quot;,
+  &quot;expected&quot;: &quot;نتیجه‌ی کاملاً برابر&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;first_intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;second_intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;same&quot;: true
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">21</span><span class="title">محدودیت نرخ سیگنال اعمال می‌شود</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> سقف ۲ در دقیقه، ۵ تلاش</p><p><strong>انتظار:</strong> فقط ۲ سیگنال پذیرفته شود</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><p class="muted">خروجی explanation برای این سناریو ساختار متفاوتی دارد.</p><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;signal_cap&quot;,
+  &quot;title&quot;: &quot;محدودیت نرخ سیگنال اعمال می‌شود&quot;,
+  &quot;given&quot;: &quot;سقف ۲ در دقیقه، ۵ تلاش&quot;,
+  &quot;expected&quot;: &quot;فقط ۲ سیگنال پذیرفته شود&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;accepted&quot;: 2,
+    &quot;attempted&quot;: 5,
+    &quot;cap&quot;: 2
+  }
+}</pre></details></div></details><details class="card" ><summary><span class="num">22</span><span class="title">دستور دموی زنده intent را گزارش می‌کند</span><span class="badge ok">PASS</span></summary><div class="body"><p><strong>ورودی:</strong> simulate_recommendations --plan-type dedicated_server --count 5</p><p><strong>انتظار:</strong> خروجی شامل suggested plans و premium</p><p><strong>intentهای دیده‌شده:</strong> <code>—</code></p><p><strong>فعالیت کلاسترها:</strong> <code>—</code></p><p class="muted">خروجی explanation برای این سناریو ساختار متفاوتی دارد.</p><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;simulation_command&quot;,
+  &quot;title&quot;: &quot;دستور دموی زنده intent را گزارش می‌کند&quot;,
+  &quot;given&quot;: &quot;simulate_recommendations --plan-type dedicated_server --count 5&quot;,
+  &quot;expected&quot;: &quot;خروجی شامل suggested plans و premium&quot;,
+  &quot;passed&quot;: true,
+  &quot;observed&quot;: {
+    &quot;output_tail&quot;: &quot;e=1009.0 ram=256.0 cpu=64.0 disk=4000.0\n  #91 dedicated_server &#x27;premium 90&#x27; price=1000.0 ram=256.0 cpu=64.0 disk=4000.0\n  #92 dedicated_server &#x27;premium 91&#x27; price=1001.0 ram=256.0 cpu=64.0 disk=4000.0\n  #93 dedicated_server &#x27;premium 92&#x27; price=1002.0 ram=256.0 cpu=64.0 disk=4000.0\n  #96 dedicated_server &#x27;premium 95&#x27; price=1005.0 ram=256.0 cpu=64.0 disk=4000.0\n  #97 dedicated_server &#x27;premium 96&#x27; price=1006.0 ram=256.0 cpu=64.0 disk=4000.0\n  #99 dedicated_server &#x27;premium 98&#x27; price=1008.0 ram=256.0 cpu=64.0 disk=4000.0\n  #98 dedicated_server &#x27;premium 97&#x27; price=1007.0 ram=256.0 cpu=64.0 disk=4000.0\n&quot;
+  }
+}</pre></details></div></details></div>
+
+  <h2 style="margin-top:30px">آستانه‌های استفاده‌شده</h2>
+  <ul><li><code>explain_min_pattern_size</code> = 30</li><li><code>explain_alpha</code> = 0.05</li><li><code>explain_min_lift</code> = 2.0</li><li><code>explain_min_mcc</code> = 0.2</li><li><code>explain_min_clicks</code> = 3</li><li><code>explain_k</code> = 20</li><li><code>min_resource_dimensions</code> = 1</li><li><code>cluster_activity_decay</code> = 0.8</li><li><code>cluster_min_activity_ratio</code> = 0.0001</li><li><code>suggestion_cluster_limit</code> = 3</li></ul>
+
+  <footer>تولیدشده توسط <code>backend/scripts/generate_recommendation_proof.py</code> — قابل تکرار و قابل چاپ.</footer>
+</div>
+</body>
+</html>

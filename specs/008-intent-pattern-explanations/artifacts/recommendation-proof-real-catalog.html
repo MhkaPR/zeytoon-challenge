@@ -1,0 +1,1644 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>گواه عملکرد روی کاتالوگ واقعی</title>
+<style>
+  :root {
+    --bg: #0b1020; --panel: #121a30; --panel2: #0f1730; --text: #e8ecf7;
+    --muted: #93a0bd; --line: #223052; --ok: #1f8a5b; --fail: #b03030;
+    --limit: #a06a10; --accent: #7aa2ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: radial-gradient(1200px 600px at 80% -10%, #1b2a52 0%, var(--bg) 60%);
+    color: var(--text); font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+    line-height: 1.8; padding: 32px 18px 80px;
+  }
+  .wrap { max-width: 1150px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { margin-top: 30px; }
+  h4 { margin: 16px 0 6px; color: var(--muted); }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 18px 0 24px; }
+  .stat { background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+  .stat .k { color: var(--muted); font-size: 13px; }
+  .stat .v { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .stat .v.ok { color: #4ade80; }
+  .grid { display: grid; gap: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: right; padding: 10px 8px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  code { background: #0a1226; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .badge.ok { background: rgba(31,138,91,.18); color: #4ade80; border: 1px solid rgba(74,222,128,.35); }
+  .badge.fail { background: rgba(176,48,48,.18); color: #f87171; border: 1px solid rgba(248,113,113,.35); }
+  .badge.limit { background: rgba(160,106,16,.2); color: #fbbf24; border: 1px solid rgba(251,191,36,.35); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .card summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: center; padding: 14px 16px; }
+  .card summary::-webkit-details-marker { display: none; }
+  .card .num { width: 28px; height: 28px; border-radius: 8px; background: #0a1226; border: 1px solid var(--line); display: grid; place-items: center; font-size: 13px; color: var(--accent); }
+  .card .title { flex: 1; font-weight: 600; }
+  .card .body { padding: 0 16px 16px; border-top: 1px solid var(--line); }
+  .card .body p { margin: 10px 0; }
+  .inner { margin: 8px 0 14px; background: #0a1226; border: 1px solid var(--line); border-radius: 10px; }
+  .inner th, .inner td { padding: 7px; font-size: 13px; }
+  .raw summary { color: var(--accent); cursor: pointer; margin-top: 10px; }
+  pre { background: #070d1c; border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow: auto; direction: ltr; text-align: left; font-size: 12px; }
+  .muted { color: var(--muted); }
+  .note { background: rgba(122,162,255,.08); border: 1px solid rgba(122,162,255,.25); border-radius: 12px; padding: 14px 16px; margin: 20px 0; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 30px; }
+  @media print { body { background: #fff; color: #000; } .card, .stat, table, pre { border-color: #ccc; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>گواه عملکرد روی کاتالوگ واقعی</h1>
+  <p class="sub">اجرای فقط-خواندنی روی 479 پلن منتشرشده‌ی واقعی؛ بدون هیچ نوشتن در دیتابیس.</p>
+
+  <div class="hero">
+    <div class="stat"><div class="k">سناریوهای تأییدشده</div><div class="v ok">10 / 10</div></div>
+    <div class="stat"><div class="k">محدودیت مستندشده</div><div class="v" style="font-size:20px">1 / 1</div></div>
+    <div class="stat"><div class="k">پلن‌های واقعی</div><div class="v">479</div></div>
+    <div class="stat"><div class="k">کامیت</div><div class="v" style="font-size:18px">2a741a8</div></div>
+  </div>
+
+  <div class="note">
+    این گزارش هیچ رکوردی به دیتابیس اضافه نمی‌کند: نه پلن، نه پروفایل، نه سیگنال و نه فضای پیشنهاد.
+    فضای پیشنهاد و stateها فقط در حافظه ساخته می‌شوند. پلن‌ها بر اساس percentile واقعی
+    قیمت و مشخصات انتخاب شده‌اند، نه برچسب دستی.
+  </div>
+
+  <h2>اندازه‌ی بخش‌های واقعی</h2>
+  <table><thead><tr><th>بخش</th><th>تعداد پلن</th></tr></thead><tbody><tr><td><code>premium_rows</code></td><td>36</td></tr><tr><td><code>value_rows</code></td><td>45</td></tr><tr><td><code>low_price_rows</code></td><td>59</td></tr><tr><td><code>overpriced_rows</code></td><td>8</td></tr><tr><td><code>pure_cheap_rows</code></td><td>28</td></tr></tbody></table>
+
+  <h2>خلاصه‌ی سناریوها</h2>
+  <table>
+    <thead><tr><th>#</th><th>سناریو</th><th>انتظار</th><th>intent دیده‌شده</th><th>نتیجه</th></tr></thead>
+    <tbody><tr><td>1</td><td>Cold start روی کاتالوگ واقعی</td><td>exploring</td><td><code>exploring</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>2</td><td>کلیک روی پلن‌های پرقدرت واقعی</td><td>premium</td><td><code>premium</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>3</td><td>جست‌وجو روی پلن‌های پرقدرت واقعی</td><td>premium</td><td><code>premium</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>4</td><td>مشاهده‌ی جزئیات پلن‌های پرقدرت واقعی</td><td>premium</td><td><code>premium</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>5</td><td>کلیک روی پلن‌های value واقعی</td><td>value</td><td><code>value</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>6</td><td>کلیک روی ارزان‌ترین پلن‌های واقعی</td><td>value (این پلن‌ها مشخصات بالایی دارند)</td><td><code>value</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>7</td><td>کلیک روی پلن‌های گران و ضعیف واقعی</td><td>exploring و بدون value</td><td><code>exploring</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>8</td><td>دو علاقه‌ی هم‌زمان روی کاتالوگ واقعی</td><td>value و premium</td><td><code>value, premium</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>9</td><td>بخش «ارزان خالص» زیر حد آماری</td><td>exploring (pattern_size کوچک‌تر از حد)</td><td><code>exploring</code></td><td><span class="badge limit">LIMIT (expected)</span></td></tr><tr><td>10</td><td>تکرارپذیری (اجرای اول)</td><td>premium</td><td><code>premium</code></td><td><span class="badge ok">VERIFIED</span></td></tr><tr><td>11</td><td>تکرارپذیری (اجرای دوم)</td><td>premium</td><td><code>premium</code></td><td><span class="badge ok">VERIFIED</span></td></tr></tbody>
+  </table>
+
+  <h2>جزئیات، پلن‌های واقعی و دروازه‌های آماری</h2>
+  <div class="grid"><details class="card" ><summary><span class="num">1</span><span class="title">Cold start روی کاتالوگ واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> پروفایل خالی؛ state اولیه از prior</p><p><strong>انتظار:</strong> exploring</p><p><strong>intentهای دیده‌شده:</strong> <code>exploring</code></p><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>exploring</code></td><td>در حال کاوش گزینه‌های مختلف هستی؟</td><td>0</td><td>—</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>cheap</code></td><td>3/119</td><td>0.603782</td><td>0.429326</td><td>-0.047552</td><td>❌</td><td>p 0.4293 &gt; 0.05؛ lift 0.604 &lt; 2.0؛ |mcc| 0.048 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>1/45</td><td>0.532222</td><td>0.709616</td><td>-0.031442</td><td>❌</td><td>p 0.7096 &gt; 0.05؛ lift 0.532 &lt; 2.0؛ |mcc| 0.031 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>premium</code></td><td>0/36</td><td>0.0</td><td>0.386355</td><td>-0.059506</td><td>❌</td><td>p 0.3864 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.060 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>spec_heavy</code></td><td>0/60</td><td>0.0</td><td>0.15612</td><td>-0.078991</td><td>❌</td><td>p 0.1561 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.079 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_cold_start&quot;,
+  &quot;title&quot;: &quot;Cold start روی کاتالوگ واقعی&quot;,
+  &quot;given&quot;: &quot;پروفایل خالی؛ state اولیه از prior&quot;,
+  &quot;expected&quot;: &quot;exploring&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;exploring&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;exploring&quot;,
+        &quot;message&quot;: &quot;در حال کاوش گزینه‌های مختلف هستی؟&quot;,
+        &quot;plan_count&quot;: 0,
+        &quot;confidence&quot;: null
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 3,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.603782,
+          &quot;p&quot;: 0.429326,
+          &quot;mcc&quot;: -0.047552,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.4293 &gt; 0.05&quot;,
+            &quot;lift 0.604 &lt; 2.0&quot;,
+            &quot;|mcc| 0.048 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 1,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.532222,
+          &quot;p&quot;: 0.709616,
+          &quot;mcc&quot;: -0.031442,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.7096 &gt; 0.05&quot;,
+            &quot;lift 0.532 &lt; 2.0&quot;,
+            &quot;|mcc| 0.031 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.386355,
+          &quot;mcc&quot;: -0.059506,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.3864 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.060 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.15612,
+          &quot;mcc&quot;: -0.078991,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.1561 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.079 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">2</span><span class="title">کلیک روی پلن‌های پرقدرت واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ پلن با price_pct&gt;0.7 و spec_pct&gt;0.7</p><p><strong>انتظار:</strong> premium</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>489</td><td>Advance-2</td><td>47000000</td><td>8.0</td><td>64.0</td><td>960.0</td></tr><tr><td>487</td><td>RISE-L</td><td>45000000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>486</td><td>RISE-M</td><td>30000000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr><tr><td>485</td><td>RISE-S</td><td>19000000</td><td>8.0</td><td>64.0</td><td>512.0</td></tr><tr><td>476</td><td>کیهان</td><td>13399000</td><td>—</td><td>120.0</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 11.309722, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.613486}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>premium</code></td><td>17/36</td><td>11.309722</td><td>0.0</td><td>0.613486</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>17/60</td><td>6.785833</td><td>0.0</td><td>0.457028</td><td>✅</td><td>—</td></tr><tr><td><code>cheap</code></td><td>0/119</td><td>0.0</td><td>0.00596</td><td>-0.120014</td><td>❌</td><td>lift 0.000 &lt; 2.0؛ |mcc| 0.120 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>0/45</td><td>0.0</td><td>0.240959</td><td>-0.067216</td><td>❌</td><td>p 0.241 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.067 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_premium_clicks&quot;,
+  &quot;title&quot;: &quot;کلیک روی پلن‌های پرقدرت واقعی&quot;,
+  &quot;given&quot;: &quot;۵ پلن با price_pct&gt;0.7 و spec_pct&gt;0.7&quot;,
+  &quot;expected&quot;: &quot;premium&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 489,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 47000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 487,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 45000000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 486,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 30000000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 485,
+      &quot;name&quot;: &quot;RISE-S&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 19000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 476,
+      &quot;name&quot;: &quot;کیهان&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 13399000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 120.0,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 11.309722,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.613486
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 17,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 11.309722,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.613486,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 17,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.785833,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.457028,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.00596,
+          &quot;mcc&quot;: -0.120014,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.120 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.240959,
+          &quot;mcc&quot;: -0.067216,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.241 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.067 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">3</span><span class="title">جست‌وجو روی پلن‌های پرقدرت واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ نتیجه‌ی جست‌وجو از همان پلن‌ها</p><p><strong>انتظار:</strong> premium</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>489</td><td>Advance-2</td><td>47000000</td><td>8.0</td><td>64.0</td><td>960.0</td></tr><tr><td>487</td><td>RISE-L</td><td>45000000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>486</td><td>RISE-M</td><td>30000000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr><tr><td>485</td><td>RISE-S</td><td>19000000</td><td>8.0</td><td>64.0</td><td>512.0</td></tr><tr><td>476</td><td>کیهان</td><td>13399000</td><td>—</td><td>120.0</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 8.648611, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.455135}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>premium</code></td><td>13/36</td><td>8.648611</td><td>0.0</td><td>0.455135</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>13/60</td><td>5.189167</td><td>0.0</td><td>0.330906</td><td>✅</td><td>—</td></tr><tr><td><code>cheap</code></td><td>0/119</td><td>0.0</td><td>0.00596</td><td>-0.120014</td><td>❌</td><td>lift 0.000 &lt; 2.0؛ |mcc| 0.120 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>0/45</td><td>0.0</td><td>0.240959</td><td>-0.067216</td><td>❌</td><td>p 0.241 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.067 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_premium_search&quot;,
+  &quot;title&quot;: &quot;جست‌وجو روی پلن‌های پرقدرت واقعی&quot;,
+  &quot;given&quot;: &quot;۵ نتیجه‌ی جست‌وجو از همان پلن‌ها&quot;,
+  &quot;expected&quot;: &quot;premium&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 489,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 47000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 487,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 45000000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 486,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 30000000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 485,
+      &quot;name&quot;: &quot;RISE-S&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 19000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 476,
+      &quot;name&quot;: &quot;کیهان&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 13399000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 120.0,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 8.648611,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.455135
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 13,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 8.648611,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.455135,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 13,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 5.189167,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.330906,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.00596,
+          &quot;mcc&quot;: -0.120014,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.120 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.240959,
+          &quot;mcc&quot;: -0.067216,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.241 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.067 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">4</span><span class="title">مشاهده‌ی جزئیات پلن‌های پرقدرت واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ مشاهده‌ی جزئیات</p><p><strong>انتظار:</strong> premium</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>489</td><td>Advance-2</td><td>47000000</td><td>8.0</td><td>64.0</td><td>960.0</td></tr><tr><td>487</td><td>RISE-L</td><td>45000000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>486</td><td>RISE-M</td><td>30000000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr><tr><td>485</td><td>RISE-S</td><td>19000000</td><td>8.0</td><td>64.0</td><td>512.0</td></tr><tr><td>476</td><td>کیهان</td><td>13399000</td><td>—</td><td>120.0</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 10.644444, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.573899}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>premium</code></td><td>16/36</td><td>10.644444</td><td>0.0</td><td>0.573899</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>16/60</td><td>6.386667</td><td>0.0</td><td>0.425498</td><td>✅</td><td>—</td></tr><tr><td><code>cheap</code></td><td>0/119</td><td>0.0</td><td>0.00596</td><td>-0.120014</td><td>❌</td><td>lift 0.000 &lt; 2.0؛ |mcc| 0.120 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>0/45</td><td>0.0</td><td>0.240959</td><td>-0.067216</td><td>❌</td><td>p 0.241 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.067 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_premium_details&quot;,
+  &quot;title&quot;: &quot;مشاهده‌ی جزئیات پلن‌های پرقدرت واقعی&quot;,
+  &quot;given&quot;: &quot;۵ مشاهده‌ی جزئیات&quot;,
+  &quot;expected&quot;: &quot;premium&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 489,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 47000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 487,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 45000000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 486,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 30000000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 485,
+      &quot;name&quot;: &quot;RISE-S&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 19000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 476,
+      &quot;name&quot;: &quot;کیهان&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 13399000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 120.0,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.386667,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.425498,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.00596,
+          &quot;mcc&quot;: -0.120014,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.120 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.240959,
+          &quot;mcc&quot;: -0.067216,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.241 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.067 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">5</span><span class="title">کلیک روی پلن‌های value واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ پلن با spec_pct - price_pct &gt; 0.15</p><p><strong>انتظار:</strong> value</p><p><strong>intentهای دیده‌شده:</strong> <code>value</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>484</td><td>Advance-3</td><td>521000</td><td>6.0</td><td>—</td><td>960.0</td></tr><tr><td>483</td><td>Advance-2</td><td>521000</td><td>8.0</td><td>—</td><td>960.0</td></tr><tr><td>482</td><td>Advance-1</td><td>521000</td><td>6.0</td><td>—</td><td>960.0</td></tr><tr><td>481</td><td>RISE-L</td><td>521000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>480</td><td>RISE-M</td><td>521000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>value</code></td><td>دنبال بهترین نسبت امکانات به قیمت هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 6.386667, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.362068}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>value</code></td><td>12/45</td><td>6.386667</td><td>0.0</td><td>0.362068</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>8/60</td><td>3.193333</td><td>0.001436</td><td>0.173253</td><td>❌</td><td>|mcc| 0.173 &lt; 0.2</td></tr><tr><td><code>cheap</code></td><td>9/119</td><td>1.811345</td><td>0.059205</td><td>0.097372</td><td>❌</td><td>p 0.05921 &gt; 0.05؛ lift 1.811 &lt; 2.0؛ |mcc| 0.097 &lt; 0.2</td></tr><tr><td><code>premium</code></td><td>0/36</td><td>0.0</td><td>0.386355</td><td>-0.059506</td><td>❌</td><td>p 0.3864 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.060 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_value&quot;,
+  &quot;title&quot;: &quot;کلیک روی پلن‌های value واقعی&quot;,
+  &quot;given&quot;: &quot;۵ پلن با spec_pct - price_pct &gt; 0.15&quot;,
+  &quot;expected&quot;: &quot;value&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 484,
+      &quot;name&quot;: &quot;Advance-3&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 6.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 483,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 482,
+      &quot;name&quot;: &quot;Advance-1&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 6.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 481,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 480,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;value&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;value&quot;,
+        &quot;message&quot;: &quot;دنبال بهترین نسبت امکانات به قیمت هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 6.386667,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.362068
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 12,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.386667,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.362068,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 8,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 3.193333,
+          &quot;p&quot;: 0.001436,
+          &quot;mcc&quot;: 0.173253,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;|mcc| 0.173 &lt; 0.2&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 9,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 1.811345,
+          &quot;p&quot;: 0.059205,
+          &quot;mcc&quot;: 0.097372,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.05921 &gt; 0.05&quot;,
+            &quot;lift 1.811 &lt; 2.0&quot;,
+            &quot;|mcc| 0.097 &lt; 0.2&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.386355,
+          &quot;mcc&quot;: -0.059506,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.3864 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.060 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">6</span><span class="title">کلیک روی ارزان‌ترین پلن‌های واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ پلن با price_pct&lt;0.3</p><p><strong>انتظار:</strong> value (این پلن‌ها مشخصات بالایی دارند)</p><p><strong>intentهای دیده‌شده:</strong> <code>value</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>484</td><td>Advance-3</td><td>521000</td><td>6.0</td><td>—</td><td>960.0</td></tr><tr><td>483</td><td>Advance-2</td><td>521000</td><td>8.0</td><td>—</td><td>960.0</td></tr><tr><td>482</td><td>Advance-1</td><td>521000</td><td>6.0</td><td>—</td><td>960.0</td></tr><tr><td>481</td><td>RISE-L</td><td>521000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>480</td><td>RISE-M</td><td>521000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>value</code></td><td>دنبال بهترین نسبت امکانات به قیمت هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 6.918889, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.397842}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>value</code></td><td>13/45</td><td>6.918889</td><td>0.0</td><td>0.397842</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>10/60</td><td>3.991667</td><td>3.1e-05</td><td>0.236315</td><td>✅</td><td>—</td></tr><tr><td><code>cheap</code></td><td>10/119</td><td>2.012605</td><td>0.014462</td><td>0.121526</td><td>❌</td><td>|mcc| 0.122 &lt; 0.2</td></tr><tr><td><code>premium</code></td><td>1/36</td><td>0.665278</td><td>1.0</td><td>-0.019918</td><td>❌</td><td>p 1 &gt; 0.05؛ lift 0.665 &lt; 2.0؛ |mcc| 0.020 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_low_price&quot;,
+  &quot;title&quot;: &quot;کلیک روی ارزان‌ترین پلن‌های واقعی&quot;,
+  &quot;given&quot;: &quot;۵ پلن با price_pct&lt;0.3&quot;,
+  &quot;expected&quot;: &quot;value (این پلن‌ها مشخصات بالایی دارند)&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 484,
+      &quot;name&quot;: &quot;Advance-3&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 6.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 483,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 482,
+      &quot;name&quot;: &quot;Advance-1&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 6.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 481,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 480,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;value&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;value&quot;,
+        &quot;message&quot;: &quot;دنبال بهترین نسبت امکانات به قیمت هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 6.918889,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.397842
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 13,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.918889,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.397842,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 10,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 3.991667,
+          &quot;p&quot;: 3.1e-05,
+          &quot;mcc&quot;: 0.236315,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 10,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 2.012605,
+          &quot;p&quot;: 0.014462,
+          &quot;mcc&quot;: 0.121526,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;|mcc| 0.122 &lt; 0.2&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 1,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.665278,
+          &quot;p&quot;: 1.0,
+          &quot;mcc&quot;: -0.019918,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 1 &gt; 0.05&quot;,
+            &quot;lift 0.665 &lt; 2.0&quot;,
+            &quot;|mcc| 0.020 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">7</span><span class="title">کلیک روی پلن‌های گران و ضعیف واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ پلن با price_pct&gt;0.7 و spec_pct&lt;0.4</p><p><strong>انتظار:</strong> exploring و بدون value</p><p><strong>intentهای دیده‌شده:</strong> <code>exploring</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>59</td><td>Email50</td><td>27916000.0</td><td>—</td><td>2.0</td><td>—</td></tr><tr><td>58</td><td>Email30</td><td>19516000.0</td><td>—</td><td>2.0</td><td>—</td></tr><tr><td>57</td><td>Email20</td><td>16226000.0</td><td>—</td><td>2.0</td><td>—</td></tr><tr><td>45</td><td>هاست لینوکس 50</td><td>3400000000</td><td>—</td><td>—</td><td>—</td></tr><tr><td>44</td><td>هاست لینوکس 30</td><td>1900000000</td><td>—</td><td>—</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>exploring</code></td><td>در حال کاوش گزینه‌های مختلف هستی؟</td><td>5</td><td>—</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>value</code></td><td>1/45</td><td>0.532222</td><td>0.709616</td><td>-0.031442</td><td>❌</td><td>p 0.7096 &gt; 0.05؛ lift 0.532 &lt; 2.0؛ |mcc| 0.031 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>cheap</code></td><td>0/119</td><td>0.0</td><td>0.00596</td><td>-0.120014</td><td>❌</td><td>lift 0.000 &lt; 2.0؛ |mcc| 0.120 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>premium</code></td><td>0/36</td><td>0.0</td><td>0.386355</td><td>-0.059506</td><td>❌</td><td>p 0.3864 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.060 &lt; 0.2</td></tr><tr><td><code>spec_heavy</code></td><td>0/60</td><td>0.0</td><td>0.15612</td><td>-0.078991</td><td>❌</td><td>p 0.1561 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.079 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_overpriced&quot;,
+  &quot;title&quot;: &quot;کلیک روی پلن‌های گران و ضعیف واقعی&quot;,
+  &quot;given&quot;: &quot;۵ پلن با price_pct&gt;0.7 و spec_pct&lt;0.4&quot;,
+  &quot;expected&quot;: &quot;exploring و بدون value&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 59,
+      &quot;name&quot;: &quot;Email50&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 27916000.0,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 2.0,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 58,
+      &quot;name&quot;: &quot;Email30&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 19516000.0,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 2.0,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 57,
+      &quot;name&quot;: &quot;Email20&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 16226000.0,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 2.0,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 45,
+      &quot;name&quot;: &quot;هاست لینوکس 50&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 3400000000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 44,
+      &quot;name&quot;: &quot;هاست لینوکس 30&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 1900000000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;exploring&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;exploring&quot;,
+        &quot;message&quot;: &quot;در حال کاوش گزینه‌های مختلف هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: null
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 1,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.532222,
+          &quot;p&quot;: 0.709616,
+          &quot;mcc&quot;: -0.031442,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.7096 &gt; 0.05&quot;,
+            &quot;lift 0.532 &lt; 2.0&quot;,
+            &quot;|mcc| 0.031 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.00596,
+          &quot;mcc&quot;: -0.120014,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.120 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.386355,
+          &quot;mcc&quot;: -0.059506,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.3864 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.060 &lt; 0.2&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.15612,
+          &quot;mcc&quot;: -0.078991,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.1561 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.079 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">8</span><span class="title">دو علاقه‌ی هم‌زمان روی کاتالوگ واقعی</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ پلن ارزان + ۵ پلن پرقدرت</p><p><strong>انتظار:</strong> value و premium</p><p><strong>intentهای دیده‌شده:</strong> <code>value, premium</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>484</td><td>Advance-3</td><td>521000</td><td>6.0</td><td>—</td><td>960.0</td></tr><tr><td>483</td><td>Advance-2</td><td>521000</td><td>8.0</td><td>—</td><td>960.0</td></tr><tr><td>482</td><td>Advance-1</td><td>521000</td><td>6.0</td><td>—</td><td>960.0</td></tr><tr><td>481</td><td>RISE-L</td><td>521000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>480</td><td>RISE-M</td><td>521000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr><tr><td>489</td><td>Advance-2</td><td>47000000</td><td>8.0</td><td>64.0</td><td>960.0</td></tr><tr><td>487</td><td>RISE-L</td><td>45000000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>486</td><td>RISE-M</td><td>30000000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr><tr><td>485</td><td>RISE-S</td><td>19000000</td><td>8.0</td><td>64.0</td><td>512.0</td></tr><tr><td>476</td><td>کیهان</td><td>13399000</td><td>—</td><td>120.0</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>value</code></td><td>دنبال بهترین نسبت امکانات به قیمت هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 6.918889, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.397842}</td></tr><tr><td>1</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 10.644444, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.573899}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>value</code></td><td>13/45</td><td>6.918889</td><td>0.0</td><td>0.397842</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>12/60</td><td>4.79</td><td>0.0</td><td>0.299376</td><td>✅</td><td>—</td></tr><tr><td><code>cheap</code></td><td>10/119</td><td>2.012605</td><td>0.014462</td><td>0.121526</td><td>❌</td><td>|mcc| 0.122 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>premium</code></td><td>3/36</td><td>1.995833</td><td>0.183607</td><td>0.059258</td><td>❌</td><td>p 0.1836 &gt; 0.05؛ lift 1.996 &lt; 2.0؛ |mcc| 0.059 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><h4>کلاستر 1</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>spec_heavy</code></td><td>16/60</td><td>6.386667</td><td>0.0</td><td>0.425498</td><td>✅</td><td>—</td></tr><tr><td><code>premium</code></td><td>16/36</td><td>10.644444</td><td>0.0</td><td>0.573899</td><td>❌</td><td>corroborating signals do not align</td></tr><tr><td><code>cheap</code></td><td>0/119</td><td>0.0</td><td>0.00596</td><td>-0.120014</td><td>❌</td><td>lift 0.000 &lt; 2.0؛ |mcc| 0.120 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>0/45</td><td>0.0</td><td>0.240959</td><td>-0.067216</td><td>❌</td><td>p 0.241 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.067 &lt; 0.2</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_two_interests&quot;,
+  &quot;title&quot;: &quot;دو علاقه‌ی هم‌زمان روی کاتالوگ واقعی&quot;,
+  &quot;given&quot;: &quot;۵ پلن ارزان + ۵ پلن پرقدرت&quot;,
+  &quot;expected&quot;: &quot;value و premium&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 484,
+      &quot;name&quot;: &quot;Advance-3&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 6.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 483,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 482,
+      &quot;name&quot;: &quot;Advance-1&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 6.0,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 481,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 480,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 521000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 489,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 47000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 487,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 45000000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 486,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 30000000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 485,
+      &quot;name&quot;: &quot;RISE-S&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 19000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 476,
+      &quot;name&quot;: &quot;کیهان&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 13399000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 120.0,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;value&quot;,
+      &quot;premium&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;value&quot;,
+        &quot;message&quot;: &quot;دنبال بهترین نسبت امکانات به قیمت هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 6.918889,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.397842
+        }
+      },
+      {
+        &quot;cluster_id&quot;: 1,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 13,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.918889,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.397842,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 12,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 4.79,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.299376,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 10,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 2.012605,
+          &quot;p&quot;: 0.014462,
+          &quot;mcc&quot;: 0.121526,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;|mcc| 0.122 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 3,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 1.995833,
+          &quot;p&quot;: 0.183607,
+          &quot;mcc&quot;: 0.059258,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.1836 &gt; 0.05&quot;,
+            &quot;lift 1.996 &lt; 2.0&quot;,
+            &quot;|mcc| 0.059 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ],
+      [
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.386667,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.425498,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.00596,
+          &quot;mcc&quot;: -0.120014,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.120 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.240959,
+          &quot;mcc&quot;: -0.067216,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.241 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.067 &lt; 0.2&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">9</span><span class="title">بخش «ارزان خالص» زیر حد آماری</span><span class="badge limit">LIMIT (expected)</span></summary><div class="body"><p><strong>ورودی:</strong> ۵ پلن با price_pct&lt;0.3 و spec_pct&lt;0.3</p><p><strong>انتظار:</strong> exploring (pattern_size کوچک‌تر از حد)</p><p><strong>intentهای دیده‌شده:</strong> <code>exploring</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>461</td><td>Sonic 5</td><td>1781000</td><td>—</td><td>—</td><td>—</td></tr><tr><td>450</td><td>پایتون 20</td><td>1781000</td><td>—</td><td>—</td><td>—</td></tr><tr><td>449</td><td>پایتون 10</td><td>1604000</td><td>—</td><td>—</td><td>—</td></tr><tr><td>448</td><td>پایتون 5</td><td>1425000</td><td>—</td><td>—</td><td>—</td></tr><tr><td>447</td><td>پایتون 1</td><td>1213000</td><td>—</td><td>—</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>exploring</code></td><td>در حال کاوش گزینه‌های مختلف هستی؟</td><td>5</td><td>—</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>cheap</code></td><td>10/119</td><td>2.012605</td><td>0.014462</td><td>0.121526</td><td>❌</td><td>|mcc| 0.122 &lt; 0.2</td></tr><tr><td><code>premium</code></td><td>0/36</td><td>0.0</td><td>0.386355</td><td>-0.059506</td><td>❌</td><td>p 0.3864 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.060 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>spec_heavy</code></td><td>0/60</td><td>0.0</td><td>0.15612</td><td>-0.078991</td><td>❌</td><td>p 0.1561 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.079 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>0/45</td><td>0.0</td><td>0.240959</td><td>-0.067216</td><td>❌</td><td>p 0.241 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.067 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_pure_cheap_limit&quot;,
+  &quot;title&quot;: &quot;بخش «ارزان خالص» زیر حد آماری&quot;,
+  &quot;given&quot;: &quot;۵ پلن با price_pct&lt;0.3 و spec_pct&lt;0.3&quot;,
+  &quot;expected&quot;: &quot;exploring (pattern_size کوچک‌تر از حد)&quot;,
+  &quot;status&quot;: &quot;known_limit&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 461,
+      &quot;name&quot;: &quot;Sonic 5&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 1781000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 450,
+      &quot;name&quot;: &quot;پایتون 20&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 1781000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 449,
+      &quot;name&quot;: &quot;پایتون 10&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 1604000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 448,
+      &quot;name&quot;: &quot;پایتون 5&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 1425000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: null
+    },
+    {
+      &quot;id&quot;: 447,
+      &quot;name&quot;: &quot;پایتون 1&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 1213000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: null,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;exploring&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;exploring&quot;,
+        &quot;message&quot;: &quot;در حال کاوش گزینه‌های مختلف هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: null
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 10,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 2.012605,
+          &quot;p&quot;: 0.014462,
+          &quot;mcc&quot;: 0.121526,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;|mcc| 0.122 &lt; 0.2&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.386355,
+          &quot;mcc&quot;: -0.059506,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.3864 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.060 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.15612,
+          &quot;mcc&quot;: -0.078991,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.1561 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.079 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.240959,
+          &quot;mcc&quot;: -0.067216,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.241 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.067 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ]
+  },
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">10</span><span class="title">تکرارپذیری (اجرای اول)</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> همان ورودی پرقدرت</p><p><strong>انتظار:</strong> premium</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>489</td><td>Advance-2</td><td>47000000</td><td>8.0</td><td>64.0</td><td>960.0</td></tr><tr><td>487</td><td>RISE-L</td><td>45000000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>486</td><td>RISE-M</td><td>30000000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr><tr><td>485</td><td>RISE-S</td><td>19000000</td><td>8.0</td><td>64.0</td><td>512.0</td></tr><tr><td>476</td><td>کیهان</td><td>13399000</td><td>—</td><td>120.0</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 10.644444, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.573899}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>premium</code></td><td>16/36</td><td>10.644444</td><td>0.0</td><td>0.573899</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>16/60</td><td>6.386667</td><td>0.0</td><td>0.425498</td><td>✅</td><td>—</td></tr><tr><td><code>cheap</code></td><td>0/119</td><td>0.0</td><td>0.00596</td><td>-0.120014</td><td>❌</td><td>lift 0.000 &lt; 2.0؛ |mcc| 0.120 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>0/45</td><td>0.0</td><td>0.240959</td><td>-0.067216</td><td>❌</td><td>p 0.241 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.067 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_deterministic_a&quot;,
+  &quot;title&quot;: &quot;تکرارپذیری (اجرای اول)&quot;,
+  &quot;given&quot;: &quot;همان ورودی پرقدرت&quot;,
+  &quot;expected&quot;: &quot;premium&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 489,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 47000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 487,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 45000000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 486,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 30000000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 485,
+      &quot;name&quot;: &quot;RISE-S&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 19000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 476,
+      &quot;name&quot;: &quot;کیهان&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 13399000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 120.0,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.386667,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.425498,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.00596,
+          &quot;mcc&quot;: -0.120014,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.120 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.240959,
+          &quot;mcc&quot;: -0.067216,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.241 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.067 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ],
+    &quot;deterministic_pair_equal&quot;: true
+  },
+  &quot;duplicate_of&quot;: &quot;real_deterministic_b&quot;,
+  &quot;passed&quot;: true
+}</pre></details></div></details><details class="card" ><summary><span class="num">11</span><span class="title">تکرارپذیری (اجرای دوم)</span><span class="badge ok">VERIFIED</span></summary><div class="body"><p><strong>ورودی:</strong> همان ورودی پرقدرت</p><p><strong>انتظار:</strong> premium</p><p><strong>intentهای دیده‌شده:</strong> <code>premium</code></p><h4>پلن‌های انتخاب‌شده از کاتالوگ واقعی</h4><table class="inner"><thead><tr><th>id</th><th>نام</th><th>قیمت</th><th>CPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody><tr><td>489</td><td>Advance-2</td><td>47000000</td><td>8.0</td><td>64.0</td><td>960.0</td></tr><tr><td>487</td><td>RISE-L</td><td>45000000</td><td>16.0</td><td>128.0</td><td>960.0</td></tr><tr><td>486</td><td>RISE-M</td><td>30000000</td><td>12.0</td><td>64.0</td><td>512.0</td></tr><tr><td>485</td><td>RISE-S</td><td>19000000</td><td>8.0</td><td>64.0</td><td>512.0</td></tr><tr><td>476</td><td>کیهان</td><td>13399000</td><td>—</td><td>120.0</td><td>—</td></tr></tbody></table><h4>توضیح‌های تولیدشده</h4><table class="inner"><thead><tr><th>cluster</th><th>intent</th><th>پیام</th><th>پلن</th><th>confidence</th></tr></thead><tbody><tr><td>0</td><td><code>premium</code></td><td>دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟</td><td>5</td><td>{&#x27;lift&#x27;: 10.644444, &#x27;p&#x27;: 0.0, &#x27;mcc&#x27;: 0.573899}</td></tr></tbody></table><h4>تشخیص دروازه‌های آماری</h4><h4>کلاستر 0</h4><table class="inner"><thead><tr><th>intent</th><th>tp/pattern</th><th>lift</th><th>p</th><th>mcc</th><th>gate</th><th>دلیل رد</th></tr></thead><tbody><tr><td><code>premium</code></td><td>16/36</td><td>10.644444</td><td>0.0</td><td>0.573899</td><td>✅</td><td>—</td></tr><tr><td><code>spec_heavy</code></td><td>16/60</td><td>6.386667</td><td>0.0</td><td>0.425498</td><td>✅</td><td>—</td></tr><tr><td><code>cheap</code></td><td>0/119</td><td>0.0</td><td>0.00596</td><td>-0.120014</td><td>❌</td><td>lift 0.000 &lt; 2.0؛ |mcc| 0.120 &lt; 0.2؛ corroborating signals do not align</td></tr><tr><td><code>value</code></td><td>0/45</td><td>0.0</td><td>0.240959</td><td>-0.067216</td><td>❌</td><td>p 0.241 &gt; 0.05؛ lift 0.000 &lt; 2.0؛ |mcc| 0.067 &lt; 0.2؛ corroborating signals do not align</td></tr></tbody></table><details class="raw"><summary>شواهد خام JSON</summary><pre>{
+  &quot;key&quot;: &quot;real_deterministic_b&quot;,
+  &quot;title&quot;: &quot;تکرارپذیری (اجرای دوم)&quot;,
+  &quot;given&quot;: &quot;همان ورودی پرقدرت&quot;,
+  &quot;expected&quot;: &quot;premium&quot;,
+  &quot;status&quot;: &quot;verified&quot;,
+  &quot;selected_plans&quot;: [
+    {
+      &quot;id&quot;: 489,
+      &quot;name&quot;: &quot;Advance-2&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 47000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 487,
+      &quot;name&quot;: &quot;RISE-L&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 45000000,
+      &quot;cpu&quot;: 16.0,
+      &quot;ram&quot;: 128.0,
+      &quot;disk&quot;: 960.0
+    },
+    {
+      &quot;id&quot;: 486,
+      &quot;name&quot;: &quot;RISE-M&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 30000000,
+      &quot;cpu&quot;: 12.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 485,
+      &quot;name&quot;: &quot;RISE-S&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 19000000,
+      &quot;cpu&quot;: 8.0,
+      &quot;ram&quot;: 64.0,
+      &quot;disk&quot;: 512.0
+    },
+    {
+      &quot;id&quot;: 476,
+      &quot;name&quot;: &quot;کیهان&quot;,
+      &quot;plan_type&quot;: null,
+      &quot;price&quot;: 13399000,
+      &quot;cpu&quot;: null,
+      &quot;ram&quot;: 120.0,
+      &quot;disk&quot;: null
+    }
+  ],
+  &quot;observed&quot;: {
+    &quot;intents&quot;: [
+      &quot;premium&quot;
+    ],
+    &quot;explanations&quot;: [
+      {
+        &quot;cluster_id&quot;: 0,
+        &quot;intent&quot;: &quot;premium&quot;,
+        &quot;message&quot;: &quot;دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟&quot;,
+        &quot;plan_count&quot;: 5,
+        &quot;confidence&quot;: {
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899
+        }
+      }
+    ],
+    &quot;diagnostics&quot;: [
+      [
+        {
+          &quot;intent&quot;: &quot;premium&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 36,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 10.644444,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.573899,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;spec_heavy&quot;,
+          &quot;tp&quot;: 16,
+          &quot;pattern_size&quot;: 60,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 6.386667,
+          &quot;p&quot;: 0.0,
+          &quot;mcc&quot;: 0.425498,
+          &quot;aligned&quot;: true,
+          &quot;gate_passed&quot;: true,
+          &quot;rejected_because&quot;: []
+        },
+        {
+          &quot;intent&quot;: &quot;cheap&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 119,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.00596,
+          &quot;mcc&quot;: -0.120014,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.120 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        },
+        {
+          &quot;intent&quot;: &quot;value&quot;,
+          &quot;tp&quot;: 0,
+          &quot;pattern_size&quot;: 45,
+          &quot;candidate_size&quot;: 20,
+          &quot;lift&quot;: 0.0,
+          &quot;p&quot;: 0.240959,
+          &quot;mcc&quot;: -0.067216,
+          &quot;aligned&quot;: false,
+          &quot;gate_passed&quot;: false,
+          &quot;rejected_because&quot;: [
+            &quot;p 0.241 &gt; 0.05&quot;,
+            &quot;lift 0.000 &lt; 2.0&quot;,
+            &quot;|mcc| 0.067 &lt; 0.2&quot;,
+            &quot;corroborating signals do not align&quot;
+          ]
+        }
+      ]
+    ],
+    &quot;deterministic_pair_equal&quot;: true
+  },
+  &quot;duplicate_of&quot;: &quot;real_deterministic_a&quot;,
+  &quot;passed&quot;: true
+}</pre></details></div></details></div>
+
+  <h2>آستانه‌های استفاده‌شده</h2>
+  <ul><li><code>explain_min_pattern_size</code> = 30</li><li><code>explain_alpha</code> = 0.05</li><li><code>explain_min_lift</code> = 2.0</li><li><code>explain_min_mcc</code> = 0.2</li><li><code>explain_min_clicks</code> = 3</li><li><code>explain_k</code> = 20</li><li><code>min_resource_dimensions</code> = 1</li></ul>
+
+  <footer>تولیدشده توسط <code>backend/scripts/generate_real_catalog_proof.py</code> — فقط-خواندنی و قابل تکرار.</footer>
+</div>
+</body>
+</html>

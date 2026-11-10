@@ -113,7 +113,16 @@ configuration or signal weights.
 - `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`
 - `RECOMMENDATION_CLUSTER_ACTIVITY_DECAY`
 - `RECOMMENDATION_CLUSTER_MIN_ACTIVITY`
+- `RECOMMENDATION_CLUSTER_MIN_ACTIVITY_RATIO`
+- `RECOMMENDATION_SUGGESTION_CLUSTER_LIMIT`
 - `RECOMMENDATION_MIN_RESOURCE_DIMENSIONS`
+- `RECOMMENDATION_EXPLAIN_K`
+- `RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE`
+- `RECOMMENDATION_EXPLAIN_ALPHA`
+- `RECOMMENDATION_EXPLAIN_MIN_LIFT`
+- `RECOMMENDATION_EXPLAIN_MIN_MCC`
+- `RECOMMENDATION_EXPLAIN_MIN_CLICKS`
+- `RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED`
 
 ## 8. Simulate a viewer
 
@@ -134,3 +143,38 @@ Useful flags: `--kind` (`destination_visit`, `details_view`, `search_impression`
 `--min-ram`, `--min-cpu`, `--min-disk`, `--top`, `--reset`, `--keep`, and `--json`.
 The command uses a fresh visitor UUID by default and hard-deletes the simulated profile
 unless `--keep` is passed.
+
+To inspect an existing viewer instead of a throwaway UUID, pass exactly one of
+`--visitor-id`, `--user-id`, or `--phone-number`. Existing profiles are never reset
+unless `--reset` is supplied:
+
+```bash
+cd backend/src && python manage.py simulate_recommendations \
+  --phone-number 09046993150 \
+  --plan-type dedicated_server \
+  --count 5 \
+  --top 20 \
+  --json
+```
+
+## 9. Scenario test report
+
+The presentation-ready matrix of verified and limited behaviours lives in
+[`specs/008-intent-pattern-explanations/recommendation-scenarios-report.md`](../../../specs/008-intent-pattern-explanations/recommendation-scenarios-report.md).
+It is backed by `backend/src/apps/recommendations/tests/test_recommendation_scenarios.py`.
+
+Two generated, self-contained proof artifacts are written to
+`specs/008-intent-pattern-explanations/artifacts/`:
+
+- `recommendation-proof.html` / `.json` — isolated synthetic catalog, every
+  scenario runs on a throwaway in-memory SQLite database.
+- `recommendation-proof-real-catalog.html` / `.json` — read-only run against the
+  real published catalog. It writes no plans, profiles, signals, or spaces and
+  includes the statistical gate diagnostics for every intent pattern.
+
+Regenerate both from the repository root:
+
+```bash
+.venv/bin/python backend/scripts/generate_recommendation_proof.py
+.venv/bin/python backend/scripts/generate_real_catalog_proof.py
+```
