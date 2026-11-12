@@ -35,6 +35,7 @@ dependencies = [
     "flake8>=7.5.0",
     "black>=26.10.1",
     "payment",
+    "python-json-logger>=4.2.0",
 ]
 
 [dependency-groups]
