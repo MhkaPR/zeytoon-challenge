@@ -4,6 +4,9 @@ Other modules import recommendation behaviour through this module only.
 """
 
 from apps.recommendations.services.v1.merging import StateMerger
+from apps.recommendations.services.v1.explain import ExplainService
+from apps.recommendations.services.v1.rank import RankService
+from apps.recommendations.services.v1.record import RecordService
 from apps.recommendations.services.v1.ranking import RankingService
 from apps.recommendations.services.v1.signals import SignalRecorder
 
@@ -53,5 +56,30 @@ class RecommendationsInterface:
     @staticmethod
     def clear_visitor(visitor_id):
         return StateMerger.clear_visitor(visitor_id)
+
+    @staticmethod
+    def rank_nodes(owner_id, records, threshold=None, provider=None):
+        from apps.recommendations import conf
+        from apps.recommendations.services.v1.store import PlanSpaceProvider
+
+        return RankService().rank(
+            owner_id,
+            provider or PlanSpaceProvider(),
+            records,
+            conf.rank_threshold() if threshold is None else threshold,
+        )
+
+    @staticmethod
+    def record_interaction(owner_id, interaction, provider=None):
+        from apps.recommendations.services.v1.store import PlanSpaceProvider
+
+        return RecordService().record(
+            owner_id, interaction, provider or PlanSpaceProvider()
+        )
+
+    @staticmethod
+    def explain_ranked(ranked_interests, patterns, thresholds):
+        return ExplainService.explain(ranked_interests, patterns, thresholds)
+
 
 __all__ = ["RecommendationsInterface"]

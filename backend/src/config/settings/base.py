@@ -197,7 +197,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Torob Comparison API",
+    "TITLE": "Zeytoon Comparison API",
     "DESCRIPTION": "Host and server plan search/comparison API.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
@@ -466,7 +466,7 @@ CONSTANCE_CONFIG = {
         "Polling interval for the operator site-links page, in milliseconds.",
     ),
     "CONTACT_EMAIL": (
-        "support@torobhost.ir",
+        "support@zeytoon.ir",
         "Public support email shown in the site footer.",
     ),
     "CONTACT_PHONE": (
@@ -582,6 +582,31 @@ CONSTANCE_CONFIG = {
     "RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED": (
         True,
         "Whether negative-direction intent explanations may be reported.",
+    ),
+    # Rank / Record / Explain boundaries (spec 009).
+    "RECOMMENDATION_RANK_THRESHOLD": (
+        0.35,
+        "Maximum masked Euclidean distance for a plan to be accepted for a node.",
+    ),
+    "RECOMMENDATION_PATTERN_THRESHOLDS": (
+        {"cheap": 4, "value": 4, "spec_heavy": 4, "premium": 4},
+        "Minimum number of matching plans before an intent pattern is surfaced.",
+    ),
+    "KALMAN_DECAY_RATE_PER_HOUR": (
+        0.01,
+        "Per-hour uncertainty growth applied to a node before each update.",
+    ),
+    "KALMAN_MAX_UNCERTAINTY": (
+        1.0,
+        "Upper clamp for decayed node uncertainty (cold-start equivalent).",
+    ),
+    "KALMAN_PROCESS_NOISE": (
+        0.1,
+        "Process noise added to node uncertainty during a Kalman update.",
+    ),
+    "KALMAN_MEASUREMENT_NOISE": (
+        1.0,
+        "Default measurement noise for a Kalman observation.",
     ),
 }
 

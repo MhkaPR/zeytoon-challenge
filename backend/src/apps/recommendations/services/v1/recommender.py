@@ -23,10 +23,10 @@ class Recommender:
     def order(plan_ids, distances, published_at):
         """Order by distance, then newest first, then id, so pages never repeat."""
         rows = [
-            (plan_id, float(distance), _epoch(stamp), plan_id)
+            (plan_id, float(distance), _epoch(stamp))
             for plan_id, distance, stamp in zip(plan_ids, distances, published_at)
         ]
-        rows.sort(key=lambda row: (row[1], -row[2], row[3]))
+        rows.sort(key=lambda row: (row[1], -row[2], row[0]))
         return [row[0] for row in rows]
 
 

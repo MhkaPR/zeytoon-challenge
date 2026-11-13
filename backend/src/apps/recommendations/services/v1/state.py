@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from apps.recommendations import conf
+from apps.recommendations.services.v1.kalman import KalmanModule
 
 
 class UserState:
@@ -31,19 +32,20 @@ class UserState:
         self.activity = 1.0 if activity is None else float(activity)
 
     def update(self, values, masks, noise, sign=1):
-        active = np.asarray(masks, bool)
-        if not active.any():
-            return
-        self.s[active] += self.q
-        gain = self.s[active] / (self.s[active] + max(float(noise), 1e-6))
-        factor = 1.0 if sign > 0 else -self.neg
-        self.x[active] = np.clip(
-            self.x[active] + factor * gain * (values[active] - self.x[active]), 0, 1
+        self.x, self.s = KalmanModule.update(
+            self.x,
+            self.s,
+            values,
+            mask=masks,
+            weight=noise,
+            process_noise=self.q,
+            measurement_noise=1.0,
+            sign=sign,
+            negative_factor=self.neg,
         )
-        self.s[active] = (1 - gain) * self.s[active]
 
     def idle(self, days, gap=0.05):
-        self.s = np.minimum(self.s + gap * days, self.s0)
+        self.s = KalmanModule.idle(self.s, days, gap, cap=self.s0)
 
 
 def _masked_distances(values, masks, position):
@@ -73,9 +75,7 @@ class InterestClusters:
             conf.max_interest_clusters() if max_clusters is None else int(max_clusters)
         )
         self.threshold = (
-            conf.cluster_distance_threshold()
-            if threshold is None
-            else float(threshold)
+            conf.cluster_distance_threshold() if threshold is None else float(threshold)
         )
         self.states = self._parse(positions, uncertainties, activities)
 
@@ -151,23 +151,21 @@ class InterestClusters:
     def active_states(self):
         if not self.states:
             return []
-        ordered = sorted(
-            self.states, key=lambda state: state.activity, reverse=True
-        )
+        ordered = sorted(self.states, key=lambda state: state.activity, reverse=True)
         floor = max(
             conf.cluster_min_activity(),
             ordered[0].activity * conf.cluster_min_activity_ratio(),
         )
         limit = max(conf.suggestion_cluster_limit(), 1)
-        return [
-            state for state in ordered if state.activity >= floor
-        ][:limit]
+        return [state for state in ordered if state.activity >= floor][:limit]
 
     def nearest(self, values, masks):
         if not self.states:
             return None, float("inf")
         distances = [
-            float(_masked_distances(np.asarray([values]), np.asarray([masks]), state.x)[0])
+            float(
+                _masked_distances(np.asarray([values]), np.asarray([masks]), state.x)[0]
+            )
             for state in self.states
         ]
         index = int(np.argmin(distances))

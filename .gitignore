@@ -52,3 +52,6 @@ next-env.d.ts
 
 
 traces
+# recommendation experiment runtime artifacts
+experiments/recommendation/.cache/
+experiments/recommendation/output/

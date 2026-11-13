@@ -36,7 +36,7 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <Dropdown>
       <Button className="gap-[6px]" variant="ghost">
-        <span className="font-medium text-foreground">{phone || ot("userMenuLabel")}</span>
+        <span dir="ltr" className="font-medium text-foreground">{phone || ot("userMenuLabel")}</span>
         <ChevronDown aria-hidden className="size-4 text-muted" />
       </Button>
       <Dropdown.Popover>

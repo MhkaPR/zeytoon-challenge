@@ -39,6 +39,18 @@ DEFAULTS = {
     "RECOMMENDATION_EXPLAIN_MIN_CLICKS": 3,
     "RECOMMENDATION_EXPLAIN_MESSAGES": {},
     "RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED": True,
+    # Rank / Record / Explain boundaries (spec 009).
+    "RECOMMENDATION_RANK_THRESHOLD": 0.35,
+    "RECOMMENDATION_PATTERN_THRESHOLDS": {
+        "cheap": 30,
+        "value": 30,
+        "spec_heavy": 30,
+        "premium": 30,
+    },
+    "KALMAN_DECAY_RATE_PER_HOUR": 0.01,
+    "KALMAN_MAX_UNCERTAINTY": 1.0,
+    "KALMAN_PROCESS_NOISE": 0.1,
+    "KALMAN_MEASUREMENT_NOISE": 1.0,
 }
 
 
@@ -167,3 +179,27 @@ def explain_messages():
 
 def explain_negative_enabled():
     return bool(_value("RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED"))
+
+
+def rank_threshold():
+    return float(_value("RECOMMENDATION_RANK_THRESHOLD"))
+
+
+def pattern_thresholds():
+    return dict(_value("RECOMMENDATION_PATTERN_THRESHOLDS") or {})
+
+
+def kalman_decay_rate_per_hour():
+    return float(_value("KALMAN_DECAY_RATE_PER_HOUR"))
+
+
+def kalman_max_uncertainty():
+    return float(_value("KALMAN_MAX_UNCERTAINTY"))
+
+
+def kalman_process_noise():
+    return float(_value("KALMAN_PROCESS_NOISE"))
+
+
+def kalman_measurement_noise():
+    return float(_value("KALMAN_MEASUREMENT_NOISE"))

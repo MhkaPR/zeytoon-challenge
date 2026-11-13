@@ -1,4 +1,4 @@
-"""Record viewer interest signals into a preference profile."""
+"""Record viewer interest signals through the Record service."""
 
 from __future__ import annotations
 
@@ -7,17 +7,27 @@ from django.utils import timezone
 
 from apps.recommendations import conf
 from apps.recommendations.models import InterestProfile, InterestSignal
-from apps.recommendations.services.v1.state import InterestClusters
+from apps.recommendations.services.v1.record import Interaction, RecordService
 from apps.recommendations.services.v1.store import PlanSpaceProvider
 
 
 class SignalRecorder:
     """Applies one signal to the profile that owns the current identity."""
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, record_service=None):
         self.provider = provider or PlanSpaceProvider()
+        self.record_service = record_service or RecordService()
 
-    def record(self, records, kind, plan_ids, query="", visitor_id=None, user=None):
+    def record(
+        self,
+        records,
+        kind,
+        plan_ids,
+        query="",
+        visitor_id=None,
+        user=None,
+        interaction_id=None,
+    ):
         profile, label = self._profile(visitor_id, user)
         if profile is None:
             return {"accepted": 0, "ignored": len(plan_ids), "profile": "none"}
@@ -31,31 +41,58 @@ class SignalRecorder:
         if not valid:
             return {"accepted": 0, "ignored": len(plan_ids), "profile": label}
 
-        state = self._state(profile, bundle)
         noise = conf.signal_noise(kind)
+        owner_id = self._owner_id(profile)
         if kind == InterestSignal.Kind.SEARCH_IMPRESSION:
             rows = [row_of[plan_id] for plan_id in valid]
             centroid = bundle["values"][rows].mean(axis=0)
             mask = bundle["masks"][rows].max(axis=0)
-            state.update(centroid, mask, noise)
+            self.record_service.record(
+                owner_id,
+                Interaction(
+                    vector=centroid.tolist(),
+                    weight=noise,
+                    kind=kind,
+                    mask=mask.tolist(),
+                    plan_ids=valid,
+                    query=query or "",
+                    space_version=bundle["version"],
+                    interaction_id=interaction_id,
+                ),
+                self.provider,
+                allow_new_nodes=True,
+            )
         else:
             for plan_id in valid:
                 row = row_of[plan_id]
-                state.update(bundle["values"][row], bundle["masks"][row], noise)
-
-        self._save(profile, state, bundle["version"])
-        InterestSignal.objects.create(
-            profile=profile,
-            kind=kind,
-            plan_ids=valid,
-            query=query or "",
-            weight=noise,
-        )
+                self.record_service.record(
+                    owner_id,
+                    Interaction(
+                        vector=bundle["values"][row].tolist(),
+                        weight=noise,
+                        kind=kind,
+                        mask=bundle["masks"][row].tolist(),
+                        plan_ids=[plan_id],
+                        query=query or "",
+                        space_version=bundle["version"],
+                        interaction_id=(
+                            f"{interaction_id}:{plan_id}" if interaction_id else None
+                        ),
+                    ),
+                    self.provider,
+                    allow_new_nodes=True,
+                )
         return {
             "accepted": len(valid),
             "ignored": len(plan_ids) - len(valid),
             "profile": label,
         }
+
+    @staticmethod
+    def _owner_id(profile):
+        if profile.user_id:
+            return profile.user_id
+        return profile.visitor_id
 
     @staticmethod
     def _profile(visitor_id, user):
@@ -70,13 +107,17 @@ class SignalRecorder:
         if profile is None:
             profile = InterestProfile.objects.create(visitor_id=visitor_id)
         if profile.merged_into_id:
-            profile = InterestProfile.objects.filter(user_id=profile.merged_into_id).first()
+            profile = InterestProfile.objects.filter(
+                user_id=profile.merged_into_id
+            ).first()
             return profile, "user"
         return profile, "visitor"
 
     @staticmethod
     def _within_cap(profile):
-        identity = f"u{profile.user_id}" if profile.user_id else f"v{profile.visitor_id}"
+        identity = (
+            f"u{profile.user_id}" if profile.user_id else f"v{profile.visitor_id}"
+        )
         minute = timezone.now().strftime("%Y%m%d%H%M")
         key = f"recommendations:cap:{identity}:{minute}"
         cache.add(key, 0, timeout=120)
@@ -86,27 +127,3 @@ class SignalRecorder:
             cache.set(key, 1, timeout=120)
             count = 1
         return count <= conf.signal_cap_per_minute()
-
-    @staticmethod
-    def _state(profile, bundle):
-        return InterestClusters.from_profile(profile, bundle, cold_start=False)
-
-    @staticmethod
-    def _save(profile, state, version):
-        profile.position = state.positions
-        profile.uncertainty = state.uncertainties
-        profile.activity_profile = state.activities
-        profile.space_version = version
-        profile.signal_count += 1
-        profile.last_signal_at = timezone.now()
-        profile.save(
-            update_fields=(
-                "position",
-                "uncertainty",
-                "activity_profile",
-                "space_version",
-                "signal_count",
-                "last_signal_at",
-                "updated_at",
-            )
-        )
