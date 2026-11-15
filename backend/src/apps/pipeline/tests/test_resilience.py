@@ -51,7 +51,7 @@ def test_exhausted_retries_dead_letter_the_link(kept_link, monkeypatch, no_retry
     assert calls["n"] == 3  # RETRY_MAX_ATTEMPTS
     kept_link.refresh_from_db()
     assert kept_link.pipeline_stage == Link.PipelineStage.DEAD_LETTERED
-    assert kept_link.last_error == "transient"
+    assert kept_link.last_error == "capture: transient"
 
 
 def test_rerunning_dead_lettered_capture_resumes_at_capture(kept_link):

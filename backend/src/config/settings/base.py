@@ -241,6 +241,15 @@ GUARDIAN_MONKEY_PATCH_USER = False
 
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 CONSTANCE_DATABASE_CACHE_BACKEND = "default"
+CONSTANCE_ADDITIONAL_FIELDS = {
+    "json": [
+        "apps.core.constance_fields.JSONField",
+        {
+            "widget": "django.forms.Textarea",
+            "widget_kwargs": {"attrs": {"rows": 8, "cols": 80}},
+        },
+    ],
+}
 CONSTANCE_CONFIG = {
     "OTP_LENGTH": (6, "Number of digits in the one-time code."),
     "OTP_TTL_SECONDS": (120, "One-time code validity window in seconds."),
@@ -257,10 +266,12 @@ CONSTANCE_CONFIG = {
     "CONTACT_CHANNELS": (
         ["support@example.com", "https://example.com/contact"],
         "Communication channels shown to a blocked user.",
+        "json",
     ),
     "RETURN_URL_ALLOWLIST": (
         ["/", "/plans", "/compare", "/search", "/panel", "/ops"],
         "Allowed relative return targets after login.",
+        "json",
     ),
     "DEFAULT_RETURN_PATH": ("/", "Fallback page when the return target is invalid."),
     # Company Registration & Company Panel (spec 002)
@@ -270,6 +281,7 @@ CONSTANCE_CONFIG = {
             {"key": "verification", "order": 2, "owner_input": False},
         ],
         "Ordered registration steps; the first step is company information, next is verification.",
+        "json",
     ),
     "COMPANY_STEP_LOCKED_MESSAGE": (
         "This step is locked until the previous step is approved.",
@@ -282,6 +294,7 @@ CONSTANCE_CONFIG = {
             "both": "Company must be verified and charged.",
         },
         "Operator-facing messages for missing company requirements.",
+        "json",
     ),
     "COMPANY_EMPTY_STATE_MESSAGE": (
         "You have no companies yet. Register a new company to get started.",
@@ -362,6 +375,7 @@ CONSTANCE_CONFIG = {
             "atom",
         ],
         "File extensions excluded by the deterministic link policy.",
+        "json",
     ),
     "LINK_DENY_SEGMENTS": (
         [
@@ -388,6 +402,7 @@ CONSTANCE_CONFIG = {
             "tickets",
         ],
         "Non-content path segments excluded by the deterministic link policy.",
+        "json",
     ),
     "LINK_DISCOVERY_MAX_LINKS": (
         5000,
@@ -439,6 +454,7 @@ CONSTANCE_CONFIG = {
     "CATALOG_PAGE_SIZES": (
         [8, 12],
         "Page-size options offered by the public plan catalog.",
+        "json",
     ),
     "CATALOG_PAGE_SIZE_DEFAULT": (
         8,
@@ -452,6 +468,7 @@ CONSTANCE_CONFIG = {
             "traffic": [100, 500, 1000, 2000, 5000, 10000],
         },
         "Ordered resource filter options for the public plan catalog.",
+        "json",
     ),
     "CATALOG_COMPANY_FILTER_VISIBLE": (
         5,
@@ -578,6 +595,7 @@ CONSTANCE_CONFIG = {
             },
         },
         "Question-form Persian messages keyed by intent and direction.",
+        "json",
     ),
     "RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED": (
         True,
@@ -591,6 +609,7 @@ CONSTANCE_CONFIG = {
     "RECOMMENDATION_PATTERN_THRESHOLDS": (
         {"cheap": 4, "value": 4, "spec_heavy": 4, "premium": 4},
         "Minimum number of matching plans before an intent pattern is surfaced.",
+        "json",
     ),
     "KALMAN_DECAY_RATE_PER_HOUR": (
         0.01,

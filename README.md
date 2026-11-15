@@ -1,76 +1,256 @@
-# Mizban Host — Host & Server Plan Comparison
+# Zeytoon · زیتون
 
-Mizban Host is a Persian-first (RTL) host/server plan **search and comparison** platform.
-Users browse and compare hosting plans across providers; providers register a company, get
-verified, and manage their listings and credit from a dedicated panel.
+**Zeytoon** (زیتون, "olive") is a Persian-first (RTL) **host and server plan search and
+comparison engine**. Visitors compare pricing, resources, and server location across
+providers in one place. Providers register a company, get verified, and manage their plans,
+credit, and crawl lifecycle from a dedicated panel. Operators run verification and the
+automated site-data pipeline from a separate admin console.
 
-This repository is a **modular monolith**: a Django 6 + DRF backend and a Next.js 16
-frontend, with PostgreSQL as the source of truth, Redis for cache/throttles, and Meilisearch
-for the local search index. All services and data are hosted in Iran.
+The product is built as a **modular monolith**: a Django 6 + DRF backend and a Next.js 16
+frontend, with PostgreSQL as the source of truth and Redis for cache and throttling. All
+services and data are hosted in Iran.
+
+The visual identity is a clean white canvas, black text, and a restrained **olive accent**
+(`#60782e`), fully RTL and Persian-first. See [`DESIGN.md`](DESIGN.md).
 
 ---
 
-## Features
+## Table of Contents
 
-### 1. SMS OTP Login (`specs/001-sms-otp-login`)
+- [Why Zeytoon](#why-zeytoon)
+- [Feature Set](#feature-set)
+- [Challenges Solved](#challenges-solved)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Repository Layout](#repository-layout)
+- [Getting Started](#getting-started)
+- [API Overview](#api-overview)
+- [Recommendation Engine](#recommendation-engine)
+- [Configuration](#configuration)
+- [Testing](#testing)
+- [Project Governance](#project-governance)
+- [License](#license)
+
+---
+
+## Why Zeytoon
+
+Hosting shoppers face a fragmented market: every provider publishes plans in a different
+layout, with different units and different names for the same resource. Zeytoon turns that
+into one normalized, comparable catalogue:
+
+- **One search surface** for shared, VPS, dedicated, and related hosting plans.
+- **Structured comparison** on price, CPU, RAM, disk, traffic, location, OS, and more.
+- **Personalized ordering** that learns from anonymous browsing and carries into the account.
+- **Explainable recommendations** that tell the visitor *why* a plan is suggested, in real
+  units and human language — never raw normalized scores.
+- **A trustworthy supply side**: verified companies, an append-only credit ledger, and an
+  auditable automated pipeline that keeps plan data fresh.
+
+---
+
+## Feature Set
+
+### 1. SMS OTP Login — `specs/001-sms-otp-login`
 
 - Phone number is the unique identifier; login is by **SMS one-time code**.
 - New phone numbers create an account implicitly on first successful verification — there is
   no separate registration step.
-- Sessions are **JWT** (short-lived access token, rotating refresh token in an `httpOnly`
-  cookie, server-side denylist revocation).
-- A reliable **guest vs. authenticated** signal (`GET /api/v1/auth/session`).
-- Return-URL handling: users land back on the page they came from, with an allowlist and a
-  default fallback.
+- **JWT sessions**: short-lived access token, rotating refresh token in an `httpOnly` cookie,
+  server-side denylist revocation.
+- A reliable **guest vs. authenticated** signal via `GET /api/v1/auth/session`.
+- Return-URL handling with an allowlist and default fallback.
 - Security: hashed OTPs with TTL in Redis, per-phone and per-source rate limits, failed-attempt
   limits, temporary lockout, exact CORS allowlist, CSRF double-submit, and one-time-code/token
   redaction in logs.
 
-### 2. Company Registration & Company Panel (`specs/002-company-registration-panel`)
+### 2. Company Registration & Company Panel — `specs/002-company-registration-panel`
 
 - A user can own **multiple companies**; ownership is single-owner and admin-controlled.
 - Multi-step registration with **locked steps**: a step opens only after the previous one is
-  approved. Step one collects company info (domain, phone, optional internal number, company
-  name, representative name); the next step is operator verification.
-- Verification is decided by an operator (admin console is a separate application) and recorded
-  in an **append-only history** (outcome, actor, time, note). A not-approved outcome reopens
-  step one for correction.
+  approved.
+- Verification is decided by an operator and recorded in an **append-only history** (outcome,
+  actor, time, note). A not-approved outcome reopens step one for correction.
 - Mid-step abandonment clears only that step's draft; the user resumes at the same step.
 - The panel opens the **full panel** for verified companies and a **"Continue registration"**
   view for pending/rejected ones — including a redirect when the full-panel URL is reached
   directly.
 - Plan eligibility gate: a listing can only be created/activated when the company is **both
   verified and charged**, and the block names every missing prerequisite.
-- Per-company **credit ledger** (append-only charge/decharge entries); the current credit is
-  the running projection of the ledger. Crawl enabling requires a charged account and costs
-  no credit.
+- Per-company **credit ledger** (append-only charge/decharge entries); current credit is the
+  running projection of the ledger. Crawl enabling requires a charged account and costs no
+  credit.
 - Companies are **archived, never hard-deleted**; ownership transfer is admin-only.
 
-### 3. Admin Console & Site Data Pipeline (`specs/003-admin-ops-console`)
+### 3. Admin Console & Site Data Pipeline — `specs/003-admin-ops-console`
 
 - Operator-facing approval queue for pending companies, with duplicate-domain warnings and an
   append-only decision record per outcome.
-- Automated site-maintenance pipeline: crawl4ai link discovery, LLM link refiltering,
-  server-side headless capture, table extraction/classification, and schema-validated plan
-  extraction.
+- Automated site-maintenance pipeline: **crawl4ai** adaptive link discovery, LLM link
+  refiltering, server-side headless **domtrack** capture, table extraction/classification, and
+  schema-validated plan extraction.
 - Compare-driven replay re-invokes extraction only when a change touches a plans table.
 - Operator-controlled LLM token budget and runtime thresholds; LLM-gated work pauses when the
   budget is exhausted.
 
-### 4. Backend Contract & Public Browsing (`specs/004-backend-contract`)
+### 4. Backend Contract & Public Browsing — `specs/004-backend-contract`
 
 - Shared API contract for public browsing: home, search, service-type chips, filters, and the
   company directory.
-- Typed frontend API clients and i18n catalogs keep the Persian-first RTL experience
-  consistent.
+- Typed frontend API clients and i18n catalogs keep the Persian-first RTL experience consistent.
 
-### 5. Personalized Plan Ordering (`specs/005-related-plans-sort`, `specs/006-pca-space-expansion`)
+### 5. Personalized Related Plans — `specs/005-related-plans-sort`
 
-- Related plans are ordered by comparing a visitor's preference state with the plan space.
-- Interest signals (destination page, plan details, search impressions) adjust ordering and
-  carry into the account on login.
-- A periodic PCA refresh adds semantic title dimensions to the recommendation space; failed
-  refreshes leave the previous space intact.
+- The catalogue defaults to **«پیشنهاد برای شما»** (recommended for you), ordered by the
+  visitor's demonstrated interest.
+- Anonymous visitors get a device-scoped profile; on login the device profile folds into the
+  account (account history wins when both exist); on logout the device profile is cleared.
+- Three signal types: destination-page visit (strongest), plan-details view (moderate), and the
+  first page of a typed search (weakest).
+- Deterministic cold-start order for visitors with no history.
+
+### 6. Semantic Space Expansion — `specs/006-pca-space-expansion`
+
+- Ten title-derived semantic dimensions are added to the plan space via character n-gram
+  hashing + **PCA**.
+- Multiple interests are kept simultaneously as bounded **interest clusters**; a new signal
+  updates a nearby cluster or creates a new one until the configured cap, after which the least
+  confident cluster is replaced.
+- Profiles with an outdated dimension count or space version are rebuilt safely; a failed
+  refresh leaves the previous space intact.
+
+### 7. Recommendation Explanations — `specs/007-recommendation-explanations`
+
+- Each interest shows its closest plan with **one readable reason** naming the preference that
+  matched.
+- Textual matches are described as a product category; technical matches are quoted as a small
+  range in **real units** (cores, GB, monthly price), never normalized scores.
+- The recommendation space is **persisted in PostgreSQL**, with Redis as a read-through cache
+  only; a stale space version is rebuilt, never served.
+
+### 8. Intent-Pattern Explanations — `specs/008-intent-pattern-explanations`
+
+- Replaces attribute-based reasons with **intent patterns** (`cheap`, `value`, `spec_heavy`,
+  `premium`) scored per cluster against the top-K candidate set.
+- Statistical significance, effect-size, and click-corroboration checks gate which intent may be
+  reported.
+- Repeated intents across clusters merge into one UI row with disjoint plan lists; weak evidence
+  falls back to an honest **"exploring"** message.
+- Explanations are computed inside the suggested-plans response; the separate explanation
+  endpoint and the persisted explanation model are removed.
+
+---
+
+## Challenges Solved
+
+These are the hard problems the implementation had to solve, and how the codebase addresses
+them. Each one maps to a spec and a test suite.
+
+### 1. Anonymous-first personalization without accounts
+
+Most visitors never sign in, so recommendation state cannot depend on a user row. **Solution:**
+an opaque, device-scoped visitor cookie set by Next middleware, a per-visitor interest profile,
+and a merge matrix on login/logout. The device profile is folded into the account on sign-in
+(account history wins), and cleared on sign-out for privacy. The visitor identity is a random
+opaque value — no fingerprinting, no personal data in the profile.
+
+### 2. Deterministic cold start
+
+Personalization must not make the catalogue feel random for first-time visitors. **Solution:** a
+stable, deterministic cold-start ordering identical for every viewer with no signals, and a
+single neutral prior for every dimension. Tests assert byte-identical output on repeated loads.
+
+### 3. Multiple simultaneous interests instead of one averaged vector
+
+Averaging "cheap" and "premium" clicks produces a meaningless middle. **Solution:** bounded
+interest clusters, each with its own position and uncertainty. Nearby signals update an existing
+cluster; distant signals create a new one until the cap; the least confident cluster is replaced
+when full. Clusters are never averaged together for explanations.
+
+### 4. Recency without unbounded influence
+
+Old interests should fade, but repeated clicks must not dominate forever. **Solution:** a
+Kalman-style update with time-based uncertainty growth, a per-signal weight, and a decay rate.
+The Kalman module is the only place that mutates a node's position or uncertainty, which keeps
+the math auditable and testable.
+
+### 5. Semantic understanding of Persian plan titles
+
+Plan titles are short, mixed-script, and inconsistent. **Solution:** character n-gram hashing
+(`char_wb`) followed by PCA, min-max scaled into `[0, 1]` so semantic dimensions share the same
+distance and Kalman update as explicit attributes. Empty or missing titles get a neutral value,
+not a penalty.
+
+### 6. Cache eviction and restart safety
+
+Redis is fast but not durable. **Solution:** the fitted plan space is persisted in PostgreSQL;
+Redis is only a read-through cache. On an empty cache the system serves from the database, and
+if the database has no valid space it rebuilds and persists one. Every record carries a space
+version; a mismatch is rebuilt rather than served.
+
+### 7. Explanations that don't drift from the ranking
+
+An explanation computed by a separate endpoint can describe a different space version than the
+plans it accompanies. **Solution:** explanations are produced inside the same suggested-plans
+response, keyed to the active space version, and are not stored separately. Deterministic
+wording and ranges are asserted in tests.
+
+### 8. Duplicate intents across clusters
+
+Two clusters can resolve to the same intent. **Solution:** per-cluster detection, then merge by
+intent key into one row with a disjoint, de-duplicated plan list and contiguous `cluster_id`s
+(no gaps in the response).
+
+### 9. Commercial rules that cannot be bypassed
+
+Plan actions must respect verification and payment state. **Solution:** a single eligibility gate
+that names **every** missing prerequisite, and a per-company append-only credit ledger whose
+current balance is a projection — never a mutable column that can drift.
+
+### 10. A resilient, budget-aware crawling pipeline
+
+Provider sites are slow, inconsistent, and change structure. **Solution:** crawl4ai link
+discovery, deterministic-then-LLM refiltering, server-side domtrack capture, table
+classification, and Pydantic-validated extraction. Compare-driven replay re-runs the LLM only
+when a plans table changes. Network errors are tolerated, and LLM-gated work pauses when the
+operator's token budget is exhausted.
+
+### 11. Persian-first RTL without a fragmented UI
+
+Persian copy, Latin identifiers, and technical values must coexist. **Solution:** Vazirmatn-first
+typography, logical Tailwind utilities (`ms-*`, `me-*`, `start-*`, `end-*`), local `dir="ltr"`
+for URLs and domains, HeroUI v3 + React Aria for accessible components, and centralized i18n
+catalogs.
+
+---
+
+## Architecture
+
+```
+                         ┌──────────────────────────────┐
+                         │        Next.js 16 (RTL)      │
+                         │  App Router · HeroUI · i18n  │
+                         └──────────────┬───────────────┘
+                                        │ /api/* same-origin proxy
+                         ┌──────────────▼───────────────┐
+                         │        Django 6 + DRF        │
+                         │  modular monolith · /api/v1  │
+                         └───┬────────┬────────┬────────┘
+                             │        │        │
+              ┌──────────────▼─┐ ┌────▼─────┐
+              │  PostgreSQL    │ │  Redis   │
+              │ source of truth│ │ cache/TTL│
+              └────────────────┘ └──────────┘
+                             │
+              ┌──────────────▼───────────────────────────────┐
+              │  apps: accounts · companies · admin_console  │
+              │        catalog · recommendations · pipeline  │
+              └──────────────────────────────────────────────┘
+```
+
+Cross-module access goes through declared interfaces (`apps/*/interfaces.py`); modules do not
+reach into each other's tables. `apps.catalog` calls the recommendations interface, which owns
+the preference model, ranking, and explanations.
 
 ---
 
@@ -83,13 +263,16 @@ for the local search index. All services and data are hosted in Iran.
 | Runtime config | django-constance (database-backed constants) |
 | Validation | Pydantic at external boundaries |
 | API docs | drf-spectacular (OpenAPI) + Swagger UI |
-| Datastores | PostgreSQL (source of truth), Redis (cache, TTL, throttles), Meilisearch (index) |
+| Background tasks | django-tasks-db (database-backed Django Tasks, no Celery) |
+| Datastores | PostgreSQL (source of truth), Redis (cache, TTL, throttles) |
+| Crawling / capture | crawl4ai, domtrack, LLM extraction against a Pydantic schema |
+| Math / ML | NumPy, SciPy (`fisher_exact`), scikit-learn (PCA, hashing vectorizer) |
 | Frontend | Next.js 16.4, React 19.3, TypeScript 5, Tailwind CSS 4 |
 | UI kit | HeroUI v3 (`@heroui/react`, `@heroui/styles`) + React Aria |
 | Testing | pytest + pytest-django (backend), Vitest + Testing Library (frontend) |
 
-The design system is documented in `DESIGN.md` (Vercel-inspired, olive accent `#60782e`,
-fully RTL Persian). Product scope and governance live in `.specify/memory/constitution.md`.
+The design system is documented in [`DESIGN.md`](DESIGN.md) (olive accent `#60782e`, fully RTL
+Persian). Product scope and governance live in `.specify/memory/constitution.md`.
 
 ---
 
@@ -102,14 +285,15 @@ backend/
     apps/accounts/        OTP login, users, roles, JWT, throttling, SMS gateway
     apps/companies/       Registration steps, verification history, panel, credit ledger, crawl
     apps/admin_console/   Operator approval queue and automated site-data pipeline
+    apps/catalog/         Plan catalogue, filters, public browsing contract
+    apps/recommendations/ Plan space, signals, clusters, ranking, intent explanations
+    apps/pipeline/        crawl4ai discovery, domtrack capture, LLM extraction, replay
     apps/utils/           Shared TimestampedModel base + structured JSON logging
-    apps/catalog/         Plan catalog, filters,
-    apps/recommendations  recommendation space
-    apps/panel/           Scaffolded; panel logic lives in `companies`
+    apps/core/            Shared core helpers
 frontend/
   app/             Next.js App Router pages (home, search, companies, panel, login, about, ops)
-  src/features/    auth, company, panel, home, search, site feature modules
-  src/lib/         Typed API clients (auth, companies), i18n strings, session
+  src/features/    auth, company, panel, home, search, site, ops feature modules
+  src/lib/         Typed API clients, i18n strings, session utilities
   tests/           Vitest + Testing Library tests
 specs/             Feature specifications, plans, data models, contracts, quickstarts
 .specify/          Spec Kit scaffolding + project constitution
@@ -124,8 +308,8 @@ DESIGN.md          Design system (colors, typography, components)
 
 - Python 3.14 and [uv](https://docs.astral.sh/uv/)
 - Node 20+ and Yarn 1.22
-- PostgreSQL, Redis, and Meilisearch running locally (SQLite is the default database for local
-  development, but Redis is required for OTP storage, cache, and throttles)
+- PostgreSQL and Redis running locally (SQLite is the default database for local development,
+  but Redis is required for OTP storage, cache, and throttles)
 
 ### 1. Backend
 
@@ -143,10 +327,10 @@ python manage.py runserver 0.0.0.0:8000
 ```
 
 Local development defaults to SQLite. Set `DATABASE_URL` to a PostgreSQL URL to use the
-production source of truth, for example:
+production source of truth:
 
 ```bash
-export DATABASE_URL="postgresql://mizbanhost:mizbanhost@localhost:5432/mizbanhost"
+export DATABASE_URL="postgresql://zeytoon:zeytoon@localhost:5432/zeytoon"
 ```
 
 In development the SMS gateway defaults to `ConsoleSmsGateway`, so OTP codes appear in the
@@ -165,16 +349,33 @@ yarn install
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). By default the app calls the API on its
-own origin (`/api/v1/...`) and Next proxies those requests to the backend, so the httpOnly
-refresh cookie is first-party and the session survives a page reload. Set
-`NEXT_PUBLIC_API_BASE_URL` to an absolute backend origin only for a split-host deployment
-(then the proxy is disabled and the browser calls that origin directly).
+Open [http://localhost:3000](http://localhost:3000). By default the app calls the API on its own
+origin (`/api/v1/...`) and Next proxies those requests to the backend, so the `httpOnly` refresh
+cookie is first-party and the session survives a page reload. Set
+`NEXT_PUBLIC_API_BASE_URL` to an absolute backend origin only for a split-host deployment (then
+the proxy is disabled and the browser calls that origin directly).
 
 Frontend runtime values (catalog price step/page sizes, resource options, contact and social
-links, ops polling intervals, and the default capture duration) are stored in
-django-constance. Edit them from the operator settings page at `/ops/settings`; the SPA
-loads the resolved values from `GET /api/v1/catalog/site-config`.
+links, ops polling intervals, and the default capture duration) are stored in django-constance.
+Operators read and update them through `GET/PUT /api/v1/ops/settings`; the SPA loads the
+resolved public values from `GET /api/v1/catalog/site-config`.
+
+### 3. Background workers
+
+Django Tasks (`django-tasks-db`) runs queued work from the database; no Celery is used.
+
+```bash
+cd backend/src
+
+# process queued tasks (also recovers interrupted site pipelines on startup)
+python manage.py db_worker
+
+# enqueue replays for links that are due
+python manage.py run_scheduled_replays
+
+# diagnose and recover the pipeline queue by hand
+python manage.py recover_pipelines
+```
 
 ---
 
@@ -208,17 +409,97 @@ Base path: `/api/v1`. All responses are JSON; errors use a single shape
 | GET | `/{id}/credit` | Current credit (ledger projection) |
 | POST | `/{id}/credit/movements` | Append a charge/decharge entry |
 | POST | `/{id}/crawl` | Enable crawl (requires charged account) |
+| POST | `/{id}/links` | Manage the company's crawl links |
 | POST | `/{id}/transfer-ownership` | Always refused; admin-coordinated |
 
+### Catalogue & Recommendations — `/api/v1/catalog`
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/plans` | Filtered, sorted, paginated plan catalogue |
+| GET | `/plans/suggested` | Suggested plans plus per-cluster intent explanations |
+| GET | `/companies` | Public company directory |
+| GET | `/companies/recent` | Recently approved companies |
+| GET | `/site-config` | Resolved runtime configuration for the SPA |
+
+### Interest Signals — `/api/v1/recommendations`
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/signals` | Record a browsing interest signal (rate-limited) |
+
+### Operator Console — `/api/v1/ops`
+
+The operator API covers approvals, sites, link discovery, captures, table extraction and
+classification, plan publishing, replay runs, alerts, runtime settings, the LLM token budget,
+and metrics. Key routes:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/approvals` | Pending-company approval queue |
+| POST | `/companies/{id}/verification-decisions` | Record an approval decision |
+| GET/POST | `/sites` | List or create maintained sites |
+| POST | `/sites/{id}/discover-links` | Run crawl4ai link discovery |
+| GET/POST | `/sites/{id}/links` | List or manage discovered links |
+| POST | `/links/{id}/captures` | Start a server-side domtrack capture |
+| POST | `/links/{id}/extractions` | Extract tables from a capture |
+| GET/POST | `/links/{id}/plans` | Review or publish extracted plans |
+| POST | `/links/{id}/publish` | Publish approved plans to the catalogue |
+| GET | `/replay-runs` | Inspect replay runs |
+| POST | `/replay-runs/create` | Create a replay run |
+| GET/PUT | `/settings` | Read or update runtime constants |
+| GET/PUT | `/llm-token-budget` | Read or set the LLM token budget |
+| GET | `/metrics` | Pipeline metrics snapshot |
+
 Full request/response contracts live in `specs/*/contracts/`.
+
+---
+
+## Recommendation Engine
+
+The recommendation engine lives in `apps/recommendations` and is exposed to the catalogue only
+through `RecommendationsInterface`.
+
+1. **Space fitting** — published plans are normalized into `[0, 1]^d` with existence masks, plus
+   ten PCA-derived semantic dimensions from titles.
+2. **Signal recording** — destination visit, details view, and search impression are weighted,
+   rate-limited per viewer, and stored as events.
+3. **Clustering** — Kalman updates maintain bounded interest clusters with position and
+   uncertainty; stale clusters decay out of suggestions.
+4. **Ranking** — the filtered catalogue is scored in one O(N) pass against each cluster and
+   paginated afterwards.
+5. **Intent detection** — each cluster's top-K candidates are tested against pre-declared intent
+   patterns with statistical-significance, effect-size, and click-corroboration gates.
+6. **Explanation** — one human-readable row per distinct intent, merged across clusters, with an
+   honest "exploring" fallback.
+
+### Refresh & rebuild commands
+
+```bash
+# refresh the semantic plan space (run daily from cron)
+cd backend/src && python manage.py refresh_recommendation_space
+
+# rebuild a profile's interest clusters after a state-format change
+cd backend/src && python manage.py rebuild_interest_clusters --visitor-id <uuid>
+
+# inspect the fitted space, a viewer's clusters, and the resulting order
+cd backend/src && python manage.py analyze_recommendation_space --visitor-id <uuid>
+
+# live simulation for demos and debugging
+cd backend/src && python manage.py simulate_recommendations \
+  --plan-type dedicated_server --count 5 --top 10 --keep
+```
+
+A failed refresh leaves the previous space key intact. The space and explanations are persisted
+in PostgreSQL; Redis is only a cache.
 
 ---
 
 ## Configuration
 
 All secrets and environment-specific values come from environment variables; runtime-tunable
-values live in **django-constance** database constants (editable in the admin) so operators
-can change thresholds without a redeploy.
+values live in **django-constance** database constants (editable in the admin) so operators can
+change thresholds without a redeploy.
 
 ### Environment variables (backend)
 
@@ -247,33 +528,15 @@ can change thresholds without a redeploy.
 `RETURN_URL_ALLOWLIST`, `DEFAULT_RETURN_PATH`, `COMPANY_STEP_DEFINITIONS`,
 `COMPANY_REQUIREMENT_MESSAGES`, `COMPANY_STEP_LOCKED_MESSAGE`, `COMPANY_EMPTY_STATE_MESSAGE`,
 `RECOMMENDATION_SEMANTIC_DIMENSIONS`, `RECOMMENDATION_MAX_INTEREST_CLUSTERS`,
-`RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`.
-
-### Recommendation space refresh
-
-The semantic plan space is refreshed by a scheduled Django Task:
-
-```bash
-cd backend/src && python manage.py refresh_recommendation_space
-```
-
-Run the command from cron (daily by default). It enqueues the refresh; the task fits the
-space and writes it under its version key. A failed refresh leaves the previous key
-intact.
-
-After a state-format change, rebuild a profile's interest clusters from its recorded
-signals:
-
-```bash
-cd backend/src && python manage.py rebuild_interest_clusters --visitor-id <uuid>
-```
+`RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`, and the intent-pattern thresholds and
+candidate-set size.
 
 ### Frontend
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `NEXT_PUBLIC_API_BASE_URL` | Absolute backend base URL; when unset the frontend uses a same-origin `/api/*` proxy (see below) | unset (proxy to `http://localhost:8000`) |
-| `API_INTERNAL_BASE_URL` | Backend origin used by server components when `NEXT_PUBLIC_API_BASE_URL` is unset; set this in split-host deployments where the backend hostname differs from `localhost` | `http://localhost:8000` |
+| `NEXT_PUBLIC_API_BASE_URL` | Absolute backend base URL; when unset the frontend uses a same-origin `/api/*` proxy | unset (proxy to `http://localhost:8000`) |
+| `API_INTERNAL_BASE_URL` | Backend origin used by server components when `NEXT_PUBLIC_API_BASE_URL` is unset | `http://localhost:8000` |
 
 ---
 
@@ -281,21 +544,30 @@ cd backend/src && python manage.py rebuild_interest_clusters --visitor-id <uuid>
 
 ```bash
 # backend (from repo root)
-.venv/bin/python -m pytest backend/src -q
+uv run pytest
 
 # a single module
-.venv/bin/python -m pytest backend/src/companies/tests -q
+uv run pytest backend/src/companies/tests -q
+
+# recommendation scenarios
+uv run pytest backend/src/apps/recommendations/tests/test_recommendation_scenarios.py -q
 
 # frontend
 cd frontend && yarn test
 ```
 
-Backend tests use pytest-django with DRF's API client, a fake SMS gateway, and time freezing
-for TTL/expiry. Coverage includes OTP contracts, implicit signup, lockout, throttling, return
-URLs, role resolution, log redaction, registration, step locking, mid-step abandonment,
+Backend tests use pytest-django with DRF's API client, a fake SMS gateway, and time freezing for
+TTL/expiry. Coverage includes OTP contracts, implicit signup, lockout, throttling, return URLs,
+role resolution, log redaction, registration, step locking, mid-step abandonment,
 verification-history immutability, panel routing/scoping, plan eligibility, the credit ledger,
-crawl gating, and archival. Each feature ships a `quickstart.md` with an end-to-end validation
-script.
+crawl gating, archival, recommendation space persistence, clustering, ranking, intent scoring,
+merging, determinism, and frontend explanation rendering. Each feature ships a `quickstart.md`
+with an end-to-end validation script.
+
+The recommendation system also has a presentation-grade scenario report at
+`specs/008-intent-pattern-explanations/recommendation-scenarios-report.md`. It covers cold
+start, intent detection, non-click signals, multiple interests, duplicate merging, resource
+filtering, decay, profile isolation, rate limiting, the API, and deterministic output.
 
 ---
 
@@ -307,11 +579,11 @@ environment variables only, Pydantic validation at every boundary, structured JS
 mandatory automated tests, configurable (never hard-coded) tunables, and a preference for
 established libraries and framework generators over hand-written equivalents.
 
-Features are developed spec-first: each lives under `specs/NNN-name/` with `spec.md`,
-`plan.md`, `data-model.md`, `contracts/`, and `quickstart.md`.
+Features are developed spec-first: each lives under `specs/NNN-name/` with `spec.md`, `plan.md`,
+`data-model.md`, `contracts/`, and `quickstart.md`.
 
 ---
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [`LICENSE`](LICENSE).

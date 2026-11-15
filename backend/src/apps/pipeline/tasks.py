@@ -262,6 +262,11 @@ def run_site_pipeline_task(site_id, discover=True, link_id=None):
                     # this stage; don't park the link as failed.
                     _set_task_state(pk, "queued")
                     continue
+                except RuntimeError as exc:
+                    if str(exc) != "capture_in_progress":
+                        raise
+                    _set_task_state(pk, "queued")
+                    continue
                 link.refresh_from_db()
             if link.pipeline_stage == Link.PipelineStage.CAPTURED:
                 stage = "extraction"
@@ -394,8 +399,13 @@ def recover_site_pipeline_tasks(backend_name="default", stale_after_seconds=None
 
     now = timezone.now()
     grace_cutoff = now - timedelta(seconds=stale_after_seconds) if stale_after_seconds else None
+    task_path = getattr(
+        run_site_pipeline_task,
+        "module_path",
+        "apps.pipeline.tasks.run_site_pipeline_task",
+    )
     base = DBTaskResult.objects.filter(
-        task_path=run_site_pipeline_task.module_path, backend_name=backend_name
+        task_path=task_path, backend_name=backend_name
     )
 
     # 1. Interrupted RUNNING tasks -> READY.
