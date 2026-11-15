@@ -28,10 +28,12 @@ flat list of numbers is read as a single cluster for backward compatibility.
 
 Signals update the nearest cluster when its distance is at most
 `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`; otherwise a new cluster is created. At
-`RECOMMENDATION_MAX_INTEREST_CLUSTERS` the least confident cluster is evicted. Ranking
-uses the minimum distance across clusters. If `space_version` or any vector length
-differs from the active space, the profile is rebuilt from the cold-start prior. No
-migration.
+`RECOMMENDATION_MAX_INTEREST_CLUSTERS` the least active cluster is evicted. Every signal
+decays the activity of clusters it did not update by
+`RECOMMENDATION_CLUSTER_ACTIVITY_DECAY`; clusters below
+`RECOMMENDATION_CLUSTER_MIN_ACTIVITY` are excluded from suggestions. Ranking uses the
+minimum distance across active clusters. If `space_version` or any vector length differs
+from the active space, the profile is rebuilt from the cold-start prior. No migration.
 
 ## Configuration
 
@@ -44,3 +46,5 @@ migration.
 | `RECOMMENDATION_SEMANTIC_RANDOM_STATE` | `0` |
 | `RECOMMENDATION_MAX_INTEREST_CLUSTERS` | `4` |
 | `RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD` | `0.2` |
+| `RECOMMENDATION_CLUSTER_ACTIVITY_DECAY` | `0.8` |
+| `RECOMMENDATION_CLUSTER_MIN_ACTIVITY` | `0.5` |

@@ -39,7 +39,7 @@ def test_worker_startup_queues_clean_unfinished_sites_only(site, monkeypatch):
 
     result = tasks.recover_site_pipeline_tasks()
 
-    assert result == {"recovered": 0, "enqueued_sites": 1}
+    assert result == {"recovered": 0, "orphaned_links": 0, "enqueued_sites": 1}
     assert enqueued == [clean_link.site_id]
 
 
@@ -62,7 +62,7 @@ def test_worker_startup_reopens_legacy_low_quality_plans(planned_link, monkeypat
 
     planned_link.refresh_from_db()
     assert planned_link.pipeline_stage == Link.PipelineStage.EXTRACTED
-    assert result == {"recovered": 0, "enqueued_sites": 1}
+    assert result == {"recovered": 0, "orphaned_links": 0, "enqueued_sites": 1}
     assert enqueued == [planned_link.site_id]
 
 

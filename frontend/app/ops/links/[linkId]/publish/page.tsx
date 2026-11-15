@@ -61,10 +61,6 @@ export default function OpsPublishPage({
         <Typography className="text-[20px] font-semibold" type="h2">
           {ot("qualityReviewTitle")}
         </Typography>
-        <Typography className="text-[13px] text-muted">
-          {ot("qualityReviewIntro")}
-        </Typography>
-        <LinkStageNav active="publish" linkId={id} />
       </div>
 
       {accepted && (

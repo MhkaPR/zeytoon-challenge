@@ -48,13 +48,16 @@ def retire_published_record(*, site, natural_key, source="admin_console"):
     return updated
 
 
-def published_natural_keys(*, site, source="admin_console", is_published=True):
-    """The natural keys currently published for a site (FR-038)."""
-    return list(
-        PublishedRecord.objects.filter(
-            source=source, site=site, is_published=is_published
-        ).values_list("natural_key", flat=True)
+def published_natural_keys(
+    *, site, link=None, source="admin_console", is_published=True
+):
+    """The natural keys currently published for a site or one of its links (FR-038)."""
+    queryset = PublishedRecord.objects.filter(
+        source=source, site=site, is_published=is_published
     )
+    if link is not None:
+        queryset = queryset.filter(link=link)
+    return list(queryset.values_list("natural_key", flat=True))
 
 
 def published_count(*, source=None, is_published=True):

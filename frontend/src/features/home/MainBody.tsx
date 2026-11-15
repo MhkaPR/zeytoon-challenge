@@ -1,7 +1,7 @@
 import { useTranslations } from "next-intl";
 import { Typography } from "@heroui/react";
 import type { ReactNode } from "react";
-import { AboutTorb } from "./AboutTorb";
+import { AboutUs} from "@/src/features/home/AboutUs";
 import { FaqSection } from "./FaqSection";
 import { HomeFooter } from "./HomeFooter";
 import { PlanCatalog } from "./PlanCatalog";
@@ -15,6 +15,7 @@ import type {
   PublicPlan,
   RecentPublicCompany,
 } from "@/src/lib/api/publicCatalog";
+import type { ClusterIntentExplanation } from "@/src/lib/api/intentExplanations";
 import {SiteConfig} from "@/src/lib/config/siteConfig";
 
 /**
@@ -27,6 +28,7 @@ export function MainBody({
   brandLogo,
   plansPage,
   suggestedPlans,
+  explanations,
   visitorId,
   recentCompanies,
   loading = false,
@@ -36,6 +38,7 @@ export function MainBody({
   brandLogo?: ReactNode;
   plansPage: PlansPage;
   suggestedPlans: PublicPlan[];
+  explanations?: ClusterIntentExplanation[];
   visitorId?: string;
   recentCompanies: RecentPublicCompany[];
   loading?: boolean;
@@ -75,6 +78,7 @@ export function MainBody({
 
         <div className="flex w-full flex-col gap-[64px] py-[56px] text-start sm:gap-[80px] sm:py-[72px]">
           <SuggestedPlans
+            explanations={explanations}
             loading={loading}
             plans={suggestedPlans}
             visitorId={visitorId}
@@ -95,7 +99,7 @@ export function MainBody({
             <HowItWorks />
           </section>
           <div className="rounded-[var(--radius)] bg-surface-secondary p-[20px] sm:p-[32px]">
-            <AboutTorb />
+            <AboutUs />
           </div>
           <FaqSection />
         </div>

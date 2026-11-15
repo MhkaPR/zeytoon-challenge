@@ -26,6 +26,31 @@ DEFAULTS = {
     "RECOMMENDATION_SEMANTIC_RANDOM_STATE": 0,
     "RECOMMENDATION_MAX_INTEREST_CLUSTERS": 4,
     "RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD": 0.2,
+    "RECOMMENDATION_CLUSTER_ACTIVITY_DECAY": 0.8,
+    "RECOMMENDATION_CLUSTER_MIN_ACTIVITY": 0.0,
+    "RECOMMENDATION_CLUSTER_MIN_ACTIVITY_RATIO": 0.0001,
+    "RECOMMENDATION_SUGGESTION_CLUSTER_LIMIT": 3,
+    "RECOMMENDATION_MIN_RESOURCE_DIMENSIONS": 1,
+    "RECOMMENDATION_EXPLAIN_K": 20,
+    "RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE": 30,
+    "RECOMMENDATION_EXPLAIN_ALPHA": 0.05,
+    "RECOMMENDATION_EXPLAIN_MIN_LIFT": 2.0,
+    "RECOMMENDATION_EXPLAIN_MIN_MCC": 0.20,
+    "RECOMMENDATION_EXPLAIN_MIN_CLICKS": 3,
+    "RECOMMENDATION_EXPLAIN_MESSAGES": {},
+    "RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED": True,
+    # Rank / Record / Explain boundaries (spec 009).
+    "RECOMMENDATION_RANK_THRESHOLD": 0.35,
+    "RECOMMENDATION_PATTERN_THRESHOLDS": {
+        "cheap": 30,
+        "value": 30,
+        "spec_heavy": 30,
+        "premium": 30,
+    },
+    "KALMAN_DECAY_RATE_PER_HOUR": 0.01,
+    "KALMAN_MAX_UNCERTAINTY": 1.0,
+    "KALMAN_PROCESS_NOISE": 0.1,
+    "KALMAN_MEASUREMENT_NOISE": 1.0,
 }
 
 
@@ -102,3 +127,79 @@ def max_interest_clusters():
 
 def cluster_distance_threshold():
     return float(_value("RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD"))
+
+
+def cluster_activity_decay():
+    return float(_value("RECOMMENDATION_CLUSTER_ACTIVITY_DECAY"))
+
+
+def cluster_min_activity():
+    return float(_value("RECOMMENDATION_CLUSTER_MIN_ACTIVITY"))
+
+
+def cluster_min_activity_ratio():
+    return float(_value("RECOMMENDATION_CLUSTER_MIN_ACTIVITY_RATIO"))
+
+
+def suggestion_cluster_limit():
+    return int(_value("RECOMMENDATION_SUGGESTION_CLUSTER_LIMIT"))
+
+
+def min_resource_dimensions():
+    return int(_value("RECOMMENDATION_MIN_RESOURCE_DIMENSIONS"))
+
+
+def explain_k():
+    return int(_value("RECOMMENDATION_EXPLAIN_K"))
+
+
+def explain_min_pattern_size():
+    return int(_value("RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE"))
+
+
+def explain_alpha():
+    return float(_value("RECOMMENDATION_EXPLAIN_ALPHA"))
+
+
+def explain_min_lift():
+    return float(_value("RECOMMENDATION_EXPLAIN_MIN_LIFT"))
+
+
+def explain_min_mcc():
+    return float(_value("RECOMMENDATION_EXPLAIN_MIN_MCC"))
+
+
+def explain_min_clicks():
+    return int(_value("RECOMMENDATION_EXPLAIN_MIN_CLICKS"))
+
+
+def explain_messages():
+    return dict(_value("RECOMMENDATION_EXPLAIN_MESSAGES") or {})
+
+
+def explain_negative_enabled():
+    return bool(_value("RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED"))
+
+
+def rank_threshold():
+    return float(_value("RECOMMENDATION_RANK_THRESHOLD"))
+
+
+def pattern_thresholds():
+    return dict(_value("RECOMMENDATION_PATTERN_THRESHOLDS") or {})
+
+
+def kalman_decay_rate_per_hour():
+    return float(_value("KALMAN_DECAY_RATE_PER_HOUR"))
+
+
+def kalman_max_uncertainty():
+    return float(_value("KALMAN_MAX_UNCERTAINTY"))
+
+
+def kalman_process_noise():
+    return float(_value("KALMAN_PROCESS_NOISE"))
+
+
+def kalman_measurement_noise():
+    return float(_value("KALMAN_MEASUREMENT_NOISE"))

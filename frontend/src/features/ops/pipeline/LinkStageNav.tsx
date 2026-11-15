@@ -18,9 +18,6 @@ export function LinkStageNav({
 }) {
   const ot = useTranslations();
   const stages = [
-    { key: "capture", label: ot("openCapture"), icon: Video },
-    { key: "tables", label: ot("openTables"), icon: Table2 },
-    { key: "mapping", label: ot("openMapping"), icon: Map },
     { key: "publish", label: ot("openPublishing"), icon: Send },
   ] as const;
   return (

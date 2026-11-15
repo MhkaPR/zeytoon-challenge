@@ -3,7 +3,7 @@ import pytest
 
 from apps.recommendations import conf
 from apps.recommendations.services.v1.features import PlanFeatureMapper
-from apps.recommendations.services.v1.space import PlanSpace
+from apps.recommendations.services.v1.space import NumericBinner, PlanSpace
 
 
 def test_undeclared_attributes_are_masked():
@@ -71,3 +71,13 @@ def test_version_changes_when_semantic_config_changes(monkeypatch):
     monkeypatch.setattr(conf, "semantic_dimensions", lambda: 5)
     after = PlanSpace(n_bins=3).version(features)
     assert before != after
+
+
+def test_binner_revert_returns_narrow_bin_not_full_span():
+    binner = NumericBinner(list(range(1, 101)), 5)
+    low, high = binner.revert(binner.scale(50), width=0.1)
+
+    assert low < high
+    assert low > binner.min
+    assert high < binner.max
+    assert (high - low) < (binner.max - binner.min) / 2

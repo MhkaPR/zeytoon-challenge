@@ -29,7 +29,7 @@ export function CompanySearchBox({ initialQuery }: { initialQuery: string }) {
         aria-label={ot("searchCompany")}
         name="q"
         value={query}
-        variant="secondary"
+        variant="primary"
         onChange={setQuery}
       >
         <Label className="sr-only">{ot("searchCompany")}</Label>

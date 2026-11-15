@@ -197,7 +197,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Torob Comparison API",
+    "TITLE": "Zeytoon Comparison API",
     "DESCRIPTION": "Host and server plan search/comparison API.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
@@ -241,6 +241,15 @@ GUARDIAN_MONKEY_PATCH_USER = False
 
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 CONSTANCE_DATABASE_CACHE_BACKEND = "default"
+CONSTANCE_ADDITIONAL_FIELDS = {
+    "json": [
+        "apps.core.constance_fields.JSONField",
+        {
+            "widget": "django.forms.Textarea",
+            "widget_kwargs": {"attrs": {"rows": 8, "cols": 80}},
+        },
+    ],
+}
 CONSTANCE_CONFIG = {
     "OTP_LENGTH": (6, "Number of digits in the one-time code."),
     "OTP_TTL_SECONDS": (120, "One-time code validity window in seconds."),
@@ -257,10 +266,12 @@ CONSTANCE_CONFIG = {
     "CONTACT_CHANNELS": (
         ["support@example.com", "https://example.com/contact"],
         "Communication channels shown to a blocked user.",
+        "json",
     ),
     "RETURN_URL_ALLOWLIST": (
         ["/", "/plans", "/compare", "/search", "/panel", "/ops"],
         "Allowed relative return targets after login.",
+        "json",
     ),
     "DEFAULT_RETURN_PATH": ("/", "Fallback page when the return target is invalid."),
     # Company Registration & Company Panel (spec 002)
@@ -270,6 +281,7 @@ CONSTANCE_CONFIG = {
             {"key": "verification", "order": 2, "owner_input": False},
         ],
         "Ordered registration steps; the first step is company information, next is verification.",
+        "json",
     ),
     "COMPANY_STEP_LOCKED_MESSAGE": (
         "This step is locked until the previous step is approved.",
@@ -282,6 +294,7 @@ CONSTANCE_CONFIG = {
             "both": "Company must be verified and charged.",
         },
         "Operator-facing messages for missing company requirements.",
+        "json",
     ),
     "COMPANY_EMPTY_STATE_MESSAGE": (
         "You have no companies yet. Register a new company to get started.",
@@ -362,6 +375,7 @@ CONSTANCE_CONFIG = {
             "atom",
         ],
         "File extensions excluded by the deterministic link policy.",
+        "json",
     ),
     "LINK_DENY_SEGMENTS": (
         [
@@ -388,6 +402,7 @@ CONSTANCE_CONFIG = {
             "tickets",
         ],
         "Non-content path segments excluded by the deterministic link policy.",
+        "json",
     ),
     "LINK_DISCOVERY_MAX_LINKS": (
         5000,
@@ -439,6 +454,7 @@ CONSTANCE_CONFIG = {
     "CATALOG_PAGE_SIZES": (
         [8, 12],
         "Page-size options offered by the public plan catalog.",
+        "json",
     ),
     "CATALOG_PAGE_SIZE_DEFAULT": (
         8,
@@ -452,6 +468,7 @@ CONSTANCE_CONFIG = {
             "traffic": [100, 500, 1000, 2000, 5000, 10000],
         },
         "Ordered resource filter options for the public plan catalog.",
+        "json",
     ),
     "CATALOG_COMPANY_FILTER_VISIBLE": (
         5,
@@ -466,7 +483,7 @@ CONSTANCE_CONFIG = {
         "Polling interval for the operator site-links page, in milliseconds.",
     ),
     "CONTACT_EMAIL": (
-        "support@torobhost.ir",
+        "support@zeytoon.ir",
         "Public support email shown in the site footer.",
     ),
     "CONTACT_PHONE": (
@@ -509,6 +526,106 @@ CONSTANCE_CONFIG = {
     "RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD": (
         0.2,
         "Distance above which a signal starts a new interest cluster.",
+    ),
+    "RECOMMENDATION_CLUSTER_ACTIVITY_DECAY": (
+        0.8,
+        "Per-signal decay applied to interest clusters that were not updated.",
+    ),
+    "RECOMMENDATION_CLUSTER_MIN_ACTIVITY": (
+        0.0,
+        "Absolute minimum decayed activity for a cluster to be used in suggestions.",
+    ),
+    "RECOMMENDATION_CLUSTER_MIN_ACTIVITY_RATIO": (
+        0.0001,
+        "Relative activity floor: cluster activity must be at least this fraction of the top cluster.",
+    ),
+    "RECOMMENDATION_SUGGESTION_CLUSTER_LIMIT": (
+        3,
+        "Maximum number of interest clusters used in suggested plans.",
+    ),
+    "RECOMMENDATION_MIN_RESOURCE_DIMENSIONS": (
+        1,
+        "Minimum number of declared CPU/RAM/disk/traffic resources a plan needs to be suggested.",
+    ),
+    # Recommendation intent explanations (spec 008).
+    "RECOMMENDATION_EXPLAIN_K": (
+        20,
+        "Candidate set size used to detect each interest cluster's intent.",
+    ),
+    "RECOMMENDATION_EXPLAIN_MIN_PATTERN_SIZE": (
+        30,
+        "Minimum catalog membership for an intent pattern to be scored.",
+    ),
+    "RECOMMENDATION_EXPLAIN_ALPHA": (
+        0.05,
+        "Maximum two-sided Fisher Exact p-value for an intent pattern.",
+    ),
+    "RECOMMENDATION_EXPLAIN_MIN_LIFT": (
+        2.0,
+        "Minimum Lift for an intent pattern to be reported.",
+    ),
+    "RECOMMENDATION_EXPLAIN_MIN_MCC": (
+        0.20,
+        "Minimum absolute Matthews Correlation Coefficient for an intent pattern.",
+    ),
+    "RECOMMENDATION_EXPLAIN_MIN_CLICKS": (
+        3,
+        "Minimum corroborating destination-visit clicks per interest cluster.",
+    ),
+    "RECOMMENDATION_EXPLAIN_MESSAGES": (
+        {
+            "cheap": {
+                "positive": "دنبال گزینه‌های اقتصادی با قیمت پایین هستی؟",
+                "negative": "از گزینه‌های اقتصادی با قیمت پایین دوری می‌کنی؟",
+            },
+            "value": {
+                "positive": "دنبال بهترین نسبت امکانات به قیمت هستی؟",
+                "negative": "از بهترین نسبت امکانات به قیمت دوری می‌کنی؟",
+            },
+            "spec_heavy": {
+                "positive": "دنبال منابع بالا (رم/CPU/دیسک) هستی؟",
+                "negative": "از منابع بالا (رم/CPU/دیسک) دوری می‌کنی؟",
+            },
+            "premium": {
+                "positive": "دنبال گزینه‌های پرقدرت و حرفه‌ای هستی؟",
+                "negative": "از گزینه‌های پرقدرت و حرفه‌ای دوری می‌کنی؟",
+            },
+            "exploring": {
+                "positive": "در حال کاوش گزینه‌های مختلف هستی؟",
+            },
+        },
+        "Question-form Persian messages keyed by intent and direction.",
+        "json",
+    ),
+    "RECOMMENDATION_EXPLAIN_NEGATIVE_ENABLED": (
+        True,
+        "Whether negative-direction intent explanations may be reported.",
+    ),
+    # Rank / Record / Explain boundaries (spec 009).
+    "RECOMMENDATION_RANK_THRESHOLD": (
+        0.35,
+        "Maximum masked Euclidean distance for a plan to be accepted for a node.",
+    ),
+    "RECOMMENDATION_PATTERN_THRESHOLDS": (
+        {"cheap": 4, "value": 4, "spec_heavy": 4, "premium": 4},
+        "Minimum number of matching plans before an intent pattern is surfaced.",
+        "json",
+    ),
+    "KALMAN_DECAY_RATE_PER_HOUR": (
+        0.01,
+        "Per-hour uncertainty growth applied to a node before each update.",
+    ),
+    "KALMAN_MAX_UNCERTAINTY": (
+        1.0,
+        "Upper clamp for decayed node uncertainty (cold-start equivalent).",
+    ),
+    "KALMAN_PROCESS_NOISE": (
+        0.1,
+        "Process noise added to node uncertainty during a Kalman update.",
+    ),
+    "KALMAN_MEASUREMENT_NOISE": (
+        1.0,
+        "Default measurement noise for a Kalman observation.",
     ),
 }
 

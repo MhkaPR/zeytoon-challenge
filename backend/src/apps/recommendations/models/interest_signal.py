@@ -1,6 +1,7 @@
 """Append-only record of one interaction that shaped a preference profile."""
 
 from django.db import models
+from django.db.models import Q
 
 from apps.recommendations.models.interest_profile import InterestProfile
 from apps.utils.models import TimestampedModel
@@ -23,12 +24,25 @@ class InterestSignal(TimestampedModel):
     plan_ids = models.JSONField(default=list, blank=True)
     query = models.CharField(max_length=255, blank=True, default="")
     weight = models.FloatField(default=0.0)
+    interaction_id = models.CharField(
+        max_length=128, null=True, blank=True, db_index=True
+    )
 
     class Meta:
         ordering = ("-created_at",)
         indexes = [
             models.Index(fields=("profile", "-created_at")),
             models.Index(fields=("kind",)),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("profile", "interaction_id"),
+                condition=Q(
+                    interaction_id__isnull=False,
+                    deleted_at__isnull=True,
+                ),
+                name="uniq_signal_profile_interaction",
+            ),
         ]
 
     def __str__(self):

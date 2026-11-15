@@ -1,9 +1,9 @@
 import { useTranslations } from "next-intl";
-import {Card, Surface, Typography} from "@heroui/react";
+import {Card, Typography} from "@heroui/react";
 
 
 /** Short introduction explaining what Torb Host is and why it is useful (homepage). */
-export function AboutTorb() {
+export function AboutUs() {
   const ot = useTranslations();
   const points = [1, 2, 3, 4].map((index) => ({
     title: ot(`aboutTorbPoint${index}Title`),

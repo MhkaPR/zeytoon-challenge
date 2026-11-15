@@ -53,7 +53,7 @@ export function PlanCard({
   const location = fieldValue(plan, ["location", "datacenter_location"]);
 
   return (
-    <Card className="h-full border border-[var(--separator)] shadow-none" variant="default">
+    <Card className="relative h-full border border-[var(--separator)] shadow-none" variant="default">
       <Card.Content className="flex h-full flex-col gap-[16px] p-[18px]">
         <div className="flex items-start justify-between gap-[16px]">
           <div className="flex min-w-0 flex-col gap-[5px]">

@@ -9,13 +9,13 @@ from django.utils import timezone
 
 from apps.pipeline import tasks
 from apps.pipeline.services.v1 import pipeline as services
-from apps.pipeline.models import Link, Site
+from apps.pipeline.models import Link, Site, Trace
 
 pytestmark = pytest.mark.django_db
 
 
 def _kept_link(site, url_hash, last_replay_at=None):
-    return Link.objects.create(
+    link = Link.objects.create(
         site=site,
         url=f"https://example.com/{url_hash}",
         url_hash=url_hash,
@@ -24,6 +24,17 @@ def _kept_link(site, url_hash, last_replay_at=None):
         is_active=True,
         last_replay_at=last_replay_at,
     )
+    trace = Trace.objects.create(
+        link=link,
+        captured_at=timezone.now(),
+        storage_key=f"traces/{url_hash}.trace",
+        storage_backend="default",
+        content_sha256="0" * 64,
+        is_valid_trace=True,
+    )
+    link.current_trace = trace
+    link.save(update_fields=["current_trace", "updated_at"])
+    return link
 
 
 def test_due_links_excludes_suspended_sites_and_non_kept_links(site):

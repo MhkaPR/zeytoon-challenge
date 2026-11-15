@@ -4,8 +4,40 @@ import { Card, Skeleton, Typography } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
 import type { PublicPlan } from "@/src/lib/api/publicCatalog";
+import type { ClusterIntentExplanation } from "@/src/lib/api/intentExplanations";
 
-import { PlanCard } from "./planCatalog/PlanCard";
+import { PlanRow } from "./planCatalog/PlanRow";
+
+function mergeRepeatedIntents(
+  explanations: ClusterIntentExplanation[],
+): ClusterIntentExplanation[] {
+  const merged: ClusterIntentExplanation[] = [];
+  const indexByKey = new Map<string, number>();
+  const usedPlanIds = new Set<number>();
+
+  for (const explanation of explanations) {
+    const key = `${explanation.intent}:${explanation.direction ?? ""}`;
+    const planIds = explanation.plan_ids.filter(
+      (planId) => !usedPlanIds.has(planId),
+    );
+    planIds.forEach((planId) => usedPlanIds.add(planId));
+    const existingIndex = indexByKey.get(key);
+    if (existingIndex == null) {
+      indexByKey.set(key, merged.length);
+      merged.push({ ...explanation, plan_ids: planIds });
+    } else {
+      merged[existingIndex] = {
+        ...merged[existingIndex],
+        plan_ids: [...merged[existingIndex].plan_ids, ...planIds],
+      };
+    }
+  }
+
+  return merged.map((explanation, clusterId) => ({
+    ...explanation,
+    cluster_id: clusterId,
+  }));
+}
 
 /**
  * Horizontally scrolling strip of the most relevant plans, drawn from the viewer's
@@ -13,14 +45,35 @@ import { PlanCard } from "./planCatalog/PlanCard";
  */
 export function SuggestedPlans({
   plans,
+  explanations = [],
   visitorId,
   loading = false,
 }: {
   plans: PublicPlan[];
+  explanations?: ClusterIntentExplanation[];
   visitorId?: string;
   loading?: boolean;
 }) {
   const ot = useTranslations();
+  const rankByPlan = new Map(
+    explanations
+      .filter((item) => item.representative_plan_id != null)
+      .map((item, index) => [item.representative_plan_id as number, index]),
+  );
+  const orderedPlans = [...plans].sort((a, b) => {
+    const rankA = rankByPlan.get(a.id);
+    const rankB = rankByPlan.get(b.id);
+    if (rankA != null && rankB != null) return rankA - rankB;
+    if (rankA != null) return -1;
+    if (rankB != null) return 1;
+    return 0;
+  });
+  const planById = new Map(plans.map((plan) => [plan.id, plan]));
+  const mergedExplanations = mergeRepeatedIntents(explanations);
+  const visibleExplanations = mergedExplanations.filter(
+    (explanation) => explanation.plan_ids.length > 0,
+  );
+  const hasExplanations = mergedExplanations.length > 0;
   if (loading) {
     return (
       <section className="flex flex-col gap-[18px]" id="suggested">
@@ -58,19 +111,40 @@ export function SuggestedPlans({
           {ot("suggestedIntro")}
         </Typography>
       </div>
-      <ul
-        aria-label={ot("suggestedTitle")}
-        className="-mx-[24px] flex snap-x snap-mandatory gap-[16px] overflow-x-auto px-[24px] pb-[6px] sm:mx-0 sm:px-0"
-      >
-        {plans.map((plan) => (
-          <li
-            className="shrink-0 snap-start list-none"
-            key={plan.id}
-          >
-            <PlanCard plan={plan} visitorId={visitorId} />
-          </li>
-        ))}
-      </ul>
+      {hasExplanations && visibleExplanations.length ? (
+        <div className="flex flex-col gap-[24px]">
+          {visibleExplanations.map((explanation) => {
+            const clusterPlans = explanation.plan_ids
+              .map((planId) => planById.get(planId))
+              .filter((plan): plan is PublicPlan => plan != null);
+            if (!clusterPlans.length) return null;
+            return (
+              <section
+                className="flex flex-col gap-[12px]"
+                key={explanation.cluster_id}
+              >
+                <Typography
+                  className="text-[13px] leading-[1.9]"
+                  type="body-sm"
+                >
+                  {explanation.message}
+                </Typography>
+                <PlanRow
+                  ariaLabel={explanation.message}
+                  plans={clusterPlans}
+                  visitorId={visitorId}
+                />
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <PlanRow
+          ariaLabel={ot("suggestedTitle")}
+          plans={orderedPlans}
+          visitorId={visitorId}
+        />
+      )}
     </section>
   );
 }

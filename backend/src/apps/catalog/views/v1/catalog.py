@@ -20,6 +20,9 @@ from apps.catalog.filters import (
 from apps.catalog.models import PublishedRecord
 from apps.catalog.interfaces import CatalogInterface
 from apps.recommendations.interfaces import RecommendationsInterface
+from apps.recommendations.serializers.v1.intent_explanations import (
+    ClusterIntentExplanationSerializer,
+)
 from apps.catalog.serializers.v1.catalog import (
     PublicCompanySerializer,
     PublicPlanSerializer,
@@ -96,20 +99,26 @@ class PublishedPlansViewSet(EnvelopeListViewSet):
             "-published_at", "id"
         )
 
-    @extend_schema(responses={200: PublicPlanSerializer(many=True)})
+    @extend_schema(responses={200: dict})
     @action(detail=False, methods=["get"], url_path="suggested")
     def suggested(self, request):
-        """Top 20 plans ranked by distance to the viewer's preference."""
-        plan_ids = RecommendationsInterface.suggest(
+        """Top plans ranked by distance, each cluster's best match explained."""
+        result = RecommendationsInterface.suggest_with_explanations(
             CatalogInterface.published_plan_records(),
             visitor_id=self._visitor_id(request),
             user=request.user if request.user.is_authenticated else None,
         )
+        plan_ids = result["plan_ids"]
         records_by_id = PublishedRecord.objects.in_bulk(plan_ids)
         instances = [
             records_by_id[plan_id] for plan_id in plan_ids if plan_id in records_by_id
         ]
-        return Response({"data": self.serialize_page(instances)})
+        explanations = ClusterIntentExplanationSerializer(
+            result["explanations"], many=True
+        ).data
+        return Response(
+            {"data": self.serialize_page(instances), "explanations": explanations}
+        )
 
     @staticmethod
     def _visitor_id(request):
