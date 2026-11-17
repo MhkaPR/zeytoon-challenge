@@ -13,12 +13,12 @@ services and data are hosted in Iran.
 The visual identity is a clean white canvas, black text, and a restrained **olive accent**
 (`#60782e`), fully RTL and Persian-first. See [`DESIGN.md`](DESIGN.md).
 
+![Zeytoon home page](imgs/home.png)
 ---
 
 ## Table of Contents
 
 - [Why Zeytoon](#why-zeytoon)
-- [Feature Set](#feature-set)
 - [Challenges Solved](#challenges-solved)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -44,100 +44,8 @@ into one normalized, comparable catalogue:
 - **Personalized ordering** that learns from anonymous browsing and carries into the account.
 - **Explainable recommendations** that tell the visitor *why* a plan is suggested, in real
   units and human language — never raw normalized scores.
-- **A trustworthy supply side**: verified companies, an append-only credit ledger, and an
-  auditable automated pipeline that keeps plan data fresh.
-
----
-
-## Feature Set
-
-### 1. SMS OTP Login — `specs/001-sms-otp-login`
-
-- Phone number is the unique identifier; login is by **SMS one-time code**.
-- New phone numbers create an account implicitly on first successful verification — there is
-  no separate registration step.
-- **JWT sessions**: short-lived access token, rotating refresh token in an `httpOnly` cookie,
-  server-side denylist revocation.
-- A reliable **guest vs. authenticated** signal via `GET /api/v1/auth/session`.
-- Return-URL handling with an allowlist and default fallback.
-- Security: hashed OTPs with TTL in Redis, per-phone and per-source rate limits, failed-attempt
-  limits, temporary lockout, exact CORS allowlist, CSRF double-submit, and one-time-code/token
-  redaction in logs.
-
-### 2. Company Registration & Company Panel — `specs/002-company-registration-panel`
-
-- A user can own **multiple companies**; ownership is single-owner and admin-controlled.
-- Multi-step registration with **locked steps**: a step opens only after the previous one is
-  approved.
-- Verification is decided by an operator and recorded in an **append-only history** (outcome,
-  actor, time, note). A not-approved outcome reopens step one for correction.
-- Mid-step abandonment clears only that step's draft; the user resumes at the same step.
-- The panel opens the **full panel** for verified companies and a **"Continue registration"**
-  view for pending/rejected ones — including a redirect when the full-panel URL is reached
-  directly.
-- Plan eligibility gate: a listing can only be created/activated when the company is **both
-  verified and charged**, and the block names every missing prerequisite.
-- Per-company **credit ledger** (append-only charge/decharge entries); current credit is the
-  running projection of the ledger. Crawl enabling requires a charged account and costs no
-  credit.
-- Companies are **archived, never hard-deleted**; ownership transfer is admin-only.
-
-### 3. Admin Console & Site Data Pipeline — `specs/003-admin-ops-console`
-
-- Operator-facing approval queue for pending companies, with duplicate-domain warnings and an
-  append-only decision record per outcome.
-- Automated site-maintenance pipeline: **crawl4ai** adaptive link discovery, LLM link
-  refiltering, server-side headless **domtrack** capture, table extraction/classification, and
-  schema-validated plan extraction.
-- Compare-driven replay re-invokes extraction only when a change touches a plans table.
-- Operator-controlled LLM token budget and runtime thresholds; LLM-gated work pauses when the
-  budget is exhausted.
-
-### 4. Backend Contract & Public Browsing — `specs/004-backend-contract`
-
-- Shared API contract for public browsing: home, search, service-type chips, filters, and the
-  company directory.
-- Typed frontend API clients and i18n catalogs keep the Persian-first RTL experience consistent.
-
-### 5. Personalized Related Plans — `specs/005-related-plans-sort`
-
-- The catalogue defaults to **«پیشنهاد برای شما»** (recommended for you), ordered by the
-  visitor's demonstrated interest.
-- Anonymous visitors get a device-scoped profile; on login the device profile folds into the
-  account (account history wins when both exist); on logout the device profile is cleared.
-- Three signal types: destination-page visit (strongest), plan-details view (moderate), and the
-  first page of a typed search (weakest).
-- Deterministic cold-start order for visitors with no history.
-
-### 6. Semantic Space Expansion — `specs/006-pca-space-expansion`
-
-- Ten title-derived semantic dimensions are added to the plan space via character n-gram
-  hashing + **PCA**.
-- Multiple interests are kept simultaneously as bounded **interest clusters**; a new signal
-  updates a nearby cluster or creates a new one until the configured cap, after which the least
-  confident cluster is replaced.
-- Profiles with an outdated dimension count or space version are rebuilt safely; a failed
-  refresh leaves the previous space intact.
-
-### 7. Recommendation Explanations — `specs/007-recommendation-explanations`
-
-- Each interest shows its closest plan with **one readable reason** naming the preference that
-  matched.
-- Textual matches are described as a product category; technical matches are quoted as a small
-  range in **real units** (cores, GB, monthly price), never normalized scores.
-- The recommendation space is **persisted in PostgreSQL**, with Redis as a read-through cache
-  only; a stale space version is rebuilt, never served.
-
-### 8. Intent-Pattern Explanations — `specs/008-intent-pattern-explanations`
-
-- Replaces attribute-based reasons with **intent patterns** (`cheap`, `value`, `spec_heavy`,
-  `premium`) scored per cluster against the top-K candidate set.
-- Statistical significance, effect-size, and click-corroboration checks gate which intent may be
-  reported.
-- Repeated intents across clusters merge into one UI row with disjoint plan lists; weak evidence
-  falls back to an honest **"exploring"** message.
-- Explanations are computed inside the suggested-plans response; the separate explanation
-  endpoint and the persisted explanation model are removed.
+- **A trustworthy supply side**: verified companies and an auditable automated pipeline that
+  keeps plan data fresh.
 
 ---
 
@@ -204,8 +112,7 @@ intent key into one row with a disjoint, de-duplicated plan list and contiguous 
 ### 9. Commercial rules that cannot be bypassed
 
 Plan actions must respect verification and payment state. **Solution:** a single eligibility gate
-that names **every** missing prerequisite, and a per-company append-only credit ledger whose
-current balance is a projection — never a mutable column that can drift.
+that names **every** missing prerequisite, and reliable tracking of commercial account state.
 
 ### 10. A resilient, budget-aware crawling pipeline
 
@@ -283,7 +190,7 @@ backend/
   src/
     config/               Django project (settings, urls, wsgi/asgi)
     apps/accounts/        OTP login, users, roles, JWT, throttling, SMS gateway
-    apps/companies/       Registration steps, verification history, panel, credit ledger, crawl
+    apps/companies/       Registration steps, verification history, panel, crawl
     apps/admin_console/   Operator approval queue and automated site-data pipeline
     apps/catalog/         Plan catalogue, filters, public browsing contract
     apps/recommendations/ Plan space, signals, clusters, ranking, intent explanations
@@ -406,7 +313,6 @@ Base path: `/api/v1`. All responses are JSON; errors use a single shape
 | GET | `/{id}/panel` | Full panel (verified companies only) |
 | POST | `/{id}/verification-decisions` | Operator verification decision (admin only) |
 | GET | `/{id}/plan-eligibility` | Prerequisite gate for plan actions |
-| GET | `/{id}/credit` | Current credit (ledger projection) |
 | POST | `/{id}/credit/movements` | Append a charge/decharge entry |
 | POST | `/{id}/crawl` | Enable crawl (requires charged account) |
 | POST | `/{id}/links` | Manage the company's crawl links |
@@ -559,8 +465,8 @@ cd frontend && yarn test
 Backend tests use pytest-django with DRF's API client, a fake SMS gateway, and time freezing for
 TTL/expiry. Coverage includes OTP contracts, implicit signup, lockout, throttling, return URLs,
 role resolution, log redaction, registration, step locking, mid-step abandonment,
-verification-history immutability, panel routing/scoping, plan eligibility, the credit ledger,
-crawl gating, archival, recommendation space persistence, clustering, ranking, intent scoring,
+verification-history immutability, panel routing/scoping, plan eligibility, crawl gating,
+archival, recommendation space persistence, clustering, ranking, intent scoring,
 merging, determinism, and frontend explanation rendering. Each feature ships a `quickstart.md`
 with an end-to-end validation script.
 
