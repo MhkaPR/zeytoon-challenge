@@ -14,12 +14,13 @@ The visual identity is a clean white canvas, black text, and a restrained **oliv
 (`#60782e`), fully RTL and Persian-first. See [`DESIGN.md`](DESIGN.md).
 
 ![Zeytoon home page](imgs/home.png)
+
 ---
 
 ## Table of Contents
 
-- [Why Zeytoon](#why-zeytoon)
 - [Challenges Solved](#challenges-solved)
+- [Why Zeytoon](#why-zeytoon)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Repository Layout](#repository-layout)
@@ -30,6 +31,81 @@ The visual identity is a clean white canvas, black text, and a restrained **oliv
 - [Testing](#testing)
 - [Project Governance](#project-governance)
 - [License](#license)
+
+---
+
+## Challenges Solved
+
+The core of Zeytoon is a personalization model that works for visitors who never sign in, keeps
+several interests alive at once, forgets old ones gracefully, and understands Persian plan
+titles. Three challenges carry most of that weight. They form one chain: the plan space gives
+every plan a position (5), interest clusters track where a visitor's attention sits in that
+space (3), and Kalman updates move those clusters over time (4). Each maps to a spec and a test
+suite.
+
+### Core challenges
+
+#### 1. **Multiple simultaneous interests instead of one averaged vector**
+
+**Problem.** Averaging "cheap" and "premium" clicks produces a meaningless middle point that
+matches no real plan.
+
+**Solution.** **Bounded interest clusters, each with its own position and uncertainty.** A nearby
+signal updates an existing cluster; a distant signal creates a new one until the cap; when the
+cap is reached, the least confident cluster is replaced. Clusters are never averaged together,
+including for explanations. The cap also bounds memory and ranking cost, because the catalogue
+is scored against each cluster separately.
+
+#### 2. **Recency without unbounded influence**
+
+**Problem.** Old interests should fade, but repeated clicks must not dominate forever. A plain
+moving average cannot tell a click from yesterday apart from one made three months ago.
+
+**Solution.** **A Kalman-style update with time-based uncertainty growth, a per-signal weight,
+and a decay rate.** As time passes, uncertainty grows, so stale clusters lose influence and
+fresh signals move them more. Repeated signals shrink uncertainty and stabilize a cluster, while
+the decay rate keeps them from dominating permanently. The Kalman module is the only place that
+mutates a node's position or uncertainty, which keeps the math auditable and testable.
+
+#### 3. **Semantic understanding of Persian plan titles**
+
+**Problem.** Plan titles are short, mixed-script, and inconsistently spelled, so word-level
+tokenization is a poor fit.
+
+**Solution.** **Character n-gram hashing (`char_wb`) followed by PCA, min-max scaled into
+`[0, 1]`.** Scaling puts the semantic dimensions on the same footing as explicit attributes such
+as price and RAM, so they share the same distance metric and the same Kalman update. Empty or
+missing titles get a neutral value rather than a penalty.
+
+### Supporting challenges
+
+#### 4. Anonymous-first personalization without accounts
+
+Most visitors never sign in, so recommendation state cannot depend on a user row. An opaque,
+device-scoped visitor cookie set by Next middleware identifies a per-visitor interest profile.
+On login the device profile is folded into the account (account history wins); on logout it is
+cleared for privacy. The identifier is a random opaque value, with no fingerprinting and no
+personal data in the profile.
+
+#### 5. Deterministic cold start
+
+First-time visitors must not see a random-feeling catalogue. With no signals, every viewer gets
+the same stable ordering, built from a single neutral prior per dimension. Tests assert
+byte-identical output across repeated loads.
+
+#### 6. Cache eviction and restart safety
+
+Redis is fast but not durable. The fitted plan space is persisted in PostgreSQL and Redis serves
+only as a read-through cache. On an empty cache the system serves from the database; if the
+database has no valid space, it rebuilds and persists one. Every record carries a space version,
+and a mismatch is rebuilt rather than served.
+
+#### 7. Persian-first RTL without a fragmented UI
+
+Persian copy, Latin identifiers, and technical values must coexist on one screen. The UI uses
+Vazirmatn-first typography, logical Tailwind utilities (`ms-*`, `me-*`, `start-*`, `end-*`),
+local `dir="ltr"` for URLs and domains, HeroUI v3 + React Aria for accessible components, and
+centralized i18n catalogs.
 
 ---
 
@@ -46,88 +122,6 @@ into one normalized, comparable catalogue:
   units and human language — never raw normalized scores.
 - **A trustworthy supply side**: verified companies and an auditable automated pipeline that
   keeps plan data fresh.
-
----
-
-## Challenges Solved
-
-These are the hard problems the implementation had to solve, and how the codebase addresses
-them. Each one maps to a spec and a test suite.
-
-### 1. Anonymous-first personalization without accounts
-
-Most visitors never sign in, so recommendation state cannot depend on a user row. **Solution:**
-an opaque, device-scoped visitor cookie set by Next middleware, a per-visitor interest profile,
-and a merge matrix on login/logout. The device profile is folded into the account on sign-in
-(account history wins), and cleared on sign-out for privacy. The visitor identity is a random
-opaque value — no fingerprinting, no personal data in the profile.
-
-### 2. Deterministic cold start
-
-Personalization must not make the catalogue feel random for first-time visitors. **Solution:** a
-stable, deterministic cold-start ordering identical for every viewer with no signals, and a
-single neutral prior for every dimension. Tests assert byte-identical output on repeated loads.
-
-### 3. Multiple simultaneous interests instead of one averaged vector
-
-Averaging "cheap" and "premium" clicks produces a meaningless middle. **Solution:** bounded
-interest clusters, each with its own position and uncertainty. Nearby signals update an existing
-cluster; distant signals create a new one until the cap; the least confident cluster is replaced
-when full. Clusters are never averaged together for explanations.
-
-### 4. Recency without unbounded influence
-
-Old interests should fade, but repeated clicks must not dominate forever. **Solution:** a
-Kalman-style update with time-based uncertainty growth, a per-signal weight, and a decay rate.
-The Kalman module is the only place that mutates a node's position or uncertainty, which keeps
-the math auditable and testable.
-
-### 5. Semantic understanding of Persian plan titles
-
-Plan titles are short, mixed-script, and inconsistent. **Solution:** character n-gram hashing
-(`char_wb`) followed by PCA, min-max scaled into `[0, 1]` so semantic dimensions share the same
-distance and Kalman update as explicit attributes. Empty or missing titles get a neutral value,
-not a penalty.
-
-### 6. Cache eviction and restart safety
-
-Redis is fast but not durable. **Solution:** the fitted plan space is persisted in PostgreSQL;
-Redis is only a read-through cache. On an empty cache the system serves from the database, and
-if the database has no valid space it rebuilds and persists one. Every record carries a space
-version; a mismatch is rebuilt rather than served.
-
-### 7. Explanations that don't drift from the ranking
-
-An explanation computed by a separate endpoint can describe a different space version than the
-plans it accompanies. **Solution:** explanations are produced inside the same suggested-plans
-response, keyed to the active space version, and are not stored separately. Deterministic
-wording and ranges are asserted in tests.
-
-### 8. Duplicate intents across clusters
-
-Two clusters can resolve to the same intent. **Solution:** per-cluster detection, then merge by
-intent key into one row with a disjoint, de-duplicated plan list and contiguous `cluster_id`s
-(no gaps in the response).
-
-### 9. Commercial rules that cannot be bypassed
-
-Plan actions must respect verification and payment state. **Solution:** a single eligibility gate
-that names **every** missing prerequisite, and reliable tracking of commercial account state.
-
-### 10. A resilient, budget-aware crawling pipeline
-
-Provider sites are slow, inconsistent, and change structure. **Solution:** crawl4ai link
-discovery, deterministic-then-LLM refiltering, server-side domtrack capture, table
-classification, and Pydantic-validated extraction. Compare-driven replay re-runs the LLM only
-when a plans table changes. Network errors are tolerated, and LLM-gated work pauses when the
-operator's token budget is exhausted.
-
-### 11. Persian-first RTL without a fragmented UI
-
-Persian copy, Latin identifiers, and technical values must coexist. **Solution:** Vazirmatn-first
-typography, logical Tailwind utilities (`ms-*`, `me-*`, `start-*`, `end-*`), local `dir="ltr"`
-for URLs and domains, HeroUI v3 + React Aria for accessible components, and centralized i18n
-catalogs.
 
 ---
 
