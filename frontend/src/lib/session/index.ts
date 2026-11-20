@@ -23,6 +23,11 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+/** Refresh an expired access token, reusing the same promise for concurrent requests. */
+export function refreshSessionAccessToken(): Promise<string> {
+  return refreshAccessTokenOnce();
+}
+
 /**
  * Recover the access token at most once at a time.
  *

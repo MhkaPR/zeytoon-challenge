@@ -1,14 +1,24 @@
-import { Typography } from "@heroui/react";
+import { Suspense } from "react";
+
 import { getTranslations } from "next-intl/server";
 
 import { PlanCatalog } from "@/src/features/home/PlanCatalog";
+import { Skeleton, Typography } from "@/src/features/ui/heroUi";
 import { getPlansPage } from "@/src/lib/api/publicCatalog";
 import { visitorId } from "@/src/lib/visitor";
 
 type Props = { params: Promise<{ domain: string }> };
 
-/** Company comparison, rendered on the server from the public catalog API. */
-export default async function CompanyPublicPage({ params }: Props) {
+/** Company comparison, rendered from the public catalog API. */
+export default function CompanyPublicPage({ params }: Props) {
+  return (
+    <Suspense fallback={<CompanyLoading />}>
+      <CompanyContent params={params} />
+    </Suspense>
+  );
+}
+
+async function CompanyContent({ params }: Props) {
   const { domain } = await params;
   const decodedDomain = decodeURIComponent(domain);
   const vid = await visitorId();
@@ -24,7 +34,9 @@ export default async function CompanyPublicPage({ params }: Props) {
   return (
     <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-[24px] px-[24px] py-[56px] sm:px-[32px]">
       <div>
-        <Typography className="text-[34px] font-semibold" type="h1">{companyName}</Typography>
+        <Typography className="text-[34px] font-semibold" type="h1">
+          {companyName}
+        </Typography>
         <Typography color="muted">{decodedDomain}</Typography>
       </div>
       <PlanCatalog
@@ -42,6 +54,15 @@ export default async function CompanyPublicPage({ params }: Props) {
         showServiceTabs={false}
         title={ot("publishedPlansTitle")}
       />
+    </main>
+  );
+}
+
+function CompanyLoading() {
+  return (
+    <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-[24px] px-[24px] py-[56px] sm:px-[32px]">
+      <Skeleton className="h-[40px] w-[260px] rounded-[var(--radius)]" />
+      <Skeleton className="h-[320px] w-full rounded-[var(--radius)]" />
     </main>
   );
 }

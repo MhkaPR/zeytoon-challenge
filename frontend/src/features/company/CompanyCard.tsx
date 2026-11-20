@@ -1,7 +1,7 @@
-import { Button, Card, Chip, Typography } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import NextLink from "next/link";
 
+import { Button, Card, Chip, Typography } from "@/src/features/ui/heroUi";
 import { CompanyLogo } from "./CompanyLogo";
 
 /** Provider summary card used by the company directory and search surfaces. */

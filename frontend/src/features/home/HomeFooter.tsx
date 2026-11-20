@@ -1,8 +1,8 @@
 import { getTranslations } from "next-intl/server";
-import { Link, Separator, Typography } from "@heroui/react";
 import NextLink from "next/link";
 
 import type { SiteConfig } from "@/src/lib/config/siteConfig";
+import { Link, Separator, Typography } from "@/src/features/ui/heroUi";
 
 type FooterLinkGroup = {
   title: string;

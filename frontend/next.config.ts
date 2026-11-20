@@ -9,6 +9,7 @@ const API_ORIGIN = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:800
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 const nextConfig: NextConfig = {
   /* config options here */
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   // Serve the API under the frontend origin when no external base URL is configured, so the

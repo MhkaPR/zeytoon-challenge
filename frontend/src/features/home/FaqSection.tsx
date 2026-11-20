@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { Accordion, Typography } from "@heroui/react";
+import { Accordion, Typography } from "@/src/features/ui/heroUi";
 
 /**
  * Frequently asked questions as a single-expandable HeroUI ``Accordion`` (homepage FAQ).

@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import {Card, Typography} from "@heroui/react";
+import { Card, Typography } from "@/src/features/ui/heroUi";
 
 
 /** Short introduction explaining what Torb Host is and why it is useful (homepage). */

@@ -1,12 +1,12 @@
 
 import { Suspense } from "react";
 import { MainBody } from "@/src/features/home/MainBody";
+import { Skeleton } from "@/src/features/ui/heroUi";
 import {
   getPlansPage,
   getRecentCompanies,
   getSuggestedPlans,
 } from "@/src/lib/api/publicCatalog";
-import {Skeleton} from "@heroui/react";
 import {getSiteConfig} from "@/src/lib/config/getSiteConfig";
 import { visitorId } from "@/src/lib/visitor";
 
@@ -19,7 +19,7 @@ export default function MainPage({
 }) {
   return (
     <main className="flex flex-1 flex-col">
-      <Suspense fallback={<Skeleton />}>
+      <Suspense fallback={<Skeleton className="min-h-[480px] w-full rounded-[var(--radius)]" />}>
         <MainContent searchParams={searchParams} />
       </Suspense>
     </main>

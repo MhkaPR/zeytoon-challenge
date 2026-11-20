@@ -1,16 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import "handsontable/styles/handsontable.min.css";
-import "handsontable/styles/ht-theme-main.css";
 
-import { HotTable } from "@handsontable/react-wrapper";
-import { Button, Card, Label, ListBox, Select, Typography } from "@heroui/react";
+import { Button, Label, ListBox, Select, Typography } from "@heroui/react";
 import { Save } from "lucide-react";
-import { useMemo, useState } from "react";
-import { registerAllModules } from 'handsontable/registry';
-
-registerAllModules();
+import { useState } from "react";
 import type {
   ExtractedTable,
   PlanType,
@@ -61,19 +55,9 @@ export function MappingWorkspace({
   const selectedTable =
     tables.find((table) => table.id === selectedTableId) ?? tables[0];
 
-  const grid = useMemo(() => {
-    if (!selectedTable) return { data: [], headers: [] as string[] };
-    const headers = selectedTable.columns.map(
-      (column) => column.label || column.column_id,
-    );
-    const rows = [...selectedTable.rows].sort((a, b) => a.row_index - b.row_index);
-    return {
-      headers,
-      data: rows.map((row) =>
-        selectedTable.columns.map((column) => row.cells[column.column_id] ?? ""),
-      ),
-    };
-  }, [selectedTable]);
+  const rows = selectedTable
+    ? [...selectedTable.rows].sort((a, b) => a.row_index - b.row_index)
+    : [];
 
   const missing = fields.filter(
     (field) => field.required && !bindings[field.key]?.source_column_id,
@@ -132,19 +116,31 @@ export function MappingWorkspace({
         />
       </div>
 
-        <Typography className="text-[12px] text-muted">{ot("gridHint")}</Typography>
-        <div className="overflow-x-auto">
-          <HotTable
-            className="ht-theme-main"
-            colHeaders={grid.headers}
-            data={grid.data}
-            height={240}
-            licenseKey="non-commercial-and-evaluation"
-            readOnly
-            manualColumnResize={true}
-            stretchH="all"
-          />
-        </div>
+      <Typography className="text-[12px] text-muted">{ot("gridHint")}</Typography>
+      <div className="max-h-[240px] overflow-auto rounded-[var(--radius)] border border-[var(--separator)]">
+        <table className="w-full border-collapse text-start text-[13px]">
+          <thead className="sticky top-0 bg-surface-secondary">
+            <tr>
+              {selectedTable?.columns.map((column) => (
+                <th className="border-b border-[var(--separator)] px-[12px] py-[8px] font-semibold" key={column.id} scope="col">
+                  {column.label || column.column_id}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.row_index}>
+                {selectedTable?.columns.map((column) => (
+                  <td className="border-b border-[var(--separator)] px-[12px] py-[8px]" key={column.id}>
+                    {row.cells[column.column_id] ?? ""}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <FieldBindingPanel
         bindings={bindings}

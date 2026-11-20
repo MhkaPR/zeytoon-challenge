@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { Typography } from "@heroui/react";
+import { Typography } from "@/src/features/ui/heroUi";
 import type { ReactNode } from "react";
 import { AboutUs} from "@/src/features/home/AboutUs";
 import { FaqSection } from "./FaqSection";

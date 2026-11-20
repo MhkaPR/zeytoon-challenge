@@ -2,12 +2,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@handsontable/react-wrapper", () => ({
-  HotTable: ({ data }: { data: string[][] }) => (
-    <div data-testid="grid">{data.flat().join("|")}</div>
-  ),
-}));
-
 import {
   FieldBindingPanel,
   resolveColumnBinding,
@@ -159,7 +153,7 @@ describe("mapping workspace", () => {
     });
   });
 
-  it("switches the grid to another source table", async () => {
+  it("switches the preview to another source table", async () => {
     const user = userEvent.setup();
     render(
       <MappingWorkspace
@@ -170,11 +164,11 @@ describe("mapping workspace", () => {
       />,
     );
 
-    expect(screen.getByTestId("grid")).toHaveTextContent("Basic");
+    expect(screen.getByRole("table")).toHaveTextContent("Basic");
     const selects = document.querySelectorAll("select");
     expect(selects.length).toBeGreaterThan(1);
     await user.selectOptions(selects[1] as HTMLSelectElement, "2");
-    expect(screen.getByTestId("grid")).toHaveTextContent("120000");
+    expect(screen.getByRole("table")).toHaveTextContent("120000");
   });
 
   it("shows every saved binding in the field panel", () => {

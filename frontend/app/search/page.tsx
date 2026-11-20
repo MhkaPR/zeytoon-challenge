@@ -1,9 +1,10 @@
-import { Typography } from "@heroui/react";
 import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
 import { PlanCatalog } from "@/src/features/home/PlanCatalog";
 import { SearchBox } from "@/src/features/home/SearchBox";
 import { SearchImpressionBeacon } from "@/src/features/home/planCatalog/SearchImpressionBeacon";
+import { Skeleton, Typography } from "@/src/features/ui/heroUi";
 import { getPlansPage } from "@/src/lib/api/publicCatalog";
 import { visitorId } from "@/src/lib/visitor";
 
@@ -15,6 +16,18 @@ const SEARCH_SORT_OPTIONS = [
 
 /** Search results, rendered on the server from the public catalog API. */
 export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  return (
+    <Suspense fallback={<SearchLoading />}>
+      <SearchContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function SearchContent({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -33,7 +46,9 @@ export default async function SearchPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[960px] flex-1 flex-col gap-[24px] px-[32px] py-[64px]">
-      <Typography className="text-[32px] font-semibold" type="h1">{ot("searchTitle")}</Typography>
+      <Typography className="text-[32px] font-semibold" type="h1">
+        {ot("searchTitle")}
+      </Typography>
       <SearchBox initialQuery={query} />
       {query && <Typography color="muted">{ot("searchResultsFor", { query })}</Typography>}
       <SearchImpressionBeacon
@@ -65,6 +80,16 @@ export default async function SearchPage({
         sortOptions={SEARCH_SORT_OPTIONS}
         title={null}
       />
+    </main>
+  );
+}
+
+function SearchLoading() {
+  return (
+    <main className="mx-auto flex w-full max-w-[960px] flex-1 flex-col gap-[24px] px-[32px] py-[64px]">
+      <Skeleton className="h-[40px] w-[220px] rounded-[var(--radius)]" />
+      <Skeleton className="h-[48px] w-full rounded-[var(--radius)]" />
+      <Skeleton className="h-[320px] w-full rounded-[var(--radius)]" />
     </main>
   );
 }

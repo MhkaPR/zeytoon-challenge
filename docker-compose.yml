@@ -1,0 +1,74 @@
+x-backend-common: &backend-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file: .env
+  environment: &backend-environment
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+    REDIS_URL: redis://redis:6379/0
+    DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+    ARTIFACT_STORAGE_BACKEND: filesystem
+    MEDIA_ROOT: /app/media
+  restart: unless-stopped
+
+services:
+  backend:
+    <<: *backend-common
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes: &backend-volumes
+      - trace-files:/app/media
+      - crawl-data:/app/traces
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  db-worker:
+    <<: *backend-common
+    environment: *backend-environment
+    entrypoint: ["python", "/app/backend/src/manage.py"]
+    command: ["db_worker"]
+    volumes: *backend-volumes
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  trace-files:
+  crawl-data:

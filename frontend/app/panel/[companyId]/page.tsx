@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@heroui/react";
+import { Skeleton } from "@/src/features/ui/heroUi";
 
 import CompanyPanelPageClient from "./CompanyPanelPageClient";
 

@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { Skeleton, Typography } from "@heroui/react";
+import { Skeleton, Typography } from "@/src/features/ui/heroUi";
 import NextLink from "next/link";
 
 import { CompanyLogo } from "@/src/features/company/CompanyLogo";

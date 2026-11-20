@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { Card, Typography } from "@heroui/react";
+import { Card, Typography } from "@/src/features/ui/heroUi";
 
 /** Persian digits, so criterion markers read as ۱، ۲، ۳ … (DESIGN.md §8). */
 const ORDINALS = ["۱", "۲", "۳", "۴", "۵"] as const;

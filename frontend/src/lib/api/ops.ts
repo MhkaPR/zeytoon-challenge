@@ -6,6 +6,7 @@
  */
 
 import { AuthApiError, type ApiErrorBody } from "./auth";
+import { getAccessToken, refreshSessionAccessToken, setAccessToken } from "../session";
 
 // Empty base = same origin (Next proxies ``/api/*`` to the backend in development).
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
@@ -20,11 +21,29 @@ async function request<T>(
     ...((init?.headers as Record<string, string>) ?? {}),
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-    credentials: "include",
-  });
+  const send = (token: string | null) => {
+    const requestHeaders = { ...headers };
+    if (token) requestHeaders.Authorization = `Bearer ${token}`;
+    else delete requestHeaders.Authorization;
+    return fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: requestHeaders,
+      credentials: "include",
+    });
+  };
+  let response = await send(accessToken);
+  if (response.status === 401) {
+    try {
+      const currentToken = getAccessToken();
+      const refreshedToken = currentToken && currentToken !== accessToken
+        ? currentToken
+        : await refreshSessionAccessToken();
+      setAccessToken(refreshedToken);
+      response = await send(refreshedToken);
+    } catch {
+      // Preserve the original authorization response for the caller to handle.
+    }
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = (data as ApiErrorBody).error;

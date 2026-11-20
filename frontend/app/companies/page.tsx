@@ -1,9 +1,11 @@
-import { Card, Typography } from "@heroui/react";
+import { Suspense } from "react";
+
 import { getTranslations } from "next-intl/server";
 
 import { CompanyCard } from "@/src/features/company/CompanyCard";
 import { CompanyPagination } from "@/src/features/company/CompanyPagination";
 import { CompanySearchBox } from "@/src/features/company/CompanySearchBox";
+import { Card, Skeleton, Typography } from "@/src/features/ui/heroUi";
 import { getCompaniesPage } from "@/src/lib/api/publicCatalog";
 
 function first(value: string | string[] | undefined): string {
@@ -11,7 +13,19 @@ function first(value: string | string[] | undefined): string {
 }
 
 /** Provider directory, rendered and paginated on the server. */
-export default async function CompaniesPage({
+export default function CompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[]; page?: string | string[] }>;
+}) {
+  return (
+    <Suspense fallback={<CompaniesLoading />}>
+      <CompaniesContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function CompaniesContent({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string | string[]; page?: string | string[] }>;
@@ -65,6 +79,15 @@ export default async function CompaniesPage({
         query={query}
         totalPages={companiesPage.totalPages}
       />
+    </main>
+  );
+}
+
+function CompaniesLoading() {
+  return (
+    <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-[32px] px-[16px] py-[48px] sm:px-[24px] md:px-[32px] md:py-[64px]">
+      <Skeleton className="h-[64px] w-full rounded-[var(--radius)]" />
+      <Skeleton className="h-[320px] w-full rounded-[var(--radius)]" />
     </main>
   );
 }

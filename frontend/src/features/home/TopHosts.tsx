@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { Card, Chip, Typography } from "@heroui/react";
+import { Card, Chip, Typography } from "@/src/features/ui/heroUi";
 import { ChevronLeft, MapPin, Star } from "lucide-react";
 import NextLink from "next/link";
 
