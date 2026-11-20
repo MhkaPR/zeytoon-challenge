@@ -1,3 +1,5 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import { Card, Chip, Typography } from "@/src/features/ui/heroUi";
 import { ChevronLeft, MapPin, Star } from "lucide-react";

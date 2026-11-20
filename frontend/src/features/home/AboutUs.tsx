@@ -1,3 +1,5 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import { Card, Typography } from "@/src/features/ui/heroUi";
 

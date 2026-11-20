@@ -43,7 +43,12 @@ class DomtrackClient:
         session = CaptureSession(config)
         try:
             with sync_playwright() as playwright:
-                browser = playwright.chromium.launch(headless=True)
+                # In containers Playwright's own browser bundle is unavailable, so the
+                # image points this at the system Chromium (unset locally -> default).
+                executable = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH") or None
+                browser = playwright.chromium.launch(
+                    headless=True, executable_path=executable
+                )
                 try:
                     page = browser.new_page(viewport=config.viewport)
                     page.goto(url, wait_until="domcontentloaded", timeout=timeout)
