@@ -35,7 +35,9 @@ class ExtractedTableColumn(TimestampedModel):
     table = models.ForeignKey(
         "pipeline.ExtractedTable", on_delete=models.CASCADE, related_name="columns"
     )
-    column_id = models.CharField(max_length=128)
+    # domtrack's column ids are full CSS selector paths, which routinely exceed 128
+    # characters (observed up to 416). SQLite ignored the limit; PostgreSQL enforces it.
+    column_id = models.CharField(max_length=1024)
     label = models.CharField(max_length=512, blank=True, default="")
     path = models.CharField(max_length=1024, db_index=True)
     atype = models.CharField(max_length=64, blank=True, default="")
