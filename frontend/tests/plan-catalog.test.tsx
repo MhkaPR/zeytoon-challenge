@@ -109,8 +109,11 @@ describe("PlanCatalog", () => {
     expect(screen.queryByRole("navigation", { name: strings.paginationLabel })).not.toBeInTheDocument();
   });
 
-  it("shows every resource filter on the all tab", () => {
+  it("shows every resource filter on the all tab", async () => {
+    const user = userEvent.setup();
     render(<PlanCatalog plansPage={page({ plans: [], count: 0 })} />);
+
+    await user.click(screen.getByRole("button", { name: strings.filtersLabel }));
 
     expect(screen.getByText(strings.resourceRam)).toBeInTheDocument();
     expect(screen.getByText(strings.resourceCpu)).toBeInTheDocument();
@@ -136,6 +139,7 @@ describe("PlanCatalog", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: strings.filtersLabel }));
     await user.click(screen.getByRole("button", { name: strings.resourceDisk }));
     expect(screen.getByText(new RegExp(strings.unitTB))).toBeInTheDocument();
   });

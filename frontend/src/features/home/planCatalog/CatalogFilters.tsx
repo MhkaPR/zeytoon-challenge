@@ -1,13 +1,14 @@
 "use client";
 
-import { Accordion, Button, Checkbox, Label, SearchField, Typography } from "@heroui/react";
-import { ChevronDown } from "lucide-react";
+import { Accordion, Button, Checkbox, Typography } from "@heroui/react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { formatPersianNumber } from "@/src/lib/formatters/persian";
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
+import { SearchInput } from "@/src/features/ui/SearchInput";
 
 import { RESOURCE_LABELS, type ResourceKey } from "../serviceTypes";
 
@@ -119,20 +120,15 @@ function CompanyFilterSection({
       title={`${ot("companiesFilterTitle")}${selected.length ? ` (${selected.length})` : ""}`}
     >
       <div className="flex flex-col gap-[10px]">
-        <SearchField
-          aria-label={ot("searchCompany")}
-          className="w-full"
+        <SearchInput
+          ariaLabel={ot("searchCompany")}
+          inputClassName="w-full text-[11px]"
+          placeholder={ot("companyName")}
           value={search}
           variant="secondary"
           onChange={onSearchChange}
-        >
-          <Label className="sr-only">{ot("searchCompany")}</Label>
-          <SearchField.Group>
-            <SearchField.SearchIcon />
-            <SearchField.Input className="w-full text-[11px]" placeholder={ot("companyName")} />
-            <SearchField.ClearButton />
-          </SearchField.Group>
-        </SearchField>
+          onSubmit={() => setExpanded(true)}
+        />
 
         {hasNoResults ? (
           <Typography color="muted" type="body-xs">{ot("companyNotFound")}</Typography>
@@ -206,13 +202,54 @@ export function CatalogFilters({
   isDirty?: boolean;
 }) {
   const ot = useTranslations();
+  const [isOpen, setIsOpen] = useState(false);
+  const activeCount =
+    providers.length +
+    selectedOs.length +
+    selectedLocations.length +
+    Object.values(resourceValues).reduce((total, values) => total + (values?.length ?? 0), 0);
+
+  if (!isOpen) {
+    return (
+      <aside className="lg:sticky lg:top-[88px]">
+        <Button
+          aria-expanded={false}
+          className="w-full justify-between rounded-full px-[16px] lg:justify-center"
+          variant="secondary"
+          onPress={() => setIsOpen(true)}
+        >
+          <span className="flex items-center gap-[8px]">
+            <SlidersHorizontal aria-hidden="true" className="size-[16px]" />
+            {ot("filtersLabel")}
+            {activeCount > 0 && (
+              <span className="flex size-[20px] items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
+                {formatPersianNumber(activeCount)}
+              </span>
+            )}
+          </span>
+          <ChevronDown aria-hidden="true" className="size-[15px] lg:hidden" />
+        </Button>
+      </aside>
+    );
+  }
 
   return (
     <aside
       className="flex flex-col gap-[16px] rounded-[var(--radius)] border border-[var(--separator)] p-[16px] lg:sticky lg:top-[88px] lg:max-h-[calc(100dvh-112px)] lg:overflow-y-auto lg:rounded-none lg:border-0 lg:border-e lg:pe-[22px]"
     >
-
-      <Typography className="font-semibold" type="body-sm">{ot("filtersLabel")}</Typography>
+      <div className="flex items-center justify-between gap-[8px]">
+        <Typography className="font-semibold" type="body-sm">{ot("filtersLabel")}</Typography>
+        <Button
+          aria-label={ot("collapseFilters")}
+          className="rounded-full"
+          isIconOnly
+          size="sm"
+          variant="ghost"
+          onPress={() => setIsOpen(false)}
+        >
+          <X aria-hidden="true" className="size-[16px]" />
+        </Button>
+      </div>
 
       <Accordion allowsMultipleExpanded className="w-full">
 

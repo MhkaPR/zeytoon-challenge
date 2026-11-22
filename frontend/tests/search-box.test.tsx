@@ -38,4 +38,14 @@ describe("SearchBox", () => {
 
     await waitFor(() => expect(screen.getByRole("searchbox")).toHaveValue("django"));
   });
+
+  it("submits from the circular search button", async () => {
+    const user = userEvent.setup();
+    render(<SearchBox />);
+
+    await user.type(screen.getByRole("searchbox"), "postgres");
+    await user.click(screen.getByRole("button", { name: strings.searchSubmit }));
+
+    expect(push).toHaveBeenCalledWith("/search?q=postgres");
+  });
 });

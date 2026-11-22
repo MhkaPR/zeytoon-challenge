@@ -1,8 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Label, SearchField, ToggleButton, ToggleButtonGroup } from "@heroui/react";
+import { ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { useState } from "react";
+
+import { SearchInput } from "@/src/features/ui/SearchInput";
 
 import { ResultsList } from "./ResultsList";
 import { SERVICE_TYPES, searchIndexFrom, suggest, type ServiceKey } from "./data";
@@ -24,14 +26,13 @@ export function SearchExperience() {
     <div className="flex w-full flex-col gap-[16px]">
       {/* Sticky search + chips stack: chips sit directly below the sticky search field. */}
       <div className="sticky top-[64px] z-20 -mx-[16px] bg-surface px-[16px] pb-[12px] pt-[12px] md:-mx-[32px] md:px-[32px]">
-        <SearchField aria-label={ot("searchTitle")} value={query} onChange={setQuery}>
-          <Label className="sr-only">{ot("searchPlaceholder")}</Label>
-          <SearchField.Group>
-            <SearchField.SearchIcon />
-            <SearchField.Input className="w-full" placeholder={ot("searchPlaceholder")} />
-            <SearchField.ClearButton />
-          </SearchField.Group>
-        </SearchField>
+        <SearchInput
+          ariaLabel={ot("searchTitle")}
+          inputClassName="w-full"
+          placeholder={ot("searchPlaceholder")}
+          value={query}
+          onChange={setQuery}
+        />
 
         <div className="mt-[12px]">
           <ToggleButtonGroup

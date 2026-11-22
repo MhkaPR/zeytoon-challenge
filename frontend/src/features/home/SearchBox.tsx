@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button, Label, SearchField } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import { SearchInput } from "@/src/features/ui/SearchInput";
 
 /**
  * Search entry point. Submitting navigates to the search page with the query, where the
@@ -18,35 +19,19 @@ export function SearchBox({ initialQuery = "" }: { initialQuery?: string }) {
     setQuery(initialQuery);
   }, [initialQuery]);
 
-  function submit() {
-    const trimmed = query.trim();
+  function submit(value: string) {
+    const trimmed = value.trim();
     router.push(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search");
   }
 
   return (
-    <form
-      role="search"
-      className="flex w-full flex-col items-stretch gap-[8px] sm:flex-row"
-      onSubmit={(event) => {
-        event.preventDefault();
-        submit();
-      }}
-    >
-      <div className="flex-1">
-        <SearchField
-          aria-label={ot("searchTitle")}
-          name="q"
-          value={query}
-          onChange={setQuery}
-        >
-          <Label className="sr-only">{ot("searchTitle")}</Label>
-          <SearchField.Group>
-            <SearchField.SearchIcon />
-            <SearchField.Input placeholder={ot("searchPlaceholder")} />
-            <SearchField.ClearButton />
-          </SearchField.Group>
-        </SearchField>
-      </div>
-    </form>
+    <SearchInput
+      ariaLabel={ot("searchTitle")}
+      name="q"
+      placeholder={ot("searchPlaceholder")}
+      value={query}
+      onChange={setQuery}
+      onSubmit={submit}
+    />
   );
 }

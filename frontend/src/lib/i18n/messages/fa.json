@@ -98,6 +98,7 @@
   "serviceDedicatedServer": "سرور اختصاصی",
   "serviceCdn": "CDN",
   "filtersLabel": "فیلترها",
+  "collapseFilters": "بستن فیلترها",
   "serverLocationLabel": "موقعیت سرور",
   "resourceLabel": "مشخصات منابع",
   "resourceRam": "رم",

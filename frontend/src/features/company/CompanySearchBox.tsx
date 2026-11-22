@@ -1,9 +1,10 @@
 "use client";
 
-import { Label, SearchField } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import { SearchInput } from "@/src/features/ui/SearchInput";
 
 /** Company-directory search; submits the query to the server-rendered page. */
 export function CompanySearchBox({ initialQuery }: { initialQuery: string }) {
@@ -11,34 +12,21 @@ export function CompanySearchBox({ initialQuery }: { initialQuery: string }) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
 
-  function submit() {
-    const trimmed = query.trim();
+  function submit(value: string) {
+    const trimmed = value.trim();
     router.push(trimmed ? `/companies?q=${encodeURIComponent(trimmed)}` : "/companies");
   }
 
   return (
-    <form
-      className="w-full max-w-[520px]"
-      role="search"
-      onSubmit={(event) => {
-        event.preventDefault();
-        submit();
-      }}
-    >
-      <SearchField
-        aria-label={ot("searchCompany")}
-        name="q"
-        value={query}
-        variant="primary"
-        onChange={setQuery}
-      >
-        <Label className="sr-only">{ot("searchCompany")}</Label>
-        <SearchField.Group>
-          <SearchField.SearchIcon />
-          <SearchField.Input placeholder={ot("companyName")} />
-          <SearchField.ClearButton />
-        </SearchField.Group>
-      </SearchField>
-    </form>
+    <SearchInput
+      ariaLabel={ot("searchCompany")}
+      className="flex w-full max-w-[520px] items-center gap-[8px]"
+      name="q"
+      placeholder={ot("companyName")}
+      value={query}
+      variant="primary"
+      onChange={setQuery}
+      onSubmit={submit}
+    />
   );
 }
