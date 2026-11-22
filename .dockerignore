@@ -1,29 +1,54 @@
-.git/
+
+# Git
+.git
 .gitignore
-.gapcode/
-.agents/
-.venv/
-**/__pycache__/
-*.pyc
-*.pyo
-db.sqlite3
-*.sqlite3
-*.sqlite3-*
+
+# Python
+.venv
+**/.venv
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+**/.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Databases
+**/*.sqlite3
+**/*.sqlite3-*
+
+# Datasets and generated files
+dataset/
+imgs/
 media/
 traces/
 artifacts/
-dataset/
-imgs/
-node_modules/
+
+# Agent tools
+.agents/
+.gapcode/
+.specify/
+specs/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+**/*.log
+
+# Frontend
+frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/build/
 frontend/coverage/
-coverage/
+
+# IDE
 .idea/
 .vscode/
-.env*
-*.log
 .DS_Store
-specs/
-.specify/

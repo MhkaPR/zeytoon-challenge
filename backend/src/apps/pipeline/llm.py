@@ -87,7 +87,7 @@ def _sanitize_plan_values(raw_values, plan_type):
                 values.pop(key)
             elif field.kind == "text" and not isinstance(value, str):
                 values[key] = str(value)
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             values.pop(key)
     if not values.get("plan_name"):
         return None

@@ -39,7 +39,13 @@ describe("MainBody", () => {
           },
         }}
         suggestedPlans={[]}
-        recentCompanies={[]}
+        recentCompanies={[
+          {
+            domain: "example.com",
+            company_name: "Example Hosting",
+            created_at: "2026-05-10T12:00:00Z",
+          },
+        ]}
         searchParams={{}}
         siteConfig={DEFAULT_SITE_CONFIG}
       />,
@@ -51,6 +57,7 @@ describe("MainBody", () => {
     expect(document.getElementById("pricing")).toBeInTheDocument();
     expect(document.getElementById("providers")).toBeInTheDocument();
     expect(document.getElementById("steps")).toBeInTheDocument();
+    expect(screen.getByText("۵/۱۰")).toBeInTheDocument();
   });
 });
 

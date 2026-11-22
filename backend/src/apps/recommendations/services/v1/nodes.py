@@ -166,7 +166,7 @@ def _looks_like_uuid(value) -> bool:
     try:
         uuid.UUID(str(value))
         return True
-    except ValueError, AttributeError, TypeError:
+    except (ValueError, AttributeError, TypeError):
         return False
 
 
@@ -175,7 +175,7 @@ def _coerce_uuid(value):
         return None
     try:
         return uuid.UUID(str(value))
-    except ValueError, AttributeError, TypeError:
+    except (ValueError, AttributeError, TypeError):
         return None
 
 
