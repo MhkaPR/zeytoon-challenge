@@ -3,6 +3,7 @@
 import { Pagination } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { formatPersianNumber } from "@/src/lib/formatters/persian";
 
 /** Navigates the server-rendered company directory between pages. */
 export function CompanyPagination({
@@ -60,7 +61,7 @@ export function CompanyPagination({
           ) : (
             <Pagination.Item key={item}>
               <Pagination.Link isActive={item === page} onPress={() => goTo(item)}>
-                {item.toLocaleString("fa-IR")}
+                {formatPersianNumber(item)}
               </Pagination.Link>
             </Pagination.Item>
           ),

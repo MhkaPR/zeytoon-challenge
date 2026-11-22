@@ -444,6 +444,9 @@ candidate-set size.
 | `NEXT_PUBLIC_API_BASE_URL` | Absolute backend base URL; when unset the frontend uses a same-origin `/api/*` proxy | unset (proxy to `http://localhost:8000`) |
 | `API_INTERNAL_BASE_URL` | Backend origin used by server components when `NEXT_PUBLIC_API_BASE_URL` is unset | `http://localhost:8000` |
 
+The Docker Compose frontend sets `API_INTERNAL_BASE_URL` to `http://backend:8000` for server-side
+catalog requests and passes the same origin as `API_PROXY_TARGET` at build time for Next.js rewrites.
+
 ---
 
 ## Testing

@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Button, Label, SearchField } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Search entry point. Submitting navigates to the search page with the query, where the
@@ -13,6 +13,10 @@ export function SearchBox({ initialQuery = "" }: { initialQuery?: string }) {
   const ot = useTranslations();
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   function submit() {
     const trimmed = query.trim();

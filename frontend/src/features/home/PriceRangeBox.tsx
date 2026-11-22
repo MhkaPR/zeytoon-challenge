@@ -10,6 +10,7 @@ import {
   Typography,
 } from "@heroui/react";
 import { useState } from "react";
+import { formatPersianNumber } from "@/src/lib/formatters/persian";
 
 export interface PriceRange {
   from: string;
@@ -21,8 +22,8 @@ const EMPTY_PRICE: PriceRange = { from: "", to: "" };
 /** Human-readable summary of the active range, or the "any price" placeholder. */
 function summarize(value: PriceRange, anyLabel: string): string {
   if (!value.from && !value.to) return anyLabel;
-  const from = value.from ? Number(value.from).toLocaleString("fa-IR") : "۰";
-  const to = value.to ? Number(value.to).toLocaleString("fa-IR") : "∞";
+  const from = value.from ? formatPersianNumber(Number(value.from)) : "۰";
+  const to = value.to ? formatPersianNumber(Number(value.to)) : "∞";
   return `${from} – ${to}`;
 }
 

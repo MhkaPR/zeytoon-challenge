@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { formatPersianNumber } from "@/src/lib/formatters/persian";
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 
 import { RESOURCE_LABELS, type ResourceKey } from "../serviceTypes";
@@ -29,13 +30,13 @@ function formatResourceValue(
   value: number,
   unit?: string,
 ) {
-  const formatted = value.toLocaleString("fa-IR");
+  const formatted = formatPersianNumber(value);
   if (resource === "cpu" || unit === "core") {
     return `${formatted} ${t("unitCore")}`;
   }
   if (unit === "GB") {
     if (value >= 1024 && value % 1024 === 0) {
-      return `${(value / 1024).toLocaleString("fa-IR")} ${t("unitTB")}`;
+      return `${formatPersianNumber(value / 1024)} ${t("unitTB")}`;
     }
     return `${formatted} ${t("unitGB")}`;
   }

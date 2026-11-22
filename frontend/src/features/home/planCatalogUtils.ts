@@ -1,6 +1,7 @@
 import type { PublicPlan } from "@/src/lib/api/publicCatalog";
+import { formatPersianNumber } from "@/src/lib/formatters/persian";
 
-export const formatPrice = (value: number) => value.toLocaleString("fa-IR");
+export const formatPrice = formatPersianNumber;
 
 export function numberValue(value: unknown): number {
   if (typeof value === "number") return value;

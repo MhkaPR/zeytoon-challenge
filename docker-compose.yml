@@ -102,6 +102,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        API_PROXY_TARGET: http://backend:8000
+    environment:
+      API_INTERNAL_BASE_URL: http://backend:8000
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

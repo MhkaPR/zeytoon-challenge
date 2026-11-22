@@ -3,6 +3,7 @@
 import { Label, ListBox, Select } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
+import { formatPersianNumber } from "@/src/lib/formatters/persian";
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
 
 export type SortOrder = "default" | "price" | "expensive" | "relevance";
@@ -58,8 +59,8 @@ export function SortAndPageSizeControls({
           <Select.Popover>
             <ListBox>
               {pageSizes.map((size) => (
-                <ListBox.Item id={String(size)} key={size} textValue={size.toLocaleString("fa-IR")}>
-                  {size.toLocaleString("fa-IR")}
+                <ListBox.Item id={String(size)} key={size} textValue={formatPersianNumber(size)}>
+                  {formatPersianNumber(size)}
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
               ))}

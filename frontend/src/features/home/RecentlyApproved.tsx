@@ -4,12 +4,7 @@ import NextLink from "next/link";
 
 import { CompanyLogo } from "@/src/features/company/CompanyLogo";
 import type { RecentPublicCompany } from "@/src/lib/api/publicCatalog";
-
-const RECENT_COMPANY_DATE_FORMATTER = new Intl.DateTimeFormat("fa-IR-u-ca-gregory-nu-arabext", {
-  day: "numeric",
-  month: "numeric",
-  timeZone: "Asia/Tehran",
-});
+import { formatTehranDate } from "@/src/lib/formatters/persian";
 
 /** The three newest verified companies registered during the current month. */
 export function RecentlyApproved({
@@ -58,7 +53,7 @@ export function RecentlyApproved({
               </Typography>
             </div>
             <Typography className="shrink-0 text-[12px]" color="muted" type="body-xs">
-              {RECENT_COMPANY_DATE_FORMATTER.format(new Date(company.created_at))}
+              {formatTehranDate(company.created_at)}
             </Typography>
           </NextLink>
           <hr className="mx-2" />

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,8 +25,17 @@ describe("SearchBox", () => {
 
     await user.clear(input);
     await user.type(input, "django");
-    await user.click(screen.getByRole("button", { name: strings.searchSubmit }));
+    await user.keyboard("{Enter}");
 
     expect(push).toHaveBeenCalledWith("/search?q=django");
+  });
+
+  it("updates the field when the current query changes", async () => {
+    const { rerender } = render(<SearchBox initialQuery="python" />);
+    expect(screen.getByRole("searchbox")).toHaveValue("python");
+
+    rerender(<SearchBox initialQuery="django" />);
+
+    await waitFor(() => expect(screen.getByRole("searchbox")).toHaveValue("django"));
   });
 });

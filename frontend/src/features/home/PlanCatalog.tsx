@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 
 import { useSiteConfig } from "@/src/features/site/SiteConfigProvider";
+import { formatPersianNumber } from "@/src/lib/formatters/persian";
 import {
   getPlansPage,
   type PlansPage,
@@ -215,7 +216,7 @@ function CatalogPagination({
           ) : (
             <Pagination.Item key={item}>
               <Pagination.Link isActive={item === page} onPress={() => onPageChange(item)}>
-                {item.toLocaleString("fa-IR")}
+                {formatPersianNumber(item)}
               </Pagination.Link>
             </Pagination.Item>
           ),
@@ -508,7 +509,7 @@ export function PlanCatalog({
   const defaultToolbar = (
     <div className="mb-[14px] flex flex-col justify-between gap-[12px] sm:flex-row sm:items-center">
       <Typography color="muted" type="body-xs">
-        {ot("plansCount", { count: data.count.toLocaleString("fa-IR") })}
+        {ot("plansCount", { count: formatPersianNumber(data.count) })}
       </Typography>
       {showSort && (
         <SortAndPageSizeControls

@@ -7,6 +7,7 @@ import { CompanyPagination } from "@/src/features/company/CompanyPagination";
 import { CompanySearchBox } from "@/src/features/company/CompanySearchBox";
 import { Card, Skeleton, Typography } from "@/src/features/ui/heroUi";
 import { getCompaniesPage } from "@/src/lib/api/publicCatalog";
+import { formatPersianNumber } from "@/src/lib/formatters/persian";
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -51,7 +52,7 @@ async function CompaniesContent({
 
       <div className="flex items-center justify-between gap-[12px]">
         <Typography color="muted" type="body-sm">
-          {ot("companiesFoundCount", { count: companiesPage.count.toLocaleString("fa-IR") })}
+          {ot("companiesFoundCount", { count: formatPersianNumber(companiesPage.count) })}
         </Typography>
       </div>
 
