@@ -4,6 +4,7 @@ The domain depends only on the ``SmsGateway`` interface. The concrete implementa
 selected from the environment (``SMS_GATEWAY_BACKEND``); tests use the console/fake gateway.
 """
 
+import httpx
 import logging
 
 from django.conf import settings
@@ -50,19 +51,38 @@ class CapturingSmsGateway(SmsGateway):
         return cls.sent.get(phone_number)
 
 
-class HttpSmsGateway(SmsGateway):
-    """Placeholder HTTP gateway reading credentials from the environment."""
+class PayamakPanelSmsGateway(SmsGateway):
+    """Send OTP codes through the Melipayamak shared-template API."""
 
     def __init__(self):
-        self.api_key = settings.SMS_GATEWAY_API_KEY
-        self.sender = settings.SMS_GATEWAY_SENDER
-        self.base_url = settings.SMS_GATEWAY_BASE_URL
+        self.body_id = settings.SMS_GATEWAY_BODY_ID
+        self.token = settings.SMS_GATEWAY_TOKEN
+        self.base_url = settings.SMS_GATEWAY_BASE_URL.rstrip("/")
 
     def send_code(self, phone_number, code):
-        # A real integration would POST to ``self.base_url`` with the credentials above.
-        if not self.api_key:
-            raise RuntimeError("SMS_GATEWAY_API_KEY is not configured")
-        raise NotImplementedError("Configure a concrete SMS gateway implementation.")
+        if not self.token:
+            raise RuntimeError("SMS_GATEWAY_TOKEN is not configured")
+        if not self.body_id:
+            raise RuntimeError("SMS_GATEWAY_BODY_ID is not configured")
+
+        response = httpx.post(
+            f"{self.base_url}/api/send/shared/{self.token}",
+            json={
+                "bodyId": self.body_id,
+                "to": phone_number,
+                "args": [str(code)],
+            },
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        result = response.json()
+        if isinstance(result, dict) and result.get("status") in {"error", "failed", False}:
+            raise RuntimeError("Melipayamak rejected the SMS request")
+        return True
+
+
+# Backwards-compatible name for existing deployments selecting this class.
+HttpSmsGateway = PayamakPanelSmsGateway
 
 
 def get_gateway():

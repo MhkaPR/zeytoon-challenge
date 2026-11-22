@@ -1,7 +1,9 @@
 """DRF views for the authentication API (see contracts/auth-api.md)."""
 
+from constance import config
 from django.conf import settings
 from django.middleware.csrf import get_token
+from django_ratelimit.core import get_usage
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -22,10 +24,10 @@ from apps.accounts.serializers import (
     parse_input,
 )
 from apps.accounts.throttles import (
-    OtpRequestPhoneThrottle,
     OtpSourceThrottle,
     OtpVerifyPhoneThrottle,
 )
+from apps.accounts.validation import normalize_phone
 
 REFRESH_COOKIE_NAME = "refresh_token"
 
@@ -51,9 +53,14 @@ def _set_refresh_cookie(response, refresh_token):
     return response
 
 
+def _otp_phone_rate_key(group, request):
+    """Return the validated JSON phone number as django-ratelimit's key."""
+    return normalize_phone(request.data.get("phone_number", "")) or "invalid"
+
+
 class OtpRequestViewSet(GenericViewSet):
     authentication_classes = []
-    throttle_classes = [OtpRequestPhoneThrottle, OtpSourceThrottle]
+    throttle_classes = [OtpSourceThrottle]
 
     @extend_schema(
         request=OtpRequestSerializer,
@@ -62,6 +69,37 @@ class OtpRequestViewSet(GenericViewSet):
     @action(detail=False, methods=["post"], url_path="otp/request")
     def otp_request(self, request):
         payload = parse_input(OtpRequestSerializer, request.data)
+        cooldown = get_usage(
+            request,
+            group="otp_request_cooldown",
+            key=_otp_phone_rate_key,
+            rate=f"1/{max(int(config.REQUEST_COOLDOWN_SECONDS), 1)}s",
+            method="POST",
+            increment=True,
+        )
+        hourly = get_usage(
+            request,
+            group="otp_request_hourly",
+            key=_otp_phone_rate_key,
+            rate=f"{max(int(config.REQUEST_HOURLY_CAP), 1)}/h",
+            method="POST",
+            increment=True,
+        )
+        limited = next(
+            (
+                usage
+                for usage in (cooldown, hourly)
+                if usage and usage["should_limit"]
+            ),
+            None,
+        )
+        if limited:
+            raise ApiError(
+                "rate_limited",
+                "Please wait before requesting another code.",
+                http_status=429,
+                fields={"retry_after_seconds": max(int(limited["time_left"]), 1)},
+            )
         result = services.request_otp(payload["phone_number"])
         response = Response(
             OtpRequestResponseSerializer(result).data, status=status.HTTP_200_OK

@@ -54,7 +54,11 @@ def request_otp(raw_phone, source=None):
 
     code = state.generate_code()
     ttl = state.store_code(phone, code)
-    get_gateway().send_code(phone, code)
+    try:
+        get_gateway().send_code(phone, code)
+    except Exception:
+        state.delete_code(phone)
+        raise
 
     logger.info(
         "otp.requested",

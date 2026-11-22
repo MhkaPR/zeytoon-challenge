@@ -183,10 +183,6 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": env("THROTTLE_ANON", "60/min"),
         "user": env("THROTTLE_USER", "120/min"),
-        # Per-phone ceilings. These are intentionally loose enough for local development
-        # (repeated re-requests while testing) while still bounding abuse; FR-019 requires
-        # this limit to exist, not a specific number.
-        "otp_request_phone": env("THROTTLE_OTP_REQUEST_PHONE", "20/hour"),
         "otp_verify_phone": env("THROTTLE_OTP_VERIFY_PHONE", "10/min"),
         # Per-source (IP + user-agent) budget for the OTP request/verify endpoints. This is
         # deliberately generous because it is shared by everyone behind one NAT/dev machine;
@@ -634,9 +630,11 @@ CONSTANCE_CONFIG = {
 # SMS gateway (credentials from environment only)
 
 SMS_GATEWAY_BACKEND = env("SMS_GATEWAY_BACKEND", "apps.accounts.sms.ConsoleSmsGateway")
-SMS_GATEWAY_API_KEY = env("SMS_GATEWAY_API_KEY")
-SMS_GATEWAY_SENDER = env("SMS_GATEWAY_SENDER")
-SMS_GATEWAY_BASE_URL = env("SMS_GATEWAY_BASE_URL")
+SMS_GATEWAY_TOKEN = env("SMS_GATEWAY_TOKEN")
+SMS_GATEWAY_BASE_URL = env(
+    "SMS_GATEWAY_BASE_URL", "https://console.melipayamak.com"
+)
+SMS_GATEWAY_BODY_ID = env("SMS_GATEWAY_BODY_ID")
 
 # Secret used to key the HMAC hash of one-time codes.
 OTP_HASH_SECRET = env("OTP_HASH_SECRET", SECRET_KEY)
