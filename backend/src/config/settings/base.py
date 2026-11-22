@@ -187,7 +187,7 @@ REST_FRAMEWORK = {
         # Per-source (IP + user-agent) budget for the OTP request/verify endpoints. This is
         # deliberately generous because it is shared by everyone behind one NAT/dev machine;
         # the per-phone limits above are what actually stop credential abuse.
-        "otp_source": env("THROTTLE_OTP_SOURCE", "120/hour"),
+        "otp_source": env("THROTTLE_OTP_SOURCE", "240/hour"),
         "recommendation_signal": env("THROTTLE_RECOMMENDATION_SIGNAL", "30/min"),
     },
     "EXCEPTION_HANDLER": "apps.accounts.exceptions.api_exception_handler",
@@ -255,9 +255,12 @@ CONSTANCE_CONFIG = {
         "Failed verification attempts per code before invalidation.",
     ),
     "LOCKOUT_THRESHOLD": (5, "Failed attempts before a temporary lockout."),
-    "LOCKOUT_DURATION_SECONDS": (900, "Temporary lockout length in seconds."),
-    "REQUEST_COOLDOWN_SECONDS": (60, "Minimum gap between code requests per phone."),
-    "REQUEST_HOURLY_CAP": (5, "Maximum code requests per phone per hour."),
+    "LOCKOUT_DURATION_SECONDS": (300, "Temporary lockout length in seconds."),
+    "REQUEST_COOLDOWN_SECONDS": (
+        20,
+        "Minimum gap between code requests per phone.",
+    ),
+    "REQUEST_HOURLY_CAP": (10, "Maximum code requests per phone per hour."),
     "VERIFY_WINDOW_LIMIT": (10, "Maximum verifications per phone per window."),
     "VERIFY_WINDOW_SECONDS": (600, "Verification window length in seconds."),
     "CONTACT_CHANNELS": (

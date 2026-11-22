@@ -94,11 +94,12 @@ class OtpRequestViewSet(GenericViewSet):
             None,
         )
         if limited:
+            retry_after = max(int(limited["time_left"]), 1)
             raise ApiError(
                 "rate_limited",
-                "Please wait before requesting another code.",
+                f"Please wait {retry_after} seconds before requesting another code.",
                 http_status=429,
-                fields={"retry_after_seconds": max(int(limited["time_left"]), 1)},
+                fields={"retry_after_seconds": retry_after},
             )
         result = services.request_otp(payload["phone_number"])
         response = Response(
