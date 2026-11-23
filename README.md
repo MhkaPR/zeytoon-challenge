@@ -13,7 +13,11 @@ services and data are hosted in Iran.
 The visual identity is a clean white canvas, black text, and a restrained **olive accent**
 (`#60782e`), fully RTL and Persian-first. See [`DESIGN.md`](DESIGN.md).
 
-Link of Demo: https://zeytoon.mhkapr.ir
+Link of Demo:
+https://zeytoon.mhkapr.ir
+
+Powered By My Another Project: 
+https://github.com/MhkaPR/domtrack
 
 ![Zeytoon home page](imgs/home.png)
 ---
