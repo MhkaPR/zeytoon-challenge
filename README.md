@@ -2,8 +2,7 @@
 
 **Zeytoon** (زیتون, "olive") is a Persian-first (RTL) **host and server plan search and
 comparison engine**. Visitors compare pricing, resources, and server location across
-providers in one place. Providers register a company, get verified, and manage their plans,
-credit, and crawl lifecycle from a dedicated panel. Operators run verification and the
+providers in one place. Operators run verification and the
 automated site-data pipeline from a separate admin console.
 
 The product is built as a **modular monolith**: a Django 6 + DRF backend and a Next.js 16
