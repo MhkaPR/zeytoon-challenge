@@ -178,7 +178,7 @@ the preference model, ranking, and explanations.
 | Background tasks | django-tasks-db (database-backed Django Tasks, no Celery) |
 | Datastores | PostgreSQL (source of truth), Redis (cache, TTL, throttles) |
 | Crawling / capture | crawl4ai, domtrack, LLM extraction against a Pydantic schema |
-| Math / ML | NumPy, SciPy (`fisher_exact`), scikit-learn (PCA, hashing vectorizer) |
+| Math / ML | NumPy, scikit-learn (PCA, hashing vectorizer) |
 | Frontend | Next.js 16.4, React 19.3, TypeScript 5, Tailwind CSS 4 |
 | UI kit | HeroUI v3 (`@heroui/react`, `@heroui/styles`) + React Aria |
 | Testing | pytest + pytest-django (backend), Vitest + Testing Library (frontend) |
@@ -379,8 +379,8 @@ through `RecommendationsInterface`.
    uncertainty; stale clusters decay out of suggestions.
 4. **Ranking** — the filtered catalogue is scored in one O(N) pass against each cluster and
    paginated afterwards.
-5. **Intent detection** — each cluster's top-K candidates are tested against pre-declared intent
-   patterns with statistical-significance, effect-size, and click-corroboration gates.
+5. **Intent detection** — each cluster's top-K candidates are matched against pre-declared intent
+   patterns.
 6. **Explanation** — one human-readable row per distinct intent, merged across clusters, with an
    honest "exploring" fallback.
 
@@ -439,8 +439,7 @@ change thresholds without a redeploy.
 `RETURN_URL_ALLOWLIST`, `DEFAULT_RETURN_PATH`, `COMPANY_STEP_DEFINITIONS`,
 `COMPANY_REQUIREMENT_MESSAGES`, `COMPANY_STEP_LOCKED_MESSAGE`, `COMPANY_EMPTY_STATE_MESSAGE`,
 `RECOMMENDATION_SEMANTIC_DIMENSIONS`, `RECOMMENDATION_MAX_INTEREST_CLUSTERS`,
-`RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`, and the intent-pattern thresholds and
-candidate-set size.
+`RECOMMENDATION_CLUSTER_DISTANCE_THRESHOLD`, and the intent candidate-set size.
 
 ### Frontend
 
@@ -474,7 +473,7 @@ Backend tests use pytest-django with DRF's API client, a fake SMS gateway, and t
 TTL/expiry. Coverage includes OTP contracts, implicit signup, lockout, throttling, return URLs,
 role resolution, log redaction, registration, step locking, mid-step abandonment,
 verification-history immutability, panel routing/scoping, plan eligibility, crawl gating,
-archival, recommendation space persistence, clustering, ranking, intent scoring,
+archival, recommendation space persistence, clustering, ranking, intent detection,
 merging, determinism, and frontend explanation rendering. Each feature ships a `quickstart.md`
 with an end-to-end validation script.
 
